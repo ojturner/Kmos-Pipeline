@@ -18,6 +18,7 @@ sys.path.append('/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_c
 from astropy.io import fits
 from pipelineClass import pipelineOps
 
+
 pipe_methods = pipelineOps()
 objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009.fits'
 skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0008.fits'

@@ -56,16 +56,46 @@ class pipelineOps(object):
 		#Read in the tables of data
 		table_o = fits.open(objectFile)
 		fitsHeader = table_o[0].header
+		print fitsHeader
 		table_s = fits.open(skyFile)
 		bad_pixel_table = fits.open(badPMap)
+
+		#Now choose the correct rotation angle 
 		lcal_table = fits.open(lcalMap)
+		#This is a list of all possible rotation angles 
+		angleList = np.array([0, 60, 120, 180, 240, 300])
+		#Select the ocs.rot.naangle keyword 
+		obsAngle = table_o[0].header["HIERARCH ESO OCS ROT NAANGLE"]
+		#Find where the difference between the observed and idealised angle is minimum
+		newAngleList = obsAngle - angleList
+		n = newAngleList.argmin()
+		obsAngleNew = angleList[n]
+
+
+		#Find the extension to which this corresponds
+		val = 0
+		if obsAngleNew == 0:
+			val = 1 
+		elif obsAngleNew == 60:
+			val = 4
+		elif obsAngleNew == 120:
+			val = 7
+		elif obsAngleNew == 180: 
+			val = 10
+		elif obsAngleNew == 240:
+			val = 13
+		elif obsAngleNew == 300:
+			val = 16		
+		print val	
+
+
 		#Loop over the fits image extensions, do the same each time
 		for count in range(1,4):
-
+			print val
 			data_o = table_o[count].data
 			data_s = table_s[count].data
 			bad_pixel_data = bad_pixel_table[count].data			
-			lcal_data = lcal_table[8].data
+			lcal_data = lcal_table[val].data
 
 			#Now we have both the object and sky data these are 2D arrays, 
 			#essentially a matrix where each number represents a pixel flux, 
@@ -119,7 +149,7 @@ class pipelineOps(object):
 
 				#Find the coordinates of the bad pixels and the slitlets 
 				bad_pixel_coords = np.where(badPArray[num] == 0)
-				lcal_pixel_coords = np.where(np.isnan(lcalArray[num]))
+				lcal_pixel_coords = np.where(lcalArray[num] > 0)
 
 				#Loop through the first 2048 x 64 data and sky columns and mask off these coords
 				#Then compute the median in both columns. If median sky > median obj, add the difference 
@@ -136,7 +166,7 @@ class pipelineOps(object):
 
 				#Loop around the slitlet positions
 				for i in range(len(lcal_pixel_coords[0])):
-					#Do the same, this time for the slitlet positions (substantially more will be nan)
+					#Do the same, this time for the slitlet positions (substantially more will have a value)
 					xcoord = lcal_pixel_coords[0][i]
 					ycoord = lcal_pixel_coords[1][i]
 					#Set all of these locations to nan 
@@ -148,8 +178,10 @@ class pipelineOps(object):
 				#have value nan. Can then just do np.nanmean(objTemp) which will ignore nan's
 				#then repeat the process for the sky, compare the mean's, compute and apply the offset.
 
-				obj_mean = np.nanmean(objTemp[num])
-				sky_mean = np.nanmean(skyTemp[num])
+				obj_mean = np.nanmedian(objTemp[num])
+				sky_mean = np.nanmedian(skyTemp[num])
+				print sky_mean
+				print obj_mean
 
 				#Need to compare the two medians to see how to apply the offset.
 				#If the sky is brighter, add the difference to the object image
@@ -169,7 +201,8 @@ class pipelineOps(object):
 			elif count == 2:
 				print 'Computed Second Correction'
 			elif count == 3: 
-				print 'Computed Third Correction'						
+				print 'Computed Third Correction'			
+			val += 1				
 		#Create the object fits file with the three corrected extensions
 		fileName = objectFile + '_Corrected'
 		#Note that the readout complained about the header not being 
