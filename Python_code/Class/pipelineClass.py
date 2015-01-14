@@ -204,11 +204,103 @@ class pipelineOps(object):
 				print 'Computed Third Correction'			
 			val += 1				
 		#Create the object fits file with the three corrected extensions
-		fileName = objectFile + '_Corrected'
+		fileName = raw_input('Enter a name for the corrected fits file: ') + '.fits'
 		#Note that the readout complained about the header not being 
 		#in the correct fits format
 		fits.writeto(fileName, data = [], header=fitsHeader, clobber=True)
 		fits.append(fileName, data=correctedExtensions[0])	
 		fits.append(fileName, data=correctedExtensions[1])	
-		fits.append(fileName, data=correctedExtensions[2])	
+		fits.append(fileName, data=correctedExtensions[2])
 
+	def subFrames(self, objectFile, skyFile):	
+
+		#Read in the object and sky files 
+		objData = fits.open(objectFile)
+		skyData = fits.open(skyFile)
+
+		#Find the header and extensions of the new fits file
+		header = objData[0].header
+		print header
+		ext1 = objData[1].data - skyData[1].data
+		ext2 = objData[2].data - skyData[2].data
+		ext3 = objData[3].data - skyData[3].data
+
+		#Write out to a different fits file, with name user specified
+		nameOfFile = raw_input('Enter the name of the subtracted file: ')
+		nameOfFile = nameOfFile + '.fits'
+		fits.writeto(nameOfFile, data=[], header=header, clobber=True)
+		fits.append(nameOfFile, data=ext1)	
+		fits.append(nameOfFile, data=ext2)	
+		fits.append(nameOfFile, data=ext3)
+
+	def pixelHistogram(self, subFile, subCorFile, x1, x2):
+
+		#Create a histogram of pixel values on the 
+		#subtracted frame before and after correction	
+
+		#First read in the files 
+		subData = fits.open(subFile)
+		subCorData = fits.open(subCorFile)
+
+		#At the moment we'll just consider the first extension for our data
+		subData = subData[1].data
+		subCorData = subCorData[1].data
+
+		#The input numbers define the left and right edges of the pixel section
+		subData = subData[:,x1:x2]
+		subCorData = subCorData[:,x1:x2]
+		
+		#This gives an array of arrays, we just care about the numbers, not spatial info
+		#Use ravel() to convert these into lists for the histogram
+		subData = subData.ravel()
+		subCorData = subCorData.ravel()	
+		print len(subData)
+		print subData
+		print np.median(subData)
+		print np.median(subCorData)
+
+		#Create the bins array for both histograms 
+		bins = np.arange(-15, 15, 1)
+
+		plt.close('all')
+		#Plot the histograms 
+		n1, bins1, patches1 = plt.hist(subData, bins=bins, histtype='step',\
+		 color='green', linewidth=3, label='Before Correction') 
+
+		n2, bins2, patches2 = plt.hist(subCorData, bins=bins, histtype='step',\
+		 color='blue', linewidth=3, alpha=0.5, label='After Correction')
+
+		#Now want to fit the gaussians to the histograms using lmfit gaussian models 
+		#gaussian model number 1
+		mod1 = GaussianModel()
+
+		#Create a new bins vector for the fit 
+		fitBins = np.arange(-14.5, 14.5, 1)
+		print len(fitBins)
+
+		#Take an initial guess at what the model parameters are 
+		#In this case the gaussian model has three parameters, 
+		#Which are amplitude, center and sigma
+		pars1 = mod1.guess(n1, x=fitBins)
+		#Perform the actual fit 
+		out1  = mod1.fit(n1, pars1, x=fitBins)
+		#Now want to add this curve to our plot 
+		plt.plot(fitBins, out1.best_fit, linewidth=2.0, label='b.c. model', color='green')
+
+		#Repeat for the corrected data
+		mod2 = GaussianModel()
+		pars2 = mod2.guess(n2, x=fitBins)
+		out2  = mod2.fit(n2, pars2, x=fitBins)
+		plt.plot(fitBins, out2.best_fit, linewidth=2.0, label='a.c. model', color='blue')
+		plt.xlabel('Counts per pixel')
+		plt.ylabel('Number per bin')
+		plt.title('Subtracted Frame, Improvement after Column Correction')
+		plt.legend(loc='upper left', fontsize='small')
+		plt.savefig(raw_input('Enter the plot name: '), papertype='a4', orientation='landscape')
+		#plt.show()
+
+		#Print out the fit reports to look at the centre at S.D. of each model
+		print out1.fit_report() 
+		print out2.fit_report() 
+
+		
