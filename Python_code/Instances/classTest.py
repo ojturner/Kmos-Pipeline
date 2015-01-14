@@ -20,8 +20,16 @@ from pipelineClass import pipelineOps
 
 
 pipe_methods = pipelineOps()
-objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009.fits'
+objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0007.fits'
 skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0008.fits'
 badPMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/8_12_14Cal_products/badpixel_dark.fits'
 lcalMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/8_12_14Cal_products/lcal_YJYJYJ.fits'
-pipe_methods.computeOffset(objFile, skyFile, badPMap, lcalMap)
+#pipe_methods.computeOffset(objFile, skyFile, badPMap, lcalMap)
+
+newFile = 'KMOS_SPEC_OBS258_0009_Corrected.fits'
+
+#Now try the subtraction method 
+#pipe_methods.subFrames(objFile, skyFile)
+print 'all good'
+print 'Hello'
+pipe_methods.pixelHistogram('KMOS_SPEC_OBS258_0009_m_8_raw.fits', 'KMOS_SPEC_OBS258_0009_m_8.fits', 780, 1270)
