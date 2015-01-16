@@ -303,4 +303,4 @@ class pipelineOps(object):
 		print out1.fit_report() 
 		print out2.fit_report() 
 
-		
+	#def topFourCorrection()	
