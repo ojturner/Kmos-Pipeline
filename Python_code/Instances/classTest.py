@@ -18,18 +18,24 @@ sys.path.append('/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_c
 from astropy.io import fits
 from pipelineClass import pipelineOps
 
-
-pipe_methods = pipelineOps()
 objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0007.fits'
 skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0008.fits'
 badPMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/8_12_14Cal_products/badpixel_dark.fits'
 lcalMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/8_12_14Cal_products/lcal_YJYJYJ.fits'
+
+pipe_methods = pipelineOps()
+
+
 #pipe_methods.computeOffset(objFile, skyFile, badPMap, lcalMap)
 
-newFile = 'KMOS_SPEC_OBS258_0009_Corrected.fits'
+newFile = 'newCorrection.fits'
 
 #Now try the subtraction method 
-#pipe_methods.subFrames(objFile, skyFile)
+pipe_methods.subFrames(newFile, skyFile)
 print 'all good'
 print 'Hello'
-pipe_methods.pixelHistogram('KMOS_SPEC_OBS258_0009_m_8_raw.fits', 'KMOS_SPEC_OBS258_0009_m_8.fits', 780, 1270)
+#pipe_methods.pixelHistogram('KMOS_SPEC_OBS258_0007_m_8_raw.fits', 'topFour7_m_8.fits', 780, 1270)
+
+#pipe_methods.stackLcal(lcalMap)
+#pipe_methods.computeOffsetTopFour('KMOS_SPEC_OBS258_0007_m_8_raw.fits', objFile)
+#pipe_methods.subFrames('topFourCorrected7.fits', skyFile)

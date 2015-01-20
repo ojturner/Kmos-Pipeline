@@ -111,11 +111,41 @@ class pipelineOps(object):
 			print val
 			data_o = table_o[count].data
 			data_s = table_s[count].data
+
+			#Create copies of the data arrays so that I can mask the bad pixels 
+			#and lcal pixels outside of the loop, instead of wasting time inside 
+			manObjData = copy(data_o)
+			manSkyData = copy(data_s)
+
+			#Read in the bad pixel and lcal maps
 			bad_pixel_data = bad_pixel_table[count].data			
 			lcal_data = lcal_table[val].data
+
+			#Find the coordinates of the bad pixels and the slitlets 
+			bad_pixel_coords = np.where(bad_pixel_data == 0)
+			lcal_pixel_coords = np.where(lcal_data > 0)
+
+			#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+			for i in range(len(bad_pixel_coords[0])):
+				#Because of the way np.where works, need to define the x and y coords in this way
+				xcoord = bad_pixel_coords[0][i]
+				ycoord = bad_pixel_coords[1][i]
+				#Now set all positions where there is a dead pixel to np.nan in the object and sky
+				manObjData[xcoord][ycoord] = np.nan
+				manSkyData[xcoord][ycoord] = np.nan
+
+			#Loop around the slitlet positions
+			for i in range(len(lcal_pixel_coords[0])):
+				#Do the same, this time for the slitlet positions (substantially more will have a value)
+				xcoord = lcal_pixel_coords[0][i]
+				ycoord = lcal_pixel_coords[1][i]
+				#Set all of these locations to nan 
+				manObjData[xcoord][ycoord] = np.nan
+				manSkyData[xcoord][ycoord] = np.nan			
+
 			#Debug to see if mask is being applied properly
-			test_array = np.zeros(shape=[2048, 2048])
-			tempName = 'lcal' + str(count) + '.fits'
+			#test_array = np.zeros(shape=[2048, 2048])
+			#tempName = 'lcal' + str(count) + '.fits'
 			#Loop around the bad pixel locations
 
 			#Now we have both the object and sky data these are 2D arrays, 
@@ -133,6 +163,8 @@ class pipelineOps(object):
 			#1D arrays to host the data 
 			skyArray = []
 			objArray = []
+			manObjArray = []
+			manSkyArray = []
 			badPArray = []
 			lcalArray = []
 			testArray = []
@@ -142,12 +174,16 @@ class pipelineOps(object):
 			   #Slice each of the data files into 32 columns of 64 pixels width
 			   newObjectArray = data_o[:,x:y]
 			   newSkyArray = data_s[:,x:y]
+			   newManObjArray = manObjData[:,x:y]
+			   newManSkyArray = manSkyData[:,x:y]
 			   newPArray = bad_pixel_data[:,x:y]
 			   newCalArray = lcal_data[:,x:y]
-			   newTestArray = test_array[:,x:y]
-			   testArray.append(newTestArray)
+			   #newTestArray = test_array[:,x:y]
+			   #testArray.append(newTestArray)
 			   objArray.append(newObjectArray)
 			   skyArray.append(newSkyArray)
+			   manObjArray.append(newManObjArray)
+			   manSkyArray.append(newManSkyArray)
 			   badPArray.append(newPArray)
 			   lcalArray.append(newCalArray)
 
@@ -165,62 +201,18 @@ class pipelineOps(object):
 			#And feeding back into the pipeline at the appropriate location
 
 			#Redefine objArray and sky array, do manipulations to temp
-			objTemp = copy(objArray)
-			skyTemp = copy(skyArray)
+			#objTemp = copy(objArray)
+			#skyTemp = copy(skyArray)
 			#Start the loop for all the columns in the Array vectors 
 			for num in range(len(objArray)):
-
-
-				#Find the coordinates of the bad pixels and the slitlets 
-				bad_pixel_coords = np.where(badPArray[num] == 0)
-				lcal_pixel_coords = np.where(lcalArray[num] > 0)
-
-
-				for i in range(len(bad_pixel_coords[0])):
-					#Because of the way np.where works, need to define the x and y coords in this way
-					xcoord = bad_pixel_coords[0][i]
-					ycoord = bad_pixel_coords[1][i]
-					#Now set all positions where there is a dead pixel to np.nan in the object and sky
-					testArray[num][xcoord][ycoord] = np.nan
-
-				for i in range(len(lcal_pixel_coords[0])):
-					#Because of the way np.where works, need to define the x and y coords in this way
-					xcoord = lcal_pixel_coords[0][i]
-					ycoord = lcal_pixel_coords[1][i]
-					#Now set all positions where there is a dead pixel to np.nan in the object and sky
-					testArray[num][xcoord][ycoord] = np.nan
-
-				#Save test_array as a fits file 
-				fits.writeto(tempName, data=test_array, clobber=True)	
-				#Loop through the first 2048 x 64 data and sky columns and mask off these coords
-				#Then compute the median in both columns. If median sky > median obj, add the difference 
-				#between the median values to the obj. If the other way around, decrement
-
-				#Loop around the bad pixel locations
-				for i in range(len(bad_pixel_coords[0])):
-					#Because of the way np.where works, need to define the x and y coords in this way
-					xcoord = bad_pixel_coords[0][i]
-					ycoord = bad_pixel_coords[1][i]
-					#Now set all positions where there is a dead pixel to np.nan in the object and sky
-					objTemp[num][xcoord][ycoord] = np.nan
-					skyTemp[num][xcoord][ycoord] = np.nan
-
-				#Loop around the slitlet positions
-				for i in range(len(lcal_pixel_coords[0])):
-					#Do the same, this time for the slitlet positions (substantially more will have a value)
-					xcoord = lcal_pixel_coords[0][i]
-					ycoord = lcal_pixel_coords[1][i]
-					#Set all of these locations to nan 
-					objTemp[num][xcoord][ycoord] = np.nan
-					skyTemp[num][xcoord][ycoord] = np.nan
 
 
 				#Now all the pixels that shouldn't be included in the median 
 				#have value nan. Can then just do np.nanmean(objTemp) which will ignore nan's
 				#then repeat the process for the sky, compare the mean's, compute and apply the offset.
 
-				obj_mean = np.nanmedian(objTemp[num])
-				sky_mean = np.nanmedian(skyTemp[num])
+				obj_mean = np.nanmedian(manObjArray[num])
+				sky_mean = np.nanmedian(manSkyArray[num])
 				print sky_mean
 				print obj_mean
 
