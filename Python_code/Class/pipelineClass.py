@@ -36,6 +36,8 @@ class pipelineOps(object):
 #
 #computeOffsetTopFour - Use the top four pixels on the raw subtracted frame to compute the offset
 #
+#computeOffsetSegments  - Same as top method but splitting the resultant into more chunks
+#
 #subFrames       - Take one fits image with three data extensions and subtract another 
 #
 #pixelHistogram  - select a chunk of pixels and compute and draw a histogram of their values
@@ -43,7 +45,8 @@ class pipelineOps(object):
 #stackLcal       - stack the lcal frames from the six different rotation angles. Makes sure 
 #                   that the median pixel value will be more reliable 
 #
-#computeOffsetSegments  - Same as top method but splitting the resultant into more chunks
+#applyCorrections - takes a sorted list of fits files (piped from dfits) and applies the correction
+#	                from the computeOffsetSegments method		
 ############################################################################################
 
 ######################################################################################
@@ -645,7 +648,7 @@ class pipelineOps(object):
 				print 'Computed Third Correction'			
 			val += 1				
 		#Create the object fits file with the three corrected extensions
-		fileName = objectFile[0:-5] + '.fits'
+		fileName = objectFile[0:-5] + '_Corrected'  + '.fits'
 		#Note that the readout complained about the header not being 
 		#in the correct fits format
 		fits.writeto(fileName, data = [], header=fitsHeader, clobber=True)
@@ -795,3 +798,24 @@ class pipelineOps(object):
 		fits.writeto(filename='lcal1.fits', data=lcal1, clobber=True)
 		fits.writeto(filename='lcal2.fits', data=lcal2, clobber=True)
 		fits.writeto(filename='lcal3.fits', data=lcal3, clobber=True)
+
+	def applyCorrection(self, fileList, badPMap, lcalMap):
+		#Read in the data from the fileList
+		data = np.genfromtxt(fileList, dtype='str')
+		#Save the names and types as lists 
+		names = data[0:,0]
+		types = data[0:,1]
+		#Loop round all names and apply the computeOffsetSegments method
+		for i in range(1, len(names)):
+			if types[i] == 'O':
+				objFile = names[i]
+				if types[i - 1] == 'S':
+					skyFile = types[i - 1]
+				else:
+					skyFile = types[i + 1]
+				#Now use the method defined within this class 
+				self.computeOffsetSegments(objFile, skyFile, badPMap, lcalMap)
+				#Which will loop through all and save the corrected object file 
+				#as objectFile_Corrected.fits. These are then fed through the pipeline. 	
+
+
