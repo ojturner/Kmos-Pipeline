@@ -466,7 +466,6 @@ class pipelineOps(object):
 
 		#Set up vector to house the segments to be vStacked. This is differnet from the 
 		#usual compute offset method which just uses each individual readout column
-		vStackArray = []
 
 		#Read in the tables of data
 		table_o = fits.open(objectFile)
@@ -506,6 +505,8 @@ class pipelineOps(object):
 
 		#Loop over the fits image extensions, do the same each time
 		for count in range(1,4):
+			vStackArray = []
+
 			print val
 			data_o = table_o[count].data
 			data_s = table_s[count].data
@@ -541,8 +542,8 @@ class pipelineOps(object):
 				manObjData[xcoord][ycoord] = np.nan
 				manSkyData[xcoord][ycoord] = np.nan			
 
-			fits.writeto('test.fits', data=manObjData, clobber=True)
-			fits.writeto('test.fits', data=manSkyData, clobber=True)	
+			#fits.writeto('test.fits', data=manObjData, clobber=True)
+			#fits.writeto('test1.fits', data=manSkyData, clobber=True)	
 			#Debug to see if mask is being applied properly
 			#test_array = np.zeros(shape=[2048, 2048])
 			#tempName = 'lcal' + str(count) + '.fits'
@@ -556,15 +557,17 @@ class pipelineOps(object):
 			#1D array of 2D arrays, each of which is 64 pixels wide 
 			#so that I can examine these in turn and loop over them 
 
-			#Counters for the slicing vertical slicing
-			x = 0
-			y = 64
 
 			#Counters for the horizontal slicing
 			hor1 = 0
 			hor2 = 128
 
 			for j in range(16):
+				print hor1
+				print hor2
+				#Counters for the slicing vertical slicing
+				x = 0
+				y = 64
 				#1D arrays to host the data 
 				skyArray = []
 				objArray = []
@@ -600,7 +603,7 @@ class pipelineOps(object):
 				   #Each of these into 8 chunks of 256x64, 16 chunks of 128x64 and 32 chunks of
 				   #64x64. Check the length of the array each time to see if there are enough pixels 
 				   #for computing the median
-
+				print objArray[1].shape   
 				#Start the loop for all the columns in the Array vectors 
 				for num in range(len(objArray)):
 
@@ -611,8 +614,8 @@ class pipelineOps(object):
 
 					obj_mean = np.nanmedian(manObjArray[num])
 					sky_mean = np.nanmedian(manSkyArray[num])
-					print sky_mean
-					print obj_mean
+					#print sky_mean
+					#print obj_mean
 
 					#Need to compare the two medians to see how to apply the offset.
 					#If the sky is brighter, add the difference to the object image
@@ -630,8 +633,8 @@ class pipelineOps(object):
 				hor2 += 128	
 
 			#Now just need to vstack all of these arrays and will have a 2048x2048 corrected array
-			newObjArray = np.vstack(vStackArray)	
-			print newObjArray.shape
+			newObjData = np.vstack(vStackArray)	
+			print newObjData.shape
 
 			correctedExtensions.append(newObjData)
 			if count == 1:
@@ -642,7 +645,7 @@ class pipelineOps(object):
 				print 'Computed Third Correction'			
 			val += 1				
 		#Create the object fits file with the three corrected extensions
-		fileName = raw_input('Enter a name for the corrected fits file: ') + '.fits'
+		fileName = objectFile[0:-5] + '.fits'
 		#Note that the readout complained about the header not being 
 		#in the correct fits format
 		fits.writeto(fileName, data = [], header=fitsHeader, clobber=True)
@@ -737,7 +740,7 @@ class pipelineOps(object):
 		plt.ylabel('Number per bin')
 		plt.title('Subtracted Frame, Improvement after Column Correction')
 		plt.legend(loc='upper left', fontsize='small')
-		#plt.savefig(raw_input('Enter the plot name: '), papertype='a4', orientation='landscape')
+		plt.savefig(raw_input('Enter the plot name: '), papertype='a4', orientation='landscape')
 		plt.show()
 
 		#Print out the fit reports to look at the centre at S.D. of each model
