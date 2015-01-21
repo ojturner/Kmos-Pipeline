@@ -26,12 +26,12 @@ lcalMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/8_12_14Cal_products/lc
 pipe_methods = pipelineOps()
 
 
-#pipe_methods.computeOffset(objFile, skyFile, badPMap, lcalMap)
+pipe_methods.computeOffsetSegments(objFile, skyFile, badPMap, lcalMap)
 
 newFile = 'newCorrection.fits'
 
 #Now try the subtraction method 
-pipe_methods.subFrames(newFile, skyFile)
+#pipe_methods.subFrames(newFile, skyFile)
 print 'all good'
 print 'Hello'
 #pipe_methods.pixelHistogram('KMOS_SPEC_OBS258_0007_m_8_raw.fits', 'topFour7_m_8.fits', 780, 1270)

@@ -43,6 +43,7 @@ class pipelineOps(object):
 #stackLcal       - stack the lcal frames from the six different rotation angles. Makes sure 
 #                   that the median pixel value will be more reliable 
 #
+#computeOffsetSegments  - Same as top method but splitting the resultant into more chunks
 ############################################################################################
 
 ######################################################################################
@@ -457,6 +458,199 @@ class pipelineOps(object):
 		fits.append(fileName, data=correctedExtensions[1])	
 		fits.append(fileName, data=correctedExtensions[2])				
 			
+	def computeOffsetSegments(self, objectFile, skyFile, badPMap, lcalMap):
+		#function should be identical to compute Offset until the initial pixel loop
+
+		#Set up vector to house the corrected extensions
+		correctedExtensions=[]
+
+		#Set up vector to house the segments to be vStacked. This is differnet from the 
+		#usual compute offset method which just uses each individual readout column
+		vStackArray = []
+
+		#Read in the tables of data
+		table_o = fits.open(objectFile)
+		fitsHeader = table_o[0].header
+		print fitsHeader
+		table_s = fits.open(skyFile)
+		bad_pixel_table = fits.open(badPMap)
+
+		#Now choose the correct rotation angle 
+		lcal_table = fits.open(lcalMap)
+		#This is a list of all possible rotation angles 
+		angleList = np.array([0, 60, 120, 180, 240, 300])
+		#Select the ocs.rot.naangle keyword 
+		obsAngle = table_o[0].header["HIERARCH ESO OCS ROT NAANGLE"]
+		#Find where the difference between the observed and idealised angle is minimum
+		newAngleList = obsAngle - angleList
+		n = newAngleList.argmin()
+		obsAngleNew = angleList[n]
+
+
+		#Find the extension to which this corresponds
+		val = 0
+		if obsAngleNew == 0:
+			val = 1 
+		elif obsAngleNew == 60:
+			val = 4
+		elif obsAngleNew == 120:
+			val = 7
+		elif obsAngleNew == 180: 
+			val = 10
+		elif obsAngleNew == 240:
+			val = 13
+		elif obsAngleNew == 300:
+			val = 16		
+		print val	
+
+
+		#Loop over the fits image extensions, do the same each time
+		for count in range(1,4):
+			print val
+			data_o = table_o[count].data
+			data_s = table_s[count].data
+
+			#Create copies of the data arrays so that I can mask the bad pixels 
+			#and lcal pixels outside of the loop, instead of wasting time inside 
+			manObjData = copy(data_o)
+			manSkyData = copy(data_s)
+
+			#Read in the bad pixel and lcal maps
+			bad_pixel_data = bad_pixel_table[count].data			
+			lcal_data = lcal_table[val].data
+
+			#Find the coordinates of the bad pixels and the slitlets 
+			bad_pixel_coords = np.where(bad_pixel_data == 0)
+			lcal_pixel_coords = np.where(lcal_data > 0)
+
+			#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+			for i in range(len(bad_pixel_coords[0])):
+				#Because of the way np.where works, need to define the x and y coords in this way
+				xcoord = bad_pixel_coords[0][i]
+				ycoord = bad_pixel_coords[1][i]
+				#Now set all positions where there is a dead pixel to np.nan in the object and sky
+				manObjData[xcoord][ycoord] = np.nan
+				manSkyData[xcoord][ycoord] = np.nan
+
+			#Loop around the slitlet positions
+			for i in range(len(lcal_pixel_coords[0])):
+				#Do the same, this time for the slitlet positions (substantially more will have a value)
+				xcoord = lcal_pixel_coords[0][i]
+				ycoord = lcal_pixel_coords[1][i]
+				#Set all of these locations to nan 
+				manObjData[xcoord][ycoord] = np.nan
+				manSkyData[xcoord][ycoord] = np.nan			
+
+			fits.writeto('test.fits', data=manObjData, clobber=True)
+			fits.writeto('test.fits', data=manSkyData, clobber=True)	
+			#Debug to see if mask is being applied properly
+			#test_array = np.zeros(shape=[2048, 2048])
+			#tempName = 'lcal' + str(count) + '.fits'
+			#Loop around the bad pixel locations
+
+			#Now we have both the object and sky data these are 2D arrays, 
+			#essentially a matrix where each number represents a pixel flux, 
+			#And the location of the number in the matrix represents the 
+			#Pixel position on the detector, which in turn corresponds to the 
+			#objects position on the sky. Need to slice this 2D array into a 
+			#1D array of 2D arrays, each of which is 64 pixels wide 
+			#so that I can examine these in turn and loop over them 
+
+			#Counters for the slicing vertical slicing
+			x = 0
+			y = 64
+
+			#Counters for the horizontal slicing
+			hor1 = 0
+			hor2 = 128
+
+			for j in range(16):
+				#1D arrays to host the data 
+				skyArray = []
+				objArray = []
+				manObjArray = []
+				manSkyArray = []
+				badPArray = []
+				lcalArray = []
+				testArray = []
+
+				for i in range(32):
+				   
+				   #Slice each of the data files into 32 columns of 64 pixels width
+				   newObjectArray = data_o[hor1:hor2,x:y]
+				   newSkyArray = data_s[hor1:hor2,x:y]
+				   newManObjArray = manObjData[hor1:hor2,x:y]
+				   newManSkyArray = manSkyData[hor1:hor2,x:y]
+				   newPArray = bad_pixel_data[hor1:hor2,x:y]
+				   newCalArray = lcal_data[hor1:hor2,x:y]
+				   #newTestArray = test_array[:,x:y]
+				   #testArray.append(newTestArray)
+				   objArray.append(newObjectArray)
+				   skyArray.append(newSkyArray)
+				   manObjArray.append(newManObjArray)
+				   manSkyArray.append(newManSkyArray)
+				   badPArray.append(newPArray)
+				   lcalArray.append(newCalArray)
+
+				   #Add 64 to the counters each time to create the slices
+				   x += 64
+				   y += 64
+
+				   #Have sliced each matrix into 2048x64. All that's left to do is slice 
+				   #Each of these into 8 chunks of 256x64, 16 chunks of 128x64 and 32 chunks of
+				   #64x64. Check the length of the array each time to see if there are enough pixels 
+				   #for computing the median
+
+				#Start the loop for all the columns in the Array vectors 
+				for num in range(len(objArray)):
+
+
+					#Now all the pixels that shouldn't be included in the median 
+					#have value nan. Can then just do np.nanmean(objTemp) which will ignore nan's
+					#then repeat the process for the sky, compare the mean's, compute and apply the offset.
+
+					obj_mean = np.nanmedian(manObjArray[num])
+					sky_mean = np.nanmedian(manSkyArray[num])
+					print sky_mean
+					print obj_mean
+
+					#Need to compare the two medians to see how to apply the offset.
+					#If the sky is brighter, add the difference to the object image
+
+					if sky_mean > obj_mean:
+						objArray[num] += abs(sky_mean - obj_mean)
+					elif obj_mean > sky_mean:
+						objArray[num] -= abs(obj_mean - sky_mean)	
+
+				#Have now made the correction to all 32 of the 64 pixel width columns.
+				#Previously would stack the data here, but the loop goes back to the beginning
+				#So need to save to a different object, and then vstack at the end. 
+				vStackArray.append(np.hstack(objArray))		
+				hor1 += 128
+				hor2 += 128	
+
+			#Now just need to vstack all of these arrays and will have a 2048x2048 corrected array
+			newObjArray = np.vstack(vStackArray)	
+			print newObjArray.shape
+
+			correctedExtensions.append(newObjData)
+			if count == 1:
+				print 'Computed First Correction'
+			elif count == 2:
+				print 'Computed Second Correction'
+			elif count == 3: 
+				print 'Computed Third Correction'			
+			val += 1				
+		#Create the object fits file with the three corrected extensions
+		fileName = raw_input('Enter a name for the corrected fits file: ') + '.fits'
+		#Note that the readout complained about the header not being 
+		#in the correct fits format
+		fits.writeto(fileName, data = [], header=fitsHeader, clobber=True)
+		fits.append(fileName, data=correctedExtensions[0])	
+		fits.append(fileName, data=correctedExtensions[1])	
+		fits.append(fileName, data=correctedExtensions[2])
+
+
 
 
 	def subFrames(self, objectFile, skyFile):	
