@@ -77,7 +77,15 @@ class pipelineOps(object):
 		#Read in the tables of data
 		table_o = fits.open(objectFile)
 		fitsHeader = table_o[0].header
+		header_one = table_o[1].header
+		header_two = table_o[2].header 
+		header_three = table_o[3].header
+
 		print fitsHeader
+		print header_one
+		print header_two
+		print header_three
+		
 		table_s = fits.open(skyFile)
 		bad_pixel_table = fits.open(badPMap)
 
@@ -246,9 +254,9 @@ class pipelineOps(object):
 		#in the correct fits format
 		hdu = fits.PrimaryHDU(header=fitsHeader)
 		hdu.writeto(fileName, clobber=True)
-		fits.append(fileName, data=correctedExtensions[0])	
-		fits.append(fileName, data=correctedExtensions[1])	
-		fits.append(fileName, data=correctedExtensions[2])
+		fits.append(fileName, data=correctedExtensions[0], header=header_one)	
+		fits.append(fileName, data=correctedExtensions[1], header=header_two)	
+		fits.append(fileName, data=correctedExtensions[2], header=header_three)
 
 	#Second compute offset method, this time with the refined lcal
 	#Access the primary extension, later this will be looped  
@@ -258,7 +266,15 @@ class pipelineOps(object):
 		#Read in the tables of data
 		table_o = fits.open(objectFile)
 		fitsHeader = table_o[0].header
+		header_one = table_o[1].header
+		header_two = table_o[2].header 
+		header_three = table_o[3].header
+
 		print fitsHeader
+		print header_one
+		print header_two
+		print header_three
+
 		table_s = fits.open(skyFile)
 		bad_pixel_table = fits.open(badPMap)
 
@@ -393,10 +409,10 @@ class pipelineOps(object):
 		#Note that the readout complained about the header not being 
 		#in the correct fits format
 		hdu = fits.PrimaryHDU(header=fitsHeader)
-		hdu.writeto(fileName, clobber=True)	
-		fits.append(fileName, data=correctedExtensions[0])	
-		fits.append(fileName, data=correctedExtensions[1])	
-		fits.append(fileName, data=correctedExtensions[2])	
+		hdu.writeto(fileName, clobber=True)
+		fits.append(fileName, data=correctedExtensions[0], header=header_one)	
+		fits.append(fileName, data=correctedExtensions[1], header=header_two)	
+		fits.append(fileName, data=correctedExtensions[2], header=header_three)	
 
 	def computeOffsetTopFour(self, rawSubFile, objectFile):
 
@@ -404,7 +420,14 @@ class pipelineOps(object):
 		#Read in the tables of data
 		table_o = fits.open(objectFile)
 		fitsHeader = table_o[0].header
+		header_one = table_o[1].header
+		header_two = table_o[2].header 
+		header_three = table_o[3].header
+
 		print fitsHeader
+		print header_one
+		print header_two
+		print header_three
 		table_s = fits.open(rawSubFile)	
 
 
@@ -460,8 +483,9 @@ class pipelineOps(object):
 		#in the correct fits format
 		hdu = fits.PrimaryHDU(header=fitsHeader)
 		hdu.writeto(fileName, clobber=True)
-		fits.append(fileName, data=correctedExtensions[1])	
-		fits.append(fileName, data=correctedExtensions[2])				
+		fits.append(fileName, data=correctedExtensions[0], header=header_one)	
+		fits.append(fileName, data=correctedExtensions[1], header=header_two)	
+		fits.append(fileName, data=correctedExtensions[2], header=header_three)				
 			
 	def computeOffsetSegments(self, objectFile, skyFile, badPMap, lcalMap):
 		#function should be identical to compute Offset until the initial pixel loop
@@ -679,6 +703,10 @@ class pipelineOps(object):
 
 		#Find the header and extensions of the new fits file
 		header = objData[0].header
+		headerOne = objData[1].header
+		headerTwo = objData[2].header
+		headerThree = objData[3].header
+
 		print header
 		ext1 = objData[1].data - skyData[1].data
 		ext2 = objData[2].data - skyData[2].data
@@ -689,9 +717,9 @@ class pipelineOps(object):
 		nameOfFile = nameOfFile + '.fits'
 		hdu = fits.PrimaryHDU(header=header)
 		hdu.writeto(nameOfFile, clobber=True)
-		fits.append(nameOfFile, data=ext1)	
-		fits.append(nameOfFile, data=ext2)	
-		fits.append(nameOfFile, data=ext3)
+		fits.append(nameOfFile, data=ext1, header=headerOne)	
+		fits.append(nameOfFile, data=ext2, header=headerTwo)	
+		fits.append(nameOfFile, data=ext3, header=headerThree)
 
 	def pixelHistogram(self, subFile, subCorFile, x1, x2):
 
