@@ -88,7 +88,7 @@ class pipelineOps(object):
 		#Select the ocs.rot.naangle keyword 
 		obsAngle = table_o[0].header["HIERARCH ESO OCS ROT NAANGLE"]
 		#Find where the difference between the observed and idealised angle is minimum
-		newAngleList = obsAngle - angleList
+		newAngleList = abs( abs(obsAngle) - angleList )
 		n = newAngleList.argmin()
 		obsAngleNew = angleList[n]
 
@@ -244,7 +244,8 @@ class pipelineOps(object):
 		fileName = raw_input('Enter a name for the corrected fits file: ') + '.fits'
 		#Note that the readout complained about the header not being 
 		#in the correct fits format
-		fits.writeto(fileName, data = [], header=fitsHeader, clobber=True)
+		hdu = fits.PrimaryHDU(header=fitsHeader)
+		hdu.writeto(fileName, clobber=True)
 		fits.append(fileName, data=correctedExtensions[0])	
 		fits.append(fileName, data=correctedExtensions[1])	
 		fits.append(fileName, data=correctedExtensions[2])
@@ -391,7 +392,8 @@ class pipelineOps(object):
 		fileName = raw_input('Enter a name for the corrected fits file: ') + '.fits'
 		#Note that the readout complained about the header not being 
 		#in the correct fits format
-		fits.writeto(fileName, data = [], header=fitsHeader, clobber=True)
+		hdu = fits.PrimaryHDU(header=fitsHeader)
+		hdu.writeto(fileName, clobber=True)	
 		fits.append(fileName, data=correctedExtensions[0])	
 		fits.append(fileName, data=correctedExtensions[1])	
 		fits.append(fileName, data=correctedExtensions[2])	
@@ -456,8 +458,8 @@ class pipelineOps(object):
 		fileName = raw_input('Enter a name for the corrected fits file: ') + '.fits'
 		#Note that the readout complained about the header not being 
 		#in the correct fits format
-		fits.writeto(fileName, data = [], header=fitsHeader, clobber=True)
-		fits.append(fileName, data=correctedExtensions[0])	
+		hdu = fits.PrimaryHDU(header=fitsHeader)
+		hdu.writeto(fileName, clobber=True)
 		fits.append(fileName, data=correctedExtensions[1])	
 		fits.append(fileName, data=correctedExtensions[2])				
 			
@@ -473,7 +475,15 @@ class pipelineOps(object):
 		#Read in the tables of data
 		table_o = fits.open(objectFile)
 		fitsHeader = table_o[0].header
+		header_one = table_o[1].header
+		header_two = table_o[2].header 
+		header_three = table_o[3].header
+
 		print fitsHeader
+		print header_one
+		print header_two
+		print header_three
+
 		table_s = fits.open(skyFile)
 		bad_pixel_table = fits.open(badPMap)
 
@@ -483,8 +493,9 @@ class pipelineOps(object):
 		angleList = np.array([0, 60, 120, 180, 240, 300])
 		#Select the ocs.rot.naangle keyword 
 		obsAngle = table_o[0].header["HIERARCH ESO OCS ROT NAANGLE"]
+		print obsAngle
 		#Find where the difference between the observed and idealised angle is minimum
-		newAngleList = obsAngle - angleList
+		newAngleList = abs( abs(obsAngle) - angleList)
 		n = newAngleList.argmin()
 		obsAngleNew = angleList[n]
 
@@ -651,10 +662,11 @@ class pipelineOps(object):
 		fileName = objectFile[0:-5] + '_Corrected'  + '.fits'
 		#Note that the readout complained about the header not being 
 		#in the correct fits format
-		fits.writeto(fileName, data = [], header=fitsHeader, clobber=True)
-		fits.append(fileName, data=correctedExtensions[0])	
-		fits.append(fileName, data=correctedExtensions[1])	
-		fits.append(fileName, data=correctedExtensions[2])
+		hdu = fits.PrimaryHDU(header=fitsHeader)
+		hdu.writeto(fileName, clobber=True)
+		fits.append(fileName, data=correctedExtensions[0], header=header_one)	
+		fits.append(fileName, data=correctedExtensions[1], header=header_two)	
+		fits.append(fileName, data=correctedExtensions[2], header=header_three)
 
 
 
@@ -675,7 +687,8 @@ class pipelineOps(object):
 		#Write out to a different fits file, with name user specified
 		nameOfFile = raw_input('Enter the name of the subtracted file: ')
 		nameOfFile = nameOfFile + '.fits'
-		fits.writeto(nameOfFile, data=[], header=header, clobber=True)
+		hdu = fits.PrimaryHDU(header=header)
+		hdu.writeto(nameOfFile, clobber=True)
 		fits.append(nameOfFile, data=ext1)	
 		fits.append(nameOfFile, data=ext2)	
 		fits.append(nameOfFile, data=ext3)
@@ -810,9 +823,9 @@ class pipelineOps(object):
 			if types[i] == 'O':
 				objFile = names[i]
 				if types[i - 1] == 'S':
-					skyFile = types[i - 1]
+					skyFile = names[i - 1]
 				else:
-					skyFile = types[i + 1]
+					skyFile = names[i + 1]
 				#Now use the method defined within this class 
 				self.computeOffsetSegments(objFile, skyFile, badPMap, lcalMap)
 				#Which will loop through all and save the corrected object file 
