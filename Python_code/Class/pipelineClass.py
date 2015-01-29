@@ -85,7 +85,7 @@ class pipelineOps(object):
 		print header_one
 		print header_two
 		print header_three
-		
+
 		table_s = fits.open(skyFile)
 		bad_pixel_table = fits.open(badPMap)
 
@@ -457,9 +457,9 @@ class pipelineOps(object):
 			   x += 64
 			   y += 64		
 
-			testData = np.hstack(subArray)
-			fileName = 'testTopFour' + str(count) + '.fits'
-			fits.writeto(fileName, data=testData, clobber=True)   
+			#testData = np.hstack(subArray)
+			#fileName = 'testTopFour' + str(count) + '.fits'
+			#fits.writeto(fileName, data=testData, clobber=True)   
 
 			for num in range(len(objArray)):
 				correctionMedian = np.median(subArray[num])
@@ -859,4 +859,57 @@ class pipelineOps(object):
 				#Which will loop through all and save the corrected object file 
 				#as objectFile_Corrected.fits. These are then fed through the pipeline. 	
 
+	def rowMedian(self, subFile, y1, y2, x1, x2):
 
+		#Create a histogram of pixel values on the 
+		#subtracted frame before and after correction	
+
+		#First read in the files 
+		subData = fits.open(subFile)
+
+		#At the moment we'll just consider the first extension for our data
+		subData = subData[1].data
+
+		#The input numbers define the left and right edges of the pixel section
+		subData = subData[y1:y2,x1:x2]
+
+		#What we have now is an array of 500 entries, each of which contains 500 entries.
+		#These are the columns of the fits file, the pixel count values
+		#Now need to compute the median of each and store in an array and return
+
+		medArray = np.median(subData, axis=0)
+		return medArray
+
+		
+
+	def plotMedian(self, rawSubFile, subFile, segmentsSubFile, top4SubFile, y1, y2, x1, x2):
+
+		#Find the medians of the different subtracted frames and plot 
+		rawMed = self.rowMedian(rawSubFile, y1, y2, x1, x2)		
+		normMed = self.rowMedian(subFile, y1, y2, x1, x2)
+		segmentsMed = self.rowMedian(segmentsSubFile, y1, y2, x1, x2)
+		top4Med = self.rowMedian(top4SubFile, y1, y2, x1, x2)
+
+		#print type(rawMed)
+		#print len(normMed)
+		#print segmentsMed
+		#print top4Med
+
+		#Generate the x-axis vector, which is just the number of pixels 
+		xVec = range(len(rawMed))
+		xVec = np.array(xVec)
+
+		#Plot everything against this xVec in turn 
+
+		plt.plot(xVec, normMed, label='Cor')
+		plt.plot(xVec, segmentsMed, label='Segments')
+		plt.plot(xVec, top4Med, label='top') 
+		plt.plot(xVec, rawMed, label='raw')
+		plt.xlabel('Pixel Number')
+		plt.ylabel('Median')
+		plt.title('Medians for different methods %s' % y1)
+		plt.legend(loc='upper left', fontsize='small')
+		plt.legend()
+		plt.show()
+		plt.savefig(raw_input('Enter the File name: ') + '.png')
+		plt.close('all')
