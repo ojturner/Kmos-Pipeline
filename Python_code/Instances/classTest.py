@@ -42,4 +42,6 @@ newFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_S
 #pipe_methods.plotMedian('KMOS_SPEC_OBS258_0009_m_8_raw.fits', 'KMOS_SPEC_OBS258_0009_m_8.fits', \
 # 'segmentsSubtracted_9_m_8_128.fits', 'topFour_9_m_8.fits', 400, 600, 800, 1270)
 
-pipe_methods.shiftImage(ext=1, infile=objFile, skyfile=skyFile, interp_type = 'spline3' ,stepsize=0.025, xmin=-0.2, xmax=0.2, ymin=-0.2, ymax=0.2)
+#pipe_methods.shiftImage(ext=1, infile=objFile, skyfile=skyFile, interp_type = 'linear',stepsize=0.03, xmin=-0.2, xmax=0.2, ymin=-0.2, ymax=0.2)
+#pipe_methods.rotateImage(ext=1, infile=objFile, skyfile=skyFile, interp_type = 'linear', stepsize=0.001, minAngle=-0.01, maxAngle=0.01)
+array = pipe_methods.imSplit(ext=1, infile=objFile, vertSegments=4, horSegments=4)
