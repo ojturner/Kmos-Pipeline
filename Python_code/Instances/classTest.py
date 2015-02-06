@@ -10,8 +10,8 @@ sys.path.append('/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_c
 #import the class 
 from pipelineClass import pipelineOps
 
-objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0001_Corrected.fits'
-skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0002.fits'
+objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009.fits'
+skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0008.fits'
 badPMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/badpixel_dark.fits'
 lcalMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/26-1-15/Calibration_Files/lcal_YJYJYJ.fits'
 
@@ -42,4 +42,4 @@ newFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_S
 #pipe_methods.plotMedian('KMOS_SPEC_OBS258_0009_m_8_raw.fits', 'KMOS_SPEC_OBS258_0009_m_8.fits', \
 # 'segmentsSubtracted_9_m_8_128.fits', 'topFour_9_m_8.fits', 400, 600, 800, 1270)
 
-pipe_methods.shiftImage(objFile, skyFile, 0.01, 0.1, 0.1)
+pipe_methods.shiftImage(ext=1, infile=objFile, skyfile=skyFile, interp_type = 'spline3' ,stepsize=0.025, xmin=-0.2, xmax=0.2, ymin=-0.2, ymax=0.2)

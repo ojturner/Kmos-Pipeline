@@ -926,12 +926,18 @@ class pipelineOps(object):
 		plt.show()
 		plt.close('all')
 
-	def crossCorr(self, objFile, skyFile, y1, y2, x1, x2):
+	def crossCorr(self, ext, objFile, skyFile, y1, y2, x1, x2):
 		"""
 		Def: 
 		Compute the cross-correlation coefficient for a given object 
 		and skyfile. Define the pixel range over which to compute the 
 		coefficient. 
+
+		Inputs: 
+		ext - detector extension, must be either 1, 2, 3
+		objFile - Input object file to compute correlation 
+		skyFile - sky image to compare objFile with
+		y1, y2, x1, x2 - the range to compute rho over 		
 		"""
 		#Trying to compute the similarity between a square grid of pixels 
 		#from the object file and from the skyfile. Do this using the correlation coeff. 
@@ -939,10 +945,10 @@ class pipelineOps(object):
 		#First read in the full 2048x2048 data arrays from the object and sky files 
 		#Will first consider just the first detector and can expand on this later 
 		objData = fits.open(objFile)
-  		objData = objData[3].data
+  		objData = objData[ext].data
 
   		skyData = fits.open(skyFile)
-  		skyData = skyData[3].data
+  		skyData = skyData[ext].data
 
   		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
   		#and save computational time. i.e. how long would it take to compute the correlation coef
@@ -972,12 +978,18 @@ class pipelineOps(object):
   		#print rho
   		return rho
 
-	def crossCorrOne(self, objFile, skyFile, y1, y2, x1, x2):
+	def crossCorrOne(self, ext, objFile, skyFile, y1, y2, x1, x2):
 		"""
 		Def: 
 		Compute the cross-correlation coefficient for a given object 
 		and skyfile. Define the pixel range over which to compute the 
 		coefficient. 
+
+		Inputs: 
+		ext - detector extension, must be either 1, 2, 3
+		objFile - Input object file to compute correlation 
+		skyFile - sky image to compare objFile with
+		y1, y2, x1, x2 - the range to compute rho over 
 
 		"""
 		#Trying to compute the similarity between a square grid of pixels 
@@ -989,7 +1001,7 @@ class pipelineOps(object):
   		objData = objData[0].data
 
   		skyData = fits.open(skyFile)
-  		skyData = skyData[3].data
+  		skyData = skyData[ext].data
 
   		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
   		#and save computational time. i.e. how long would it take to compute the correlation coef
@@ -1019,7 +1031,7 @@ class pipelineOps(object):
   		#print rho
   		return rho  		
 
-  	def shiftImage(self, infile, skyfile, stepsize, xmax, ymax):
+  	def shiftImage(self, ext, infile, skyfile, interp_type, stepsize, xmin, xmax, ymin, ymax):
 
   		"""
   		Def:
@@ -1027,28 +1039,49 @@ class pipelineOps(object):
   		decide which one is best (if better than the original) and apply this to 
   		the object image to align with the sky.
 
+		Inputs: 
+		ext - detector extension, must be either 1, 2, 3
+		infile - Input object file to shift 
+		skyFile - sky image to compare objFile with
+		interp_type - type of interpolation function for the shift. 
+		
+			-'nearest': nearest neighbour
+			-'linear':bilinear x,y, interpolation
+			-'poly3':third order interior polynomial
+			-'poly5':fifth order interior polynomial
+			-'spline3':third order spline3
+
+		stepsize - value to increment grid by each time, increasing 
+		this increases the time taken for the computation 
+		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
+
   		"""
   		#First compute the correlation coefficient with just infile 
   		rhoArray = []
-  		rhoArray.append(self.crossCorr(infile, skyfile, 0, 2048, 0, 2048))
+  		rhoArray.append(self.crossCorr(ext, infile, skyfile, 0, 2048, 43, 280))
   		print rhoArray
 
   		#Working. Now create grid of fractional shift values. 
-  		xArray = np.arange(0, xmax, stepsize)
-  		yArray = np.arange(0, ymax, stepsize)
+  		xArray = np.arange(xmin, xmax, stepsize)
+  		yArray = np.arange(ymin, ymax, stepsize)
 
   		#Loop over all values in the grid, shift the image by this 
   		#amount each time and compute the correlation coefficient
-
+  		successDict = {}
   		for value in xArray:
   			for number in yArray:
   				#Perform the shift 
-  				infileName = infile + '[3]'
+  				infileName = infile + '[' + str(ext) + ']'
   				pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
-  					xshift=value, yshift=number, interp_type='poly3')
+  					xshift=value, yshift=number, interp_type=interp_type)
   				#re-open the shifted file and compute rho
-  				rho = self.crossCorrOne('temp_shift.fits', skyfile,\
-  				 0, 2048, 0, 2048)
+  				rho = self.crossCorrOne(ext,'temp_shift.fits', skyfile,\
+  				 0, 2048, 43, 280)
+  				if rho > rhoArray[0]:
+  					print 'SUCCESS, made improvement!'
+  					entryName = str(value) + 'and' + str(number)
+  					entryValue = [value, number, rho]
+  					successDict[entryName] = entryValue
   				rhoArray.append(rho)
   				#Clean up by deleting the created temporary fits file
   				os.system('rm temp_shift.fits')
@@ -1056,5 +1089,7 @@ class pipelineOps(object):
   				print 'Finished shift: %s %s, rho = %s ' % (value, number, rho)
   				#sys.stdout.flush()
 
-  		print max(rhoArray)		
+  		print max(rhoArray)
+  		print rhoArray[0]		
+  		print successDict
 
