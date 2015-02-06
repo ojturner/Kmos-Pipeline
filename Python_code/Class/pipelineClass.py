@@ -19,6 +19,9 @@ sys.path.append('/Users/owenturner/Documents/PhD/SUPA_Courses/AdvancedDataAnalys
 import toolkit
 from astropy.io import fits
 
+#Import pyraf - python iraf 
+import pyraf
+
 ####################################################################
 
 class pipelineOps(object):
@@ -72,6 +75,7 @@ class pipelineOps(object):
 	
 	#Access the primary extension, later this will be looped  
 	def computeOffset(self, objectFile, skyFile, badPMap, lcalMap): 
+		
 		#Set up vector to house the corrected extensions
 		correctedExtensions=[]
 		#Read in the tables of data
@@ -850,7 +854,9 @@ class pipelineOps(object):
 		for i in range(1, len(names)):
 			if types[i] == 'O':
 				objFile = names[i]
-				if types[i - 1] == 'S':
+				if i == 1:
+					skyFile = names[i + 1]
+				elif types[i - 1] == 'S':
 					skyFile = names[i - 1]
 				else:
 					skyFile = names[i + 1]
@@ -883,7 +889,13 @@ class pipelineOps(object):
 		
 
 	def plotMedian(self, rawSubFile, subFile, segmentsSubFile, top4SubFile, y1, y2, x1, x2):
+		"""	
+		Def: 
+		Plots the median values of different subtracted frames 
+		together on the same axes. Gives an indication for which 
+		column correction method produces the smoothest results
 
+		"""
 		#Find the medians of the different subtracted frames and plot 
 		rawMed = self.rowMedian(rawSubFile, y1, y2, x1, x2)		
 		normMed = self.rowMedian(subFile, y1, y2, x1, x2)
@@ -910,6 +922,139 @@ class pipelineOps(object):
 		plt.title('Medians for different methods %s' % y1)
 		plt.legend(loc='upper left', fontsize='small')
 		plt.legend()
-		plt.show()
 		plt.savefig(raw_input('Enter the File name: ') + '.png')
+		plt.show()
 		plt.close('all')
+
+	def crossCorr(self, objFile, skyFile, y1, y2, x1, x2):
+		"""
+		Def: 
+		Compute the cross-correlation coefficient for a given object 
+		and skyfile. Define the pixel range over which to compute the 
+		coefficient. 
+		"""
+		#Trying to compute the similarity between a square grid of pixels 
+		#from the object file and from the skyfile. Do this using the correlation coeff. 
+
+		#First read in the full 2048x2048 data arrays from the object and sky files 
+		#Will first consider just the first detector and can expand on this later 
+		objData = fits.open(objFile)
+  		objData = objData[3].data
+
+  		skyData = fits.open(skyFile)
+  		skyData = skyData[3].data
+
+  		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
+  		#and save computational time. i.e. how long would it take to compute the correlation coef
+  		#using the whole thing? And would this be meaningful? How do you decide upon which section 
+  		#of the array to use for the correlation coefficient? 
+
+  		objData = np.array(objData[y1:y2,x1:x2])
+  		skyData = np.array(skyData[y1:y2,x1:x2])
+
+  		#print objData
+  		#print skyData
+
+  		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
+  		#Correlation coefficient 
+
+  		objDataMedian = np.mean(objData)
+  		skyDataMedian = np.mean(skyData)	
+  		#print objDataMedian
+  		#print skyDataMedian
+
+  		firstPart = sum((objData - objDataMedian)**2)
+  		secondPart = sum((skyData - skyDataMedian)**2)
+  		denom = np.sqrt(firstPart * secondPart)
+  		#print denom
+  		numer = sum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		rho = numer / denom
+  		#print rho
+  		return rho
+
+	def crossCorrOne(self, objFile, skyFile, y1, y2, x1, x2):
+		"""
+		Def: 
+		Compute the cross-correlation coefficient for a given object 
+		and skyfile. Define the pixel range over which to compute the 
+		coefficient. 
+
+		"""
+		#Trying to compute the similarity between a square grid of pixels 
+		#from the object file and from the skyfile. Do this using the correlation coeff. 
+
+		#First read in the full 2048x2048 data arrays from the object and sky files 
+		#Will first consider just the first detector and can expand on this later 
+		objData = fits.open(objFile)
+  		objData = objData[0].data
+
+  		skyData = fits.open(skyFile)
+  		skyData = skyData[3].data
+
+  		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
+  		#and save computational time. i.e. how long would it take to compute the correlation coef
+  		#using the whole thing? And would this be meaningful? How do you decide upon which section 
+  		#of the array to use for the correlation coefficient? 
+
+  		objData = np.array(objData[y1:y2,x1:x2])
+  		skyData = np.array(skyData[y1:y2,x1:x2])
+
+  		#print objData
+  		#print skyData
+
+  		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
+  		#Correlation coefficient 
+
+  		objDataMedian = np.mean(objData)
+  		skyDataMedian = np.mean(skyData)	
+  		#print objDataMedian
+  		#print skyDataMedian
+
+  		firstPart = sum((objData - objDataMedian)**2)
+  		secondPart = sum((skyData - skyDataMedian)**2)
+  		denom = np.sqrt(firstPart * secondPart)
+  		#print denom
+  		numer = sum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		rho = numer / denom
+  		#print rho
+  		return rho  		
+
+  	def shiftImage(self, infile, skyfile, stepsize, xmax, ymax):
+
+  		"""
+  		Def:
+  		Compute the correlation coefficient for a grid of pixel shift values and 
+  		decide which one is best (if better than the original) and apply this to 
+  		the object image to align with the sky.
+
+  		"""
+  		#First compute the correlation coefficient with just infile 
+  		rhoArray = []
+  		rhoArray.append(self.crossCorr(infile, skyfile, 0, 2048, 0, 2048))
+  		print rhoArray
+
+  		#Working. Now create grid of fractional shift values. 
+  		xArray = np.arange(0, xmax, stepsize)
+  		yArray = np.arange(0, ymax, stepsize)
+
+  		#Loop over all values in the grid, shift the image by this 
+  		#amount each time and compute the correlation coefficient
+
+  		for value in xArray:
+  			for number in yArray:
+  				#Perform the shift 
+  				infileName = infile + '[3]'
+  				pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
+  					xshift=value, yshift=number, interp_type='poly3')
+  				#re-open the shifted file and compute rho
+  				rho = self.crossCorrOne('temp_shift.fits', skyfile,\
+  				 0, 2048, 0, 2048)
+  				rhoArray.append(rho)
+  				#Clean up by deleting the created temporary fits file
+  				os.system('rm temp_shift.fits')
+  				#Go back through loop, append next value of rho
+  				print 'Finished shift: %s %s, rho = %s ' % (value, number, rho)
+  				#sys.stdout.flush()
+
+  		print max(rhoArray)		
+
