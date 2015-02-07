@@ -1168,7 +1168,9 @@ class pipelineOps(object):
 
   		#Working. Now create grid of fractional shift values. 
   		xArray = np.arange(xmin, xmax, stepsize)
+  		xArray = np.around(xArray, decimals = 2)
   		yArray = np.arange(ymin, ymax, stepsize)
+  		yArray = np.around(yArray, decimals = 2)
 
   		#Loop over all values in the grid, shift the image by this 
   		#amount each time and compute the correlation coefficient
@@ -1233,7 +1235,9 @@ class pipelineOps(object):
 
   		#Working. Now create grid of fractional shift values. 
   		xArray = np.arange(xmin, xmax, stepsize)
+  		xArray = np.around(xArray, decimals = 2)
   		yArray = np.arange(ymin, ymax, stepsize)
+  		yArray = np.around(yArray, decimals = 2)
 
   		#Loop over all values in the grid, shift the image by this 
   		#amount each time and compute the correlation coefficient
@@ -1297,6 +1301,7 @@ class pipelineOps(object):
 
   		#Working. Now create grid of fractional shift values. 
   		rotArray = np.arange(minAngle, maxAngle, stepsize)
+  		rotArray = np.around(rotArray, decimals = 2)
 
 
   		#Loop over all values in the grid, shift the image by this 
