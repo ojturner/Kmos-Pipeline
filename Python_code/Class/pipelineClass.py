@@ -978,12 +978,65 @@ class pipelineOps(object):
   		#print rho
   		return rho
 
+	def crossCorrZeroth(self, objFile, skyFile, y1, y2, x1, x2):
+		"""
+		Def: 
+		Compute the cross-correlation coefficient for a given object 
+		and skyfile. Define the pixel range over which to compute the 
+		coefficient. Zeroth because the zeroth and first extensions 
+		only are used.
+
+		Inputs: 
+		ext - detector extension, must be either 1, 2, 3
+		objFile - Input object file to compute correlation 
+		skyFile - sky image to compare objFile with
+		y1, y2, x1, x2 - the range to compute rho over 		
+		"""
+		#Trying to compute the similarity between a square grid of pixels 
+		#from the object file and from the skyfile. Do this using the correlation coeff. 
+
+		#First read in the full 2048x2048 data arrays from the object and sky files 
+		#Will first consider just the first detector and can expand on this later 
+		objData = fits.open(objFile)
+  		objData = objData[0].data
+
+  		skyData = fits.open(skyFile)
+  		skyData = skyData[1].data
+
+  		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
+  		#and save computational time. i.e. how long would it take to compute the correlation coef
+  		#using the whole thing? And would this be meaningful? How do you decide upon which section 
+  		#of the array to use for the correlation coefficient? 
+
+  		objData = np.array(objData[y1:y2,x1:x2])
+  		skyData = np.array(skyData[y1:y2,x1:x2])
+
+  		#print objData
+  		#print skyData
+
+  		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
+  		#Correlation coefficient 
+
+  		objDataMedian = np.mean(objData)
+  		skyDataMedian = np.mean(skyData)	
+  		#print objDataMedian
+  		#print skyDataMedian
+
+  		firstPart = sum((objData - objDataMedian)**2)
+  		secondPart = sum((skyData - skyDataMedian)**2)
+  		denom = np.sqrt(firstPart * secondPart)
+  		#print denom
+  		numer = sum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		rho = numer / denom
+  		#print rho
+  		return rho
+
 	def crossCorrFirst(self, objFile, skyFile, y1, y2, x1, x2):
 		"""
 		Def: 
 		Compute the cross-correlation coefficient for a given object 
 		and skyfile. Define the pixel range over which to compute the 
-		coefficient. 
+		coefficient. First because only the first extension is used
 
 		Inputs: 
 		ext - detector extension, must be either 1, 2, 3
@@ -1110,7 +1163,7 @@ class pipelineOps(object):
   		"""
   		#First compute the correlation coefficient with just infile 
   		rhoArray = []
-  		rhoArray.append(self.crossCorr(ext, infile, skyfile, 0, 2048, 43, 280))
+  		rhoArray.append(self.crossCorr(ext, infile, skyfile, 0, 2048, 0, 2048))
   		print rhoArray
 
   		#Working. Now create grid of fractional shift values. 
@@ -1128,7 +1181,72 @@ class pipelineOps(object):
   					xshift=value, yshift=number, interp_type=interp_type)
   				#re-open the shifted file and compute rho
   				rho = self.crossCorrOne(ext,'temp_shift.fits', skyfile,\
-  				 100, 1800, 43, 280)
+  				 0, 2048, 0, 2048)
+  				#If the correlation coefficient improves, append to new array
+  				if rho > rhoArray[0]:
+  					print 'SUCCESS, made improvement!'
+  					entryName = str(value) + 'and' + str(number)
+  					entryValue = [value, number, rho]
+  					successDict[entryName] = entryValue
+  				rhoArray.append(rho)
+  				#Clean up by deleting the created temporary fits file
+  				os.system('rm temp_shift.fits')
+  				#Go back through loop, append next value of rho
+  				print 'Finished shift: %s %s, rho = %s ' % (value, number, rho)
+  				#sys.stdout.flush()
+
+  		print max(rhoArray)
+  		print rhoArray[0]		
+  		print successDict
+
+  	def shiftImageFirst(self, ext, infile, skyfile, interp_type, stepsize, xmin, xmax, ymin, ymax):
+
+  		"""
+  		Def:
+  		Compute the correlation coefficient for a grid of pixel shift values and 
+  		decide which one is best (if better than the original) and apply this to 
+  		the object image to align with the sky. First because we use only the 
+  		first extension because of the way the shiftImageSegments function is 
+  		defined.
+
+		Inputs: 
+		ext - detector extension, must be either 1, 2, 3
+		infile - Input object file to shift 
+		skyFile - sky image to compare objFile with
+		interp_type - type of interpolation function for the shift. 
+
+			-'nearest': nearest neighbour
+			-'linear':bilinear x,y, interpolation
+			-'poly3':third order interior polynomial
+			-'poly5':fifth order interior polynomial
+			-'spline3':third order spline3
+
+		stepsize - value to increment grid by each time, increasing 
+		this increases the time taken for the computation 
+		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
+
+  		"""
+  		#First compute the correlation coefficient with just infile 
+  		rhoArray = []
+  		rhoArray.append(self.crossCorrFirst(infile, skyfile, 0, 8000, 0, 2048))
+  		print rhoArray
+
+  		#Working. Now create grid of fractional shift values. 
+  		xArray = np.arange(xmin, xmax, stepsize)
+  		yArray = np.arange(ymin, ymax, stepsize)
+
+  		#Loop over all values in the grid, shift the image by this 
+  		#amount each time and compute the correlation coefficient
+  		successDict = {}
+  		for value in xArray:
+  			for number in yArray:
+  				#Perform the shift 
+  				infileName = infile + '[1]'
+  				pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
+  					xshift=value, yshift=number, interp_type=interp_type)
+  				#re-open the shifted file and compute rho
+  				rho = self.crossCorrZeroth('temp_shift.fits', skyfile,\
+  				 0, 2048, 0, 2048)
   				#If the correlation coefficient improves, append to new array
   				if rho > rhoArray[0]:
   					print 'SUCCESS, made improvement!'
@@ -1261,7 +1379,8 @@ class pipelineOps(object):
 
 
 
-  	def shiftImageSegments(self, ext, infile, skyfile, vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax):
+  	def shiftImageSegments(self, ext, infile, skyfile,\
+  	 vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax):
 
   		"""
   		Def: 
@@ -1292,32 +1411,37 @@ class pipelineOps(object):
 		"""
 
 		#Create arrays of the split files using the imSplit function 
-		objArray = self.imSplit(ext=ext, infile, vertSegments, horSegments)
-		skyArray = self.imSplit(ext=ext, skyfile, vertSegments, horSegments)
+		objArray = self.imSplit(ext, infile, vertSegments, horSegments)
+		skyArray = self.imSplit(ext, skyfile, vertSegments, horSegments)
+
+		#Find the headers of the primary HDU and chosen extension 
+		objTable = fits.open(infile)
+		objPrimHeader = objTable[0].header
+		objExtHeader = objTable[ext].header
+		skyTable = fits.open(skyfile)
+		skyPrimHeader = skyTable[0].header
+		skyExtHeader = skyTable[ext].header
+
+		print (objPrimHeader)
+		print (objExtHeader)
+		print (skyPrimHeader)
+		print (skyExtHeader)
 
 		#Should now have two 1D arrays of 2D arrays of equal size
 		for i in range(len(objArray)):
-			objData = objArray[0]
-			skyData = skyArray[0]
-			#Find the headers of the primary HDU and chosen extension 
-			objTable = fits.open(infile)
-			objPrimHeader = objTable[0].header
-			objExtHeader = objTable[ext].header
-			skyTable = fits.open(skyfile)
-			skyPrimHeader = skyTable[0].header
-			skyExtHeader = skyTable[ext].header
+
 
 			#Write out to new temporary fits files - annoyingly need to have 
 			#the data in fits files to be able to use pyraf functions
 			#######OBJECT##########
 			objhdu = fits.PrimaryHDU(header=objPrimHeader)
-			hdu.writeto('tempObj.fits', clobber=True)
+			objhdu.writeto('tempObj.fits', clobber=True)
 			fits.append('tempObj.fits', data=objArray[i], header=objExtHeader)
 
 			#######SKY#############
 			skyhdu = fits.PrimaryHDU(header=skyPrimHeader)
-			hdu.writeto('tempsky.fits', clobber=True)
-			fits.append('tempsky.fits', data=skyArray[i], header=skyExtHeader)
+			skyhdu.writeto('tempSky.fits', clobber=True)
+			fits.append('tempSky.fits', data=skyArray[i], header=skyExtHeader)
 
 			#NOTES FOR RESUMING - I now have temporary files containing the object 
 			#and sky segments to be shifted and cross correlated. The shiftImage function 
@@ -1328,5 +1452,40 @@ class pipelineOps(object):
 			# c) find a way to search specifically for shift success and apply to each segment 
 			# d) find a way to recombine all segments together after the shift has happened 
 			# e) make sure to use the crossCorrFirst function here, otherwise it will break in 
-			# certain situations (i.e. when not using extension one)
+			# certain situations (i.e. when not using extension one	)
+
+			#Now need to apply the shiftImageFirst function, which compares the chosen 
+			#extension shifted object and sky files. 
+
+			self.shiftImageFirst(ext, 'tempObj.fits', 'tempSky.fits', interp_type, stepsize, xmin, xmax, ymin, ymax)
+
+			#Clean up the temporary fits files during each part of the loop 
+			os.system('rm tempObj.fits')
+			os.system('rm tempSky.fits')
+
+			#That should work then for each segment in turn. Does work. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
