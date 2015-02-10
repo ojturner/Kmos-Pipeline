@@ -42,6 +42,7 @@ newFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_S
 #pipe_methods.plotMedian('KMOS_SPEC_OBS258_0009_m_8_raw.fits', 'KMOS_SPEC_OBS258_0009_m_8.fits', \
 # 'segmentsSubtracted_9_m_8_128.fits', 'topFour_9_m_8.fits', 400, 600, 800, 1270)
 
+<<<<<<< HEAD
 #rho = pipe_methods.crossCorr(ext=1, objFile=objFile, skyFile=skyFile, badpmap=badPMap, y1=100, y2=1800, x1=100, x2=1800)
 #print rho
 #pipe_methods.shiftImage(ext=1, infile=objFile, skyfile=skyFile, badpmap=badPMap, interp_type = 'linear', stepsize=0.03, xmin=-0.2, xmax=0.2, ymin=-0.2, ymax=0.2)
@@ -51,6 +52,18 @@ pipe_methods.shiftImageSegments(ext=1, infile=objFile, skyfile=skyFile, badpmap=
   	 vertSegments=2, horSegments=2, interp_type='linear', \
   	 stepsize=0.01, xmin=-0.05, xmax=0.05, ymin=-0.05, ymax=0.05)
 
+=======
+
+#rho = pipe_methods.crossCorr(ext=1, objFile=objFile, skyFile=skyFile, badpmap=badPMap, y1=100, y2=1800, x1=100, x2=1800)
+#print rho
+pipe_methods.shiftImage(ext=1, infile=objFile, skyfile=skyFile, badpmap=badPMap, \
+ interp_type = 'spline3',stepsize=0.1, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
+#pipe_methods.rotateImage(ext=1, infile=objFile, skyfile=skyFile, interp_type = 'linear', stepsize=0.002, minAngle=-0.1, maxAngle=0.1)
+#array = pipe_methods.imSplit(ext=1, infile=objFile, vertSegments=4, horSegments=4)
+pipe_methods.shiftImageSegments(ext=1, infile=objFile, skyfile=skyFile, badpmap=badPMap, \
+  	 vertSegments=1, horSegments=1, interp_type='spline3', \
+  	 stepsize=0.1, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
+>>>>>>> testing
 
 
 
