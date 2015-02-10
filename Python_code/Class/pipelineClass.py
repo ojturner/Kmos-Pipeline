@@ -978,7 +978,7 @@ class pipelineOps(object):
   		#print rho
   		return rho
 
-	def crossCorrZeroth(self, ext, objFile, skyFile, badpmap, y1, y2, x1, x2):
+	def crossCorrZeroth(self, objFile, skyFile, y1, y2, x1, x2):
 		"""
 		Def: 
 		Compute the cross-correlation coefficient for a given object 
@@ -1003,22 +1003,6 @@ class pipelineOps(object):
   		skyData = fits.open(skyFile)
   		skyData = skyData[1].data
 
-  		badpData = fits.open(badpmap)
-  		badpData = badpData[ext].data
-
-  		#Must mask off the bad pixels before computation of rho 
-		#Find the coordinates of the bad pixels and the slitlets 
-		bad_pixel_coords = np.where(badpData == 0)
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = bad_pixel_coords[0][i]
-			ycoord = bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-			skyData[xcoord][ycoord] = np.nan
-
   		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
   		#and save computational time. i.e. how long would it take to compute the correlation coef
   		#using the whole thing? And would this be meaningful? How do you decide upon which section 
@@ -1047,7 +1031,7 @@ class pipelineOps(object):
   		#print rho
   		return rho
 
-	def crossCorrFirst(self, ext, objFile, skyFile, badpmap, y1, y2, x1, x2):
+	def crossCorrFirst(self, objFile, skyFile, y1, y2, x1, x2):
 		"""
 		Def: 
 		Compute the cross-correlation coefficient for a given object 
@@ -1071,22 +1055,6 @@ class pipelineOps(object):
   		skyData = fits.open(skyFile)
   		skyData = skyData[1].data
 
-  		badpData = fits.open(badpmap)
-  		badpData = badpData[ext].data
-
-  		#Must mask off the bad pixels before computation of rho 
-		#Find the coordinates of the bad pixels and the slitlets 
-		bad_pixel_coords = np.where(badpData == 0)
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = bad_pixel_coords[0][i]
-			ycoord = bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-			skyData[xcoord][ycoord] = np.nan
-
   		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
   		#and save computational time. i.e. how long would it take to compute the correlation coef
   		#using the whole thing? And would this be meaningful? How do you decide upon which section 
@@ -1115,7 +1083,7 @@ class pipelineOps(object):
   		#print rho
   		return rho
 
-	def crossCorrOne(self, ext, objFile, skyFile, badpmap, y1, y2, x1, x2):
+	def crossCorrOne(self, ext, objFile, skyFile, y1, y2, x1, x2):
 		"""
 		Def: 
 		Compute the cross-correlation coefficient for a given object 
@@ -1139,22 +1107,6 @@ class pipelineOps(object):
 
   		skyData = fits.open(skyFile)
   		skyData = skyData[ext].data
-
-  		badpData = fits.open(badpmap)
-  		badpData = badpData[ext].data
-
-  		#Must mask off the bad pixels before computation of rho 
-		#Find the coordinates of the bad pixels and the slitlets 
-		bad_pixel_coords = np.where(badpData == 0)
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = bad_pixel_coords[0][i]
-			ycoord = bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-			skyData[xcoord][ycoord] = np.nan
 
   		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
   		#and save computational time. i.e. how long would it take to compute the correlation coef
