@@ -1017,16 +1017,16 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.mean(objData)
-  		skyDataMedian = np.mean(skyData)	
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = sum((objData - objDataMedian)**2)
-  		secondPart = sum((skyData - skyDataMedian)**2)
+  		firstPart = np.nansum((objData - objDataMedian)**2)
+  		secondPart = np.nansum((skyData - skyDataMedian)**2)
   		denom = np.sqrt(firstPart * secondPart)
   		#print denom
-  		numer = sum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
   		rho = numer / denom
   		#print rho
   		return rho
@@ -1069,16 +1069,16 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.mean(objData)
-  		skyDataMedian = np.mean(skyData)	
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = sum((objData - objDataMedian)**2)
-  		secondPart = sum((skyData - skyDataMedian)**2)
+  		firstPart = np.nansum((objData - objDataMedian)**2)
+  		secondPart = np.nansum((skyData - skyDataMedian)**2)
   		denom = np.sqrt(firstPart * secondPart)
   		#print denom
-  		numer = sum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
   		rho = numer / denom
   		#print rho
   		return rho
@@ -1122,19 +1122,19 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.mean(objData)
-  		skyDataMedian = np.mean(skyData)	
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = sum((objData - objDataMedian)**2)
-  		secondPart = sum((skyData - skyDataMedian)**2)
+  		firstPart = np.nansum((objData - objDataMedian)**2)
+  		secondPart = np.nansum((skyData - skyDataMedian)**2)
   		denom = np.sqrt(firstPart * secondPart)
   		#print denom
-  		numer = sum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
   		rho = numer / denom
   		#print rho
-  		return rho  		
+  		return rho		
 
   	def shiftImage(self, ext, infile, skyfile, interp_type, stepsize, xmin, xmax, ymin, ymax):
 
@@ -1202,7 +1202,7 @@ class pipelineOps(object):
   		print successDict
 
 
-  	def shiftImageFirst(self, ext, infile, skyfile, interp_type, stepsize, xmin, xmax, ymin, ymax):
+  	def shiftImageFirst(self, ext, infile, skyfile, badpmap, interp_type, stepsize, xmin, xmax, ymin, ymax):
 
   		"""
   		Def:
@@ -1229,6 +1229,29 @@ class pipelineOps(object):
 		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
 
   		"""
+  		#We first want to apply the bad pixel map 
+  		objData = fits.open(infile)
+  		
+
+
+		#Read in the bad pixel and lcal maps
+		bad_pixel_data = bad_pixel_table[count].data			
+		lcal_data = lcal_table[val].data
+
+		#Find the coordinates of the bad pixels and the slitlets 
+		bad_pixel_coords = np.where(bad_pixel_data == 0)
+		lcal_pixel_coords = np.where(lcal_data > 0)
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = bad_pixel_coords[0][i]
+			ycoord = bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			manObjData[xcoord][ycoord] = np.nan
+			manSkyData[xcoord][ycoord] = np.nan
+
+
   		#First compute the correlation coefficient with just infile 
   		rhoArray = []
   		rhoArray.append(self.crossCorrFirst(infile, skyfile, 0, 2048, 0, 2048))
@@ -1239,6 +1262,9 @@ class pipelineOps(object):
   		xArray = np.around(xArray, decimals = 4)
   		yArray = np.arange(ymin, ymax, stepsize)
   		yArray = np.around(yArray, decimals = 4)
+
+  		#Before attempting the interpolation, we want to mask the bad pixel values, 
+  		#and save to a fresh temporary fits file. 
 
   		#Loop over all values in the grid, shift the image by this 
   		#amount each time and compute the correlation coefficient
@@ -1385,7 +1411,7 @@ class pipelineOps(object):
 
 
 
-  	def shiftImageSegments(self, ext, infile, skyfile,\
+  	def shiftImageSegments(self, ext, infile, skyfile, badpmap,\
   	 vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax):
 
   		"""
@@ -1419,6 +1445,7 @@ class pipelineOps(object):
 		#Create arrays of the split files using the imSplit function 
 		objArray = self.imSplit(ext, infile, vertSegments, horSegments)
 		skyArray = self.imSplit(ext, skyfile, vertSegments, horSegments)
+		badpArray = self.imSplit(ext, badpmap, vertSegments, horSegments)
 
 		#Find the headers of the primary HDU and chosen extension 
 		objTable = fits.open(infile)
@@ -1427,11 +1454,17 @@ class pipelineOps(object):
 		skyTable = fits.open(skyfile)
 		skyPrimHeader = skyTable[0].header
 		skyExtHeader = skyTable[ext].header
+		badpTable = fits.open(badpmap)
+		badpPrimHeader = badpTable[0].header
+		badpExtHeader = badpTable[ext].header
+
 
 		print (objPrimHeader)
 		print (objExtHeader)
 		print (skyPrimHeader)
 		print (skyExtHeader)
+		print (badpPrimHeader)
+		print (badpExtHeader)
 
 		#Should now have two 1D arrays of 2D arrays of equal size
 		for i in range(len(objArray)):
@@ -1449,6 +1482,11 @@ class pipelineOps(object):
 			skyhdu.writeto('tempSky.fits', clobber=True)
 			fits.append('tempSky.fits', data=skyArray[i], header=skyExtHeader)
 
+			#######BADPIXEL#############
+			badphdu = fits.PrimaryHDU(header=badpPrimHeader)
+			badphdu.writeto('tempbadp.fits', clobber=True)
+			fits.append('tempbadp.fits', data=badpArray[i], header=badpExtHeader)
+
 			#NOTES FOR RESUMING - I now have temporary files containing the object 
 			#and sky segments to be shifted and cross correlated. The shiftImage function 
 			#can be applied to each of these directly within the for loop!! - remember to 
@@ -1463,11 +1501,13 @@ class pipelineOps(object):
 			#Now need to apply the shiftImageFirst function, which compares the chosen 
 			#extension shifted object and sky files. 
 
-			self.shiftImageFirst(ext, 'tempObj.fits', 'tempSky.fits', interp_type, stepsize, xmin, xmax, ymin, ymax)
+			self.shiftImageFirst(ext, 'tempObj.fits', 'tempSky.fits', 'tempbadp.fits', \
+			 interp_type, stepsize, xmin, xmax, ymin, ymax)
 
 			#Clean up the temporary fits files during each part of the loop 
 			os.system('rm tempObj.fits')
 			os.system('rm tempSky.fits')
+			os.system('rm tempbadp.fits')
 
 			#That should work then for each segment in turn. Does work. 
 
