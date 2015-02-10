@@ -926,7 +926,7 @@ class pipelineOps(object):
 		plt.show()
 		plt.close('all')
 
-	def crossCorr(self, ext, objFile, skyFile, y1, y2, x1, x2):
+	def crossCorr(self, ext, objFile, skyFile, badpmap, y1, y2, x1, x2):
 		"""
 		Def: 
 		Compute the cross-correlation coefficient for a given object 
@@ -950,6 +950,22 @@ class pipelineOps(object):
   		skyData = fits.open(skyFile)
   		skyData = skyData[ext].data
 
+  		badpData = fits.open(badpmap)
+  		badpData = badpData[ext].data
+
+  		#Must mask off the bad pixels before computation of rho 
+		#Find the coordinates of the bad pixels and the slitlets 
+		bad_pixel_coords = np.where(badpData == 0)
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = bad_pixel_coords[0][i]
+			ycoord = bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+			skyData[xcoord][ycoord] = np.nan
+
   		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
   		#and save computational time. i.e. how long would it take to compute the correlation coef
   		#using the whole thing? And would this be meaningful? How do you decide upon which section 
@@ -964,16 +980,16 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.mean(objData)
-  		skyDataMedian = np.mean(skyData)	
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = sum((objData - objDataMedian)**2)
-  		secondPart = sum((skyData - skyDataMedian)**2)
+  		firstPart = np.nansum((objData - objDataMedian)**2)
+  		secondPart = np.nansum((skyData - skyDataMedian)**2)
   		denom = np.sqrt(firstPart * secondPart)
   		#print denom
-  		numer = sum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
   		rho = numer / denom
   		#print rho
   		return rho
@@ -1168,9 +1184,9 @@ class pipelineOps(object):
 
   		#Working. Now create grid of fractional shift values. 
   		xArray = np.arange(xmin, xmax, stepsize)
-  		xArray = np.around(xArray, decimals = 2)
+  		xArray = np.around(xArray, decimals = 4)
   		yArray = np.arange(ymin, ymax, stepsize)
-  		yArray = np.around(yArray, decimals = 2)
+  		yArray = np.around(yArray, decimals = 4)
 
   		#Loop over all values in the grid, shift the image by this 
   		#amount each time and compute the correlation coefficient
@@ -1201,6 +1217,7 @@ class pipelineOps(object):
   		print rhoArray[0]		
   		print successDict
 
+
   	def shiftImageFirst(self, ext, infile, skyfile, interp_type, stepsize, xmin, xmax, ymin, ymax):
 
   		"""
@@ -1230,14 +1247,14 @@ class pipelineOps(object):
   		"""
   		#First compute the correlation coefficient with just infile 
   		rhoArray = []
-  		rhoArray.append(self.crossCorrFirst(infile, skyfile, 0, 8000, 0, 2048))
+  		rhoArray.append(self.crossCorrFirst(infile, skyfile, 0, 2048, 0, 2048))
   		print rhoArray
 
   		#Working. Now create grid of fractional shift values. 
   		xArray = np.arange(xmin, xmax, stepsize)
-  		xArray = np.around(xArray, decimals = 2)
+  		xArray = np.around(xArray, decimals = 4)
   		yArray = np.arange(ymin, ymax, stepsize)
-  		yArray = np.around(yArray, decimals = 2)
+  		yArray = np.around(yArray, decimals = 4)
 
   		#Loop over all values in the grid, shift the image by this 
   		#amount each time and compute the correlation coefficient
@@ -1296,12 +1313,12 @@ class pipelineOps(object):
   		"""
   		#First compute the correlation coefficient with just infile 
   		rhoArray = []
-  		rhoArray.append(self.crossCorr(ext, infile, skyfile, 0, 2048, 43, 280))
+  		rhoArray.append(self.crossCorr(ext, infile, skyfile, 1000, 1200, 1000, 1200))
   		print rhoArray
 
   		#Working. Now create grid of fractional shift values. 
   		rotArray = np.arange(minAngle, maxAngle, stepsize)
-  		rotArray = np.around(rotArray, decimals = 2)
+  		rotArray = np.around(rotArray, decimals = 4)
 
 
   		#Loop over all values in the grid, shift the image by this 
@@ -1315,7 +1332,7 @@ class pipelineOps(object):
 				rotation=number, interpolant=interp_type)
 			#re-open the shifted file and compute rho
 			rho = self.crossCorrOne(ext,'temp_rot.fits', skyfile,\
-			 100, 1800, 43, 280)
+			 1000, 1200, 1000, 1200)
 			#If the correlation coefficient improves, append to new array
 			if rho > rhoArray[0]:
 				print 'SUCCESS, made improvement!'
