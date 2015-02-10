@@ -994,7 +994,7 @@ class pipelineOps(object):
   		#print rho
   		return rho
 
-	def crossCorrZeroth(self, objFile, skyFile, y1, y2, x1, x2):
+	def crossCorrZeroth(self, ext, objFile, skyFile, badpmap, y1, y2, x1, x2):
 		"""
 		Def: 
 		Compute the cross-correlation coefficient for a given object 
@@ -1019,6 +1019,22 @@ class pipelineOps(object):
   		skyData = fits.open(skyFile)
   		skyData = skyData[1].data
 
+  		badpData = fits.open(badpmap)
+  		badpData = badpData[ext].data
+
+  		#Must mask off the bad pixels before computation of rho 
+		#Find the coordinates of the bad pixels and the slitlets 
+		bad_pixel_coords = np.where(badpData == 0)
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = bad_pixel_coords[0][i]
+			ycoord = bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+			skyData[xcoord][ycoord] = np.nan
+
   		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
   		#and save computational time. i.e. how long would it take to compute the correlation coef
   		#using the whole thing? And would this be meaningful? How do you decide upon which section 
@@ -1033,21 +1049,21 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.mean(objData)
-  		skyDataMedian = np.mean(skyData)	
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = sum((objData - objDataMedian)**2)
-  		secondPart = sum((skyData - skyDataMedian)**2)
+  		firstPart = np.nansum((objData - objDataMedian)**2)
+  		secondPart = np.nansum((skyData - skyDataMedian)**2)
   		denom = np.sqrt(firstPart * secondPart)
   		#print denom
-  		numer = sum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
   		rho = numer / denom
   		#print rho
   		return rho
 
-	def crossCorrFirst(self, objFile, skyFile, y1, y2, x1, x2):
+	def crossCorrFirst(self, ext, objFile, skyFile, badpmap, y1, y2, x1, x2):
 		"""
 		Def: 
 		Compute the cross-correlation coefficient for a given object 
@@ -1071,6 +1087,22 @@ class pipelineOps(object):
   		skyData = fits.open(skyFile)
   		skyData = skyData[1].data
 
+  		badpData = fits.open(badpmap)
+  		badpData = badpData[ext].data
+
+  		#Must mask off the bad pixels before computation of rho 
+		#Find the coordinates of the bad pixels and the slitlets 
+		bad_pixel_coords = np.where(badpData == 0)
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = bad_pixel_coords[0][i]
+			ycoord = bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+			skyData[xcoord][ycoord] = np.nan
+
   		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
   		#and save computational time. i.e. how long would it take to compute the correlation coef
   		#using the whole thing? And would this be meaningful? How do you decide upon which section 
@@ -1085,21 +1117,21 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.mean(objData)
-  		skyDataMedian = np.mean(skyData)	
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = sum((objData - objDataMedian)**2)
-  		secondPart = sum((skyData - skyDataMedian)**2)
+  		firstPart = np.nansum((objData - objDataMedian)**2)
+  		secondPart = np.nansum((skyData - skyDataMedian)**2)
   		denom = np.sqrt(firstPart * secondPart)
   		#print denom
-  		numer = sum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
   		rho = numer / denom
   		#print rho
   		return rho
 
-	def crossCorrOne(self, ext, objFile, skyFile, y1, y2, x1, x2):
+	def crossCorrOne(self, ext, objFile, skyFile, badpmap, y1, y2, x1, x2):
 		"""
 		Def: 
 		Compute the cross-correlation coefficient for a given object 
@@ -1124,6 +1156,22 @@ class pipelineOps(object):
   		skyData = fits.open(skyFile)
   		skyData = skyData[ext].data
 
+  		badpData = fits.open(badpmap)
+  		badpData = badpData[ext].data
+
+  		#Must mask off the bad pixels before computation of rho 
+		#Find the coordinates of the bad pixels and the slitlets 
+		bad_pixel_coords = np.where(badpData == 0)
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = bad_pixel_coords[0][i]
+			ycoord = bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+			skyData[xcoord][ycoord] = np.nan
+
   		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
   		#and save computational time. i.e. how long would it take to compute the correlation coef
   		#using the whole thing? And would this be meaningful? How do you decide upon which section 
@@ -1138,21 +1186,21 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.mean(objData)
-  		skyDataMedian = np.mean(skyData)	
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = sum((objData - objDataMedian)**2)
-  		secondPart = sum((skyData - skyDataMedian)**2)
+  		firstPart = np.nansum((objData - objDataMedian)**2)
+  		secondPart = np.nansum((skyData - skyDataMedian)**2)
   		denom = np.sqrt(firstPart * secondPart)
   		#print denom
-  		numer = sum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
   		rho = numer / denom
   		#print rho
   		return rho  		
 
-  	def shiftImage(self, ext, infile, skyfile, interp_type, stepsize, xmin, xmax, ymin, ymax):
+  	def shiftImage(self, ext, infile, skyfile, badpmap, interp_type, stepsize, xmin, xmax, ymin, ymax):
 
   		"""
   		Def:
@@ -1179,7 +1227,7 @@ class pipelineOps(object):
   		"""
   		#First compute the correlation coefficient with just infile 
   		rhoArray = []
-  		rhoArray.append(self.crossCorr(ext, infile, skyfile, 0, 2048, 0, 2048))
+  		rhoArray.append(self.crossCorr(ext, infile, skyfile, badpmap, 0, 2048, 0, 2048))
   		print rhoArray
 
   		#Working. Now create grid of fractional shift values. 
@@ -1198,7 +1246,7 @@ class pipelineOps(object):
   				pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
   					xshift=value, yshift=number, interp_type=interp_type)
   				#re-open the shifted file and compute rho
-  				rho = self.crossCorrOne(ext,'temp_shift.fits', skyfile,\
+  				rho = self.crossCorrOne(ext,'temp_shift.fits', skyfile, badpmap, \
   				 0, 2048, 0, 2048)
   				#If the correlation coefficient improves, append to new array
   				if rho > rhoArray[0]:
@@ -1218,7 +1266,7 @@ class pipelineOps(object):
   		print successDict
 
 
-  	def shiftImageFirst(self, ext, infile, skyfile, interp_type, stepsize, xmin, xmax, ymin, ymax):
+  	def shiftImageFirst(self, ext, infile, skyfile, badpmap, interp_type, stepsize, xmin, xmax, ymin, ymax):
 
   		"""
   		Def:
@@ -1247,7 +1295,7 @@ class pipelineOps(object):
   		"""
   		#First compute the correlation coefficient with just infile 
   		rhoArray = []
-  		rhoArray.append(self.crossCorrFirst(infile, skyfile, 0, 2048, 0, 2048))
+  		rhoArray.append(self.crossCorrFirst(ext, infile, skyfile, badpmap, 1000, 1200, 1000, 1200))
   		print rhoArray
 
   		#Working. Now create grid of fractional shift values. 
@@ -1266,12 +1314,12 @@ class pipelineOps(object):
   				pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
   					xshift=value, yshift=number, interp_type=interp_type)
   				#re-open the shifted file and compute rho
-  				rho = self.crossCorrZeroth('temp_shift.fits', skyfile,\
-  				 0, 2048, 0, 2048)
+  				rho = self.crossCorrZeroth(ext, 'temp_shift.fits', skyfile, badpmap, \
+  				 1000, 1200, 1000, 1200)
   				#If the correlation coefficient improves, append to new array
   				if rho > rhoArray[0]:
   					print 'SUCCESS, made improvement!'
-  					entryName = str(value) + 'and' + str(number)
+  					entryName = str(value) + ' and ' + str(number)
   					entryValue = [value, number, rho]
   					successDict[entryName] = entryValue
   				rhoArray.append(rho)
@@ -1401,7 +1449,7 @@ class pipelineOps(object):
 
 
 
-  	def shiftImageSegments(self, ext, infile, skyfile,\
+  	def shiftImageSegments(self, ext, infile, skyfile, badpmap,\
   	 vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax):
 
   		"""
@@ -1435,6 +1483,7 @@ class pipelineOps(object):
 		#Create arrays of the split files using the imSplit function 
 		objArray = self.imSplit(ext, infile, vertSegments, horSegments)
 		skyArray = self.imSplit(ext, skyfile, vertSegments, horSegments)
+		badpArray = self.imSplit(ext, badpmap, vertSegments, horSegments)
 
 		#Find the headers of the primary HDU and chosen extension 
 		objTable = fits.open(infile)
@@ -1443,11 +1492,17 @@ class pipelineOps(object):
 		skyTable = fits.open(skyfile)
 		skyPrimHeader = skyTable[0].header
 		skyExtHeader = skyTable[ext].header
+		badpTable = fits.open(badpmap)
+		badpPrimHeader = badpTable[0].header
+		badpExtHeader = badpTable[ext].header
+
 
 		print (objPrimHeader)
 		print (objExtHeader)
 		print (skyPrimHeader)
 		print (skyExtHeader)
+		print (badpPrimHeader)
+		print (badpExtHeader)
 
 		#Should now have two 1D arrays of 2D arrays of equal size
 		for i in range(len(objArray)):
@@ -1465,6 +1520,11 @@ class pipelineOps(object):
 			skyhdu.writeto('tempSky.fits', clobber=True)
 			fits.append('tempSky.fits', data=skyArray[i], header=skyExtHeader)
 
+			#######BADPIXEL#############
+			badphdu = fits.PrimaryHDU(header=badpPrimHeader)
+			badphdu.writeto('tempbadp.fits', clobber=True)
+			fits.append('tempbadp.fits', data=badpArray[i], header=badpExtHeader)
+
 			#NOTES FOR RESUMING - I now have temporary files containing the object 
 			#and sky segments to be shifted and cross correlated. The shiftImage function 
 			#can be applied to each of these directly within the for loop!! - remember to 
@@ -1479,11 +1539,13 @@ class pipelineOps(object):
 			#Now need to apply the shiftImageFirst function, which compares the chosen 
 			#extension shifted object and sky files. 
 
-			self.shiftImageFirst(ext, 'tempObj.fits', 'tempSky.fits', interp_type, stepsize, xmin, xmax, ymin, ymax)
+			self.shiftImageFirst(ext, 'tempObj.fits', 'tempSky.fits', \
+				'tempbadp.fits', interp_type, stepsize, xmin, xmax, ymin, ymax)
 
 			#Clean up the temporary fits files during each part of the loop 
 			os.system('rm tempObj.fits')
 			os.system('rm tempSky.fits')
+			os.system('rm tempbadp.fits')
 
 			#That should work then for each segment in turn. Does work. 
 
