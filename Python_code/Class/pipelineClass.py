@@ -1243,9 +1243,9 @@ class pipelineOps(object):
   				#If the correlation coefficient improves, append to new array
   				if rho > rhoArray[0]:
   					print 'SUCCESS, made improvement!'
-  					entryName = str(value) + 'and' + str(number)
-  					entryValue = [value, number, rho]
-  					successDict[entryName] = entryValue
+  					entryName = str(value) + ' and ' + str(number)
+  					entryValue = [value, number]
+  					successDict[rho] = entryValue
   				rhoArray.append(rho)
   				#Clean up by deleting the created temporary fits file
   				os.system('rm temp_shift.fits')
@@ -1257,6 +1257,11 @@ class pipelineOps(object):
   		print max(rhoArray)
   		print rhoArray[0]		
   		print successDict
+  		#Now we want to choose the best shift value and actually apply this 
+  		#Need to find the x and y shift values which correspond to the maximum rho
+  		rhoMax = max(rhoArray)
+  		print successDict[rhoMax]
+  		return successDict[rhoMax]
 
 
   	def shiftImageFirst(self, ext, infile, skyfile, badpmap, interp_type, stepsize, xmin, xmax, ymin, ymax):
@@ -1369,8 +1374,8 @@ class pipelineOps(object):
   				if rho > rhoArray[0]:
   					print 'SUCCESS, made improvement!'
   					entryName = str(value) + ' and ' + str(number)
-  					entryValue = [value, number, rho]
-  					successDict[entryName] = entryValue
+  					entryValue = [round(value, 3), round(number, 3)]
+  					successDict[str(round(rho, 4))] = entryValue
   				rhoArray.append(rho)
   				#Clean up by deleting the created temporary fits file
   				os.system('rm temp_shift.fits')
@@ -1379,9 +1384,25 @@ class pipelineOps(object):
   				#sys.stdout.flush()
   		os.system('rm maskedObj.fits')
   		os.system('rm maskedSky.fits')
-  		print max(rhoArray)
-  		print rhoArray[0]		
-  		print successDict
+  		#print round(max(rhoArray), 4)
+  		#print rhoArray[0]		
+  		#print successDict
+  		#Now we want to choose the best shift value and actually apply this 
+  		#Need to find the x and y shift values which correspond to the maximum rho
+  		#Only do this if the success dictionary is not empty, if it is empty return 0.0,0.0
+
+  		if successDict: 
+  			print 'Finding Best Shift Value...'
+  			rhoMax = str(round(max(rhoArray), 4))
+  			#print rhoMax
+  			shiftVector = successDict[rhoMax]
+  			return shiftVector
+  		
+  		else:
+  			print 'No Shift Value Found'
+  			shiftVector = [0.0, 0.0]
+  			return shiftVector
+
 
 
   	def rotateImage(self, ext, infile, skyfile, interp_type, minAngle, maxAngle, stepsize):
@@ -1529,6 +1550,10 @@ class pipelineOps(object):
 		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
 
 		"""
+		########################TO ADD###############################
+		#Make sure that 2048 is divisible by the segment numbers 
+
+
 
 		#Create arrays of the split files using the imSplit function 
 		objArray = self.imSplit(ext, infile, vertSegments, horSegments)
@@ -1553,7 +1578,7 @@ class pipelineOps(object):
 		print (skyExtHeader)
 		print (badpPrimHeader)
 		print (badpExtHeader)
-
+		shiftArray = []
 		#Should now have two 1D arrays of 2D arrays of equal size
 		for i in range(len(objArray)):
 
@@ -1588,9 +1613,13 @@ class pipelineOps(object):
 
 			#Now need to apply the shiftImageFirst function, which compares the chosen 
 			#extension shifted object and sky files. 
+			#Create an array to hold the shift coordinates for each segment. This is defined 
+			#Outside the for loop so that I am not initialising it every time.
+			
 
-			self.shiftImageFirst(ext, 'tempObj.fits', 'tempSky.fits', 'tempbadp.fits', \
-			 interp_type, stepsize, xmin, xmax, ymin, ymax)
+
+			shiftArray.append(self.shiftImageFirst(ext, 'tempObj.fits', 'tempSky.fits', 'tempbadp.fits', \
+			 interp_type, stepsize, xmin, xmax, ymin, ymax))
 
 
 			#Clean up the temporary fits files during each part of the loop 
@@ -1599,6 +1628,117 @@ class pipelineOps(object):
 			os.system('rm tempbadp.fits')
 
 			#That should work then for each segment in turn. Does work. 
+			#vStackArray.append(np.hstack(objArray))		
+			#	hor1 += 128
+			#	hor2 += 128	
+
+			#Now just need to vstack all of these arrays and will have a 2048x2048 corrected array
+			#newObjData = np.vstack(vStackArray)	
+		print shiftArray
+		print len(shiftArray)
+		#Now the clever part - to actually apply the shifts to the unmasked infile 
+		#imshift can be used with a list of infile names, outfile names and shift coordinates
+		#If I create these lists I can imshift all at once, read in the data and then recombine
+		#First get the x and y vectors for the shift coordinates
+		xArray = []
+		yArray = []
+		for item in shiftArray:
+			xArray.append(item[0])
+			yArray.append(item[1])
+		xArray = np.array(np.around(xArray, 3))
+		yArray = np.array(np.around(yArray, 3))	
+		#Create the .txt file with the two columns specifying the shift coordinates
+		np.savetxt('coords.txt', np.c_[xArray, yArray], fmt=('%5.3f', '%5.3f'))
+
+		#Coordinates list sorted. Now need list of input files and input file names 
+		#To do this need to go back to the imSplit method with the unmasked file 
+		#Write to a list of temporary fits files, which will become temporary 
+		#Output fits files, which will be read back in as data before recombining 
+		#Must clean everything up at the end by removing with os.system()
+		#Create arrays of the split files using the imSplit function 
+		objArray = self.imSplit(ext, infile, vertSegments, horSegments)
+		inFileArray = []
+		outFileArray = []
+		shiftedDataArray = []
+		vstackArray = []
+		hstackArray = []
+		print xArray
+		print yArray
+
+		#Should now have two 1D arrays of 2D arrays of equal size
+		for i in range(len(objArray)):
+
+			inFileName = 'tempObjin'+str(i)+'.fits'
+			outFileName = 'tempObjout'+str(i)+'.fits'
+			inFileArray.append(inFileName)
+			outFileArray.append(outFileName)
+
+			#Write out to new temporary fits files - annoyingly need to have 
+			#the data in fits files to be able to use pyraf functions
+			#######OBJECT##########
+			objhdu = fits.PrimaryHDU(header=objPrimHeader)
+			objhdu.writeto(inFileName, clobber=True)
+			fits.append(inFileName, data=objArray[i], header=objExtHeader)
+
+			inFileName = inFileName + '[1]'
+
+  			#Now apply imshift with all the parameters 
+  			pyraf.iraf.imshift(input = inFileName, output=outFileName, \
+  				xshift=xArray[i], yshift=yArray[i] ,interp_type=interp_type)
+
+  			#We want a 1D array of 2D arrays again, read the data files back in 
+  			data = fits.open(outFileName)
+  			data = data[0].data
+  			shiftedDataArray.append(data)
+  			#Go back to the top of the loop and grab the next file
+
+  		#The final problem is that we have a 1D arrays of 2D arrays that needs 
+  		#to be recombined into the original 2048 x 2048 which created it 
+  		#Ordering depends on the number of vertical and horizontal segments 
+ 
+  		x = len(shiftedDataArray) / vertSegments	
+  		a = 0 
+
+  		while x <= len(shiftedDataArray):
+  			for i in range(a, x): 
+  				print i
+  				hstackArray.append(shiftedDataArray[i])
+
+  			vstackArray.append(np.hstack(hstackArray))
+  			hstackArray = []
+  			x += len(shiftedDataArray) / vertSegments
+  			a += len(shiftedDataArray) / vertSegments
+  			
+  			print 'Hello'
+
+  		for item in vstackArray:
+  			print item.shape	
+  		#Reconstruct by vstacking the final array	
+  		reconstructedData = np.vstack(vstackArray)
+
+  		#Name the shifted data file 
+  		shiftedName = infile[-5:] + '_Shifted.fits' 
+
+  		objhdu = fits.PrimaryHDU(header=objPrimHeader)
+		objhdu.writeto(shiftedName, clobber=True)
+		fits.append(shiftedName, data=reconstructedData, header=objExtHeader)
+
+	
+
+  		#Clean up by getting rid of uneeded files
+		for item in inFileArray:
+			os.system('rm %s' % item)
+		for item in outFileArray:
+			os.system('rm %s' % item)
+		os.system('rm coords.txt')	
+
+		#Actually works
+
+
+
+
+
+
 
 
 
