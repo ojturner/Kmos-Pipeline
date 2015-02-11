@@ -1717,7 +1717,7 @@ class pipelineOps(object):
   		reconstructedData = np.vstack(vstackArray)
 
   		#Name the shifted data file 
-  		shiftedName = infile[-5:] + '_Shifted.fits' 
+  		shiftedName = infile[:-5] + '_Shifted.fits' 
 
   		objhdu = fits.PrimaryHDU(header=objPrimHeader)
 		objhdu.writeto(shiftedName, clobber=True)
