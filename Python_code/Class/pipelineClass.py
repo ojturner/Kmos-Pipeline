@@ -965,15 +965,42 @@ class pipelineOps(object):
   		#Correlation coefficient 
 
   		objDataMedian = np.nanmedian(objData)
+  		objDataStd = np.nanstd(objData)
   		skyDataMedian = np.nanmedian(skyData)	
+  		skyDataStd = np.nanstd(skyData)
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = np.nansum((objData - objDataMedian)**2)
-  		secondPart = np.nansum((skyData - skyDataMedian)**2)
-  		denom = np.sqrt(firstPart * secondPart)
+  		###############NEW METHOD OF MASKING BAD PIXELS FOR BETTER RHO##########################
+  		#Let's try masking the pixels which are bigger than a standard deviation from the median
+		#Find the coordinates of the bad pixels and the slitlets 
+		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
+		sky_bad_pixel_coords = np.where(abs(skyData) >  (skyDataMedian + skyDataStd))
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(obj_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = obj_bad_pixel_coords[0][i]
+			ycoord = obj_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(sky_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = sky_bad_pixel_coords[0][i]
+			ycoord = sky_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
+			skyData[xcoord][ycoord] = np.nan
+
+		newobjDataMedian = np.nanmedian(objData)				
+		newskyDataMedian = np.nanmedian(skyData)		
+
+  		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
+  		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
+  		denom = firstPart * secondPart
   		#print denom
-  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
   		rho = numer / denom
   		#print rho
   		return rho
@@ -1018,15 +1045,42 @@ class pipelineOps(object):
   		#Correlation coefficient 
 
   		objDataMedian = np.nanmedian(objData)
+  		objDataStd = np.nanstd(objData)
   		skyDataMedian = np.nanmedian(skyData)	
+  		skyDataStd = np.nanstd(skyData)
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = np.nansum((objData - objDataMedian)**2)
-  		secondPart = np.nansum((skyData - skyDataMedian)**2)
-  		denom = np.sqrt(firstPart * secondPart)
+  		###############NEW METHOD OF MASKING BAD PIXELS FOR BETTER RHO##########################
+  		#Let's try masking the pixels which are bigger than a standard deviation from the median
+		#Find the coordinates of the bad pixels and the slitlets 
+		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
+		sky_bad_pixel_coords = np.where(abs(skyData) >  (skyDataMedian + skyDataStd))
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(obj_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = obj_bad_pixel_coords[0][i]
+			ycoord = obj_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(sky_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = sky_bad_pixel_coords[0][i]
+			ycoord = sky_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
+			skyData[xcoord][ycoord] = np.nan
+
+		newobjDataMedian = np.nanmedian(objData)				
+		newskyDataMedian = np.nanmedian(skyData)		
+
+  		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
+  		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
+  		denom = firstPart * secondPart
   		#print denom
-  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
   		rho = numer / denom
   		#print rho
   		return rho
@@ -1070,15 +1124,42 @@ class pipelineOps(object):
   		#Correlation coefficient 
 
   		objDataMedian = np.nanmedian(objData)
+  		objDataStd = np.nanstd(objData)
   		skyDataMedian = np.nanmedian(skyData)	
+  		skyDataStd = np.nanstd(skyData)
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = np.nansum((objData - objDataMedian)**2)
-  		secondPart = np.nansum((skyData - skyDataMedian)**2)
-  		denom = np.sqrt(firstPart * secondPart)
+  		###############NEW METHOD OF MASKING BAD PIXELS FOR BETTER RHO##########################
+  		#Let's try masking the pixels which are bigger than a standard deviation from the median
+		#Find the coordinates of the bad pixels and the slitlets 
+		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
+		sky_bad_pixel_coords = np.where(abs(skyData) >  (skyDataMedian + skyDataStd))
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(obj_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = obj_bad_pixel_coords[0][i]
+			ycoord = obj_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(sky_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = sky_bad_pixel_coords[0][i]
+			ycoord = sky_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
+			skyData[xcoord][ycoord] = np.nan
+
+		newobjDataMedian = np.nanmedian(objData)				
+		newskyDataMedian = np.nanmedian(skyData)		
+
+  		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
+  		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
+  		denom = firstPart * secondPart
   		#print denom
-  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
   		rho = numer / denom
   		#print rho
   		return rho
@@ -1123,15 +1204,42 @@ class pipelineOps(object):
   		#Correlation coefficient 
 
   		objDataMedian = np.nanmedian(objData)
+  		objDataStd = np.nanstd(objData)
   		skyDataMedian = np.nanmedian(skyData)	
+  		skyDataStd = np.nanstd(skyData)
   		#print objDataMedian
   		#print skyDataMedian
 
-  		firstPart = np.nansum((objData - objDataMedian)**2)
-  		secondPart = np.nansum((skyData - skyDataMedian)**2)
-  		denom = np.sqrt(firstPart * secondPart)
+  		###############NEW METHOD OF MASKING BAD PIXELS FOR BETTER RHO##########################
+  		#Let's try masking the pixels which are bigger than a standard deviation from the median
+		#Find the coordinates of the bad pixels and the slitlets 
+		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
+		sky_bad_pixel_coords = np.where(abs(skyData) >  (skyDataMedian + skyDataStd))
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(obj_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = obj_bad_pixel_coords[0][i]
+			ycoord = obj_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(sky_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = sky_bad_pixel_coords[0][i]
+			ycoord = sky_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
+			skyData[xcoord][ycoord] = np.nan
+
+		newobjDataMedian = np.nanmedian(objData)				
+		newskyDataMedian = np.nanmedian(skyData)		
+
+  		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
+  		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
+  		denom = firstPart * secondPart
   		#print denom
-  		numer = np.nansum((objData - objDataMedian)*(skyData - skyDataMedian))
+  		numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
   		rho = numer / denom
   		#print rho
   		return rho		
@@ -1326,6 +1434,7 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the object and sky
 			objData[xcoord][ycoord] = np.nan
 			skyData[xcoord][ycoord] = np.nan
+		fits.writeto('pom.fits', data=objData, clobber=True)	
 
 
 		#Write out to new temporary fits files - annoyingly need to have 
