@@ -926,6 +926,125 @@ class pipelineOps(object):
 		plt.show()
 		plt.close('all')
 
+	def badPixelextend(self, badpmap): 
+		"""
+		Def: 
+		Take an arbitary bad pixel mask and mask off the pixels in a ring around 
+		the original bad pixel location. Good for determining the pixel shift location
+		as by inspection many of the pixels around the bad pixel locations are also 
+		pretty rubbish 
+
+		Inputs: 
+		badpmap - any bad pixel mask with 0 as bad and 1 as good 
+
+		Outputs: 
+		newbadpmap - remasked bad pixel. 
+
+		"""
+		#Read in data 
+		badpTable = fits.open(badpmap)
+		extArray = []
+
+		primHeader = badpTable[0].header
+		ext1Header = badpTable[1].header
+		ext2Header = badpTable[2].header
+		ext3Header = badpTable[3].header
+
+		print primHeader
+		print ext1Header
+		print ext2Header
+		print ext3Header
+
+
+		#Loop around the extensions and make ammendments  
+		for i in range(1,4):
+			badpData = badpTable[i].data
+
+			#Now have the 2048x2048 data array. Want to find all the 0 values 
+			#And make the points surrounding this zero also 
+			badpCoords = np.where(badpData == 0)
+
+			#Loop around the bad pixel locations and mask off 
+			for i in range(len(badpCoords[0])):
+				#Because of the way np.where works, need to define the x and y coords in this way
+
+				if (badpCoords[0][i] < 2047) and (badpCoords[1][i] < 2047):
+					print badpCoords[0][i], badpCoords[1][i]
+					xcoord = badpCoords[0][i]
+					ycoord = badpCoords[1][i]
+					#Now set all positions where there is a dead pixel to np.nan in the object and sky
+					badpData[xcoord][ycoord + 1] = 0
+					badpData[xcoord][ycoord - 1] = 0
+					badpData[xcoord + 1][ycoord] = 0								
+					badpData[xcoord - 1][ycoord] = 0
+					badpData[xcoord + 1][ycoord + 1] = 0
+					badpData[xcoord - 1][ycoord + 1] = 0
+					badpData[xcoord + 1][ycoord - 1] = 0
+					badpData[xcoord - 1][ycoord - 1] = 0
+
+
+			extArray.append(badpData)
+
+		#Now write out to a new fits file 
+		badpName = badpmap[:-5] + '_Added.fits'	
+		hdu = fits.PrimaryHDU(header=primHeader)
+		hdu.writeto(badpName, clobber=True)
+		fits.append(badpName, data=extArray[0], header=ext1Header)	
+		fits.append(badpName, data=extArray[1], header=ext2Header)	
+		fits.append(badpName, data=extArray[2], header=ext3Header)
+
+
+	def maskFile(self, inFile, badpFile):
+		"""	
+		Def:
+		Take the badPixelMap and apply it to any inFile 
+		to mask off the bad pixels. Particularly useful 
+		for applying to skyFiles before subtraction
+
+		"""	
+
+		dataTable = fits.open(inFile)
+		badPTable = fits.open(badpFile)
+		extArray = []
+
+		primHeader = dataTable[0].header
+		ext1Header = dataTable[1].header
+		ext2Header = dataTable[2].header
+		ext3Header = dataTable[3].header
+
+		print primHeader
+		print ext1Header
+		print ext2Header
+		print ext3Header
+
+		for i in range(1, 4):
+
+			data = dataTable[i].data
+			badpData = badPTable[i].data
+
+			#Now find the bad pixel locations and mask off the data appropriately
+
+			bad_pixel_coords = np.where(badpData == 0)
+
+			#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+			for i in range(len(bad_pixel_coords[0])):
+				#Because of the way np.where works, need to define the x and y coords in this way
+				xcoord = bad_pixel_coords[0][i]
+				ycoord = bad_pixel_coords[1][i]
+				#Now set all positions where there is a dead pixel to np.nan in the object and sky
+				data[xcoord][ycoord] = np.nan
+
+			extArray.append(data)
+		#Write out the new data
+		fileName = inFile[:-5] + '_masked.fits'	
+		hdu = fits.PrimaryHDU(header=primHeader)
+		hdu.writeto(fileName, clobber=True)
+		fits.append(fileName, data=extArray[0], header=ext1Header)	
+		fits.append(fileName, data=extArray[1], header=ext2Header)	
+		fits.append(fileName, data=extArray[2], header=ext3Header)	
+
+
+								
 	def crossCorr(self, ext, objFile, skyFile, y1, y2, x1, x2):
 		"""
 		Def: 
@@ -1271,7 +1390,8 @@ class pipelineOps(object):
 		this increases the time taken for the computation 
 		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
 
-  		"""
+		"""
+
   		#We first want to apply the bad pixel map 
   		objTable = fits.open(infile)
   		objData = objTable[ext].data
@@ -1306,6 +1426,13 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the object and sky
 			objData[xcoord][ycoord] = np.nan
 			skyData[xcoord][ycoord] = np.nan
+		#fits.writeto('pom.fits', data=objData, clobber=True)	
+
+		#Define the minimum and maximum ranges for the correlation 
+		xMinCorr = (1 * len(objData[0]))/4
+		xMaxCorr = (3 * len(objData[0]))/4
+		yMinCorr = (1 * len(objData))/4
+		yMaxCorr = (3 * len(objData))/4
 
 
 		#Write out to new temporary fits files - annoyingly need to have 
@@ -1323,7 +1450,7 @@ class pipelineOps(object):
   		#First compute the correlation coefficient with just the newly saved fits file 
   		rhoArray = []
 
-  		rhoArray.append(self.crossCorrFirst('maskedObj.fits', 'maskedSky.fits', 0, 2048, 0, 2048))
+  		rhoArray.append(self.crossCorrFirst('maskedObj.fits', 'maskedSky.fits', yMinCorr, yMaxCorr, xMinCorr, xMaxCorr))
 
   		print rhoArray
 
@@ -1333,43 +1460,74 @@ class pipelineOps(object):
   		yArray = np.arange(ymin, ymax, stepsize)
   		yArray = np.around(yArray, decimals = 4)
 
+  		#Set up mesh grid of rho values for contour plot 
+  		rhoGrid = np.zeros(shape=(len(xArray), len(yArray)))
+
   		#Before attempting the interpolation, we want to mask the bad pixel values, 
   		#and save to a fresh temporary fits file. 
 
   		#Loop over all values in the grid, shift the image by this 
   		#amount each time and compute the correlation coefficient
   		successDict = {}
-  		for value in xArray:
-  			for number in yArray:
+  		for i in range(len(xArray)):
+  			for j in range(len(yArray)):
   				#Perform the shift 
   				infileName = 'maskedObj.fits[1]'
   				pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
-  					xshift=value, yshift=number, interp_type=interp_type)
-  				#re-open the shifted file and compute rho 
+  					xshift=xArray[i], yshift=yArray[j], interp_type=interp_type)
+  				#re-open the shifted file and compute rho
+
   				rho = self.crossCorrZeroth('temp_shift.fits', 'maskedSky.fits',\
-  				 0, 2048, 0, 2048)
+  				  yMinCorr, yMaxCorr, xMinCorr, xMaxCorr)
+  				rhoGrid[i][j] = rho	
   				#If the correlation coefficient improves, append to new array
   				if rho > rhoArray[0]:
   					print 'SUCCESS, made improvement!'
-  					entryName = str(value) + ' and ' + str(number)
-  					entryValue = [value, number]
-  					successDict[rho] = entryValue
+  					entryName = str(xArray[i]) + ' and ' + str(yArray[j])
+  					entryValue = [round(xArray[i], 3), round(yArray[j], 3)]
+  					successDict[str(round(rho, 4))] = entryValue
   				rhoArray.append(rho)
   				#Clean up by deleting the created temporary fits file
   				os.system('rm temp_shift.fits')
   				#Go back through loop, append next value of rho
-  				print 'Finished shift: %s %s, rho = %s ' % (value, number, rho)
+  				print 'Finished shift: %s %s, rho = %s ' % (xArray[i], yArray[j], rho)
   				#sys.stdout.flush()
   		os.system('rm maskedObj.fits')
   		os.system('rm maskedSky.fits')
-  		print max(rhoArray)
-  		print rhoArray[0]		
-  		print successDict
+  		#print round(max(rhoArray), 4)
+  		#print rhoArray[0]		
+  		#print successDict
   		#Now we want to choose the best shift value and actually apply this 
   		#Need to find the x and y shift values which correspond to the maximum rho
-  		rhoMax = max(rhoArray)
-  		print successDict[rhoMax]
-  		return successDict[rhoMax]
+  		#Only do this if the success dictionary is not empty, if it is empty return 0.0,0.0
+
+  		print rhoGrid
+
+		plt.contour(xArray, yArray, rhoGrid, levels = [(np.max(rhoGrid) - (0.25 * np.std(rhoGrid))), \
+		 (np.max(rhoGrid) - (1*np.std(rhoGrid))), (np.max(rhoGrid) - (1.5 * np.std(rhoGrid)))])
+		plt.xlabel('$\Delta x$')
+		plt.ylabel('$\Delta y$')
+		plt.title('Correlation Coefficient Grid')
+		plt.savefig('Correlation_coefficient.png')
+		plt.close('all')
+
+		print 'Made plot Successfully'
+
+  		if successDict: 
+  			print 'Finding Best Shift Value...'
+  			rhoMax = str(round(max(rhoArray), 4))
+  			#print rhoMax
+  			shiftVector = successDict[rhoMax]
+  			return shiftVector
+  		
+  		else:
+  			print 'No Shift Value Found'
+  			shiftVector = [0.0, 0.0]
+  			return shiftVector
+
+  		#We can also save a contour plot of the results to show where the best shift location is 
+  		#This only works properly right now for a shift segment of 1, otherwise will 
+  		#overwrite the filename each time. Could easily fix this.
 
 
   	def shiftImageFirst(self, ext, infile, skyfile, badpmap, interp_type, stepsize, xmin, xmax, ymin, ymax):
@@ -1434,8 +1592,13 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the object and sky
 			objData[xcoord][ycoord] = np.nan
 			skyData[xcoord][ycoord] = np.nan
-		fits.writeto('pom.fits', data=objData, clobber=True)	
+		#fits.writeto('pom.fits', data=objData, clobber=True)	
 
+		#Define the minimum and maximum ranges for the correlation 
+		xMinCorr = (1 * len(objData[0]))/4
+		xMaxCorr = (3 * len(objData[0]))/4
+		yMinCorr = (1 * len(objData))/4
+		yMaxCorr = (3 * len(objData))/4
 
 		#Write out to new temporary fits files - annoyingly need to have 
 		#the data in fits files to be able to use pyraf functions
@@ -1452,7 +1615,7 @@ class pipelineOps(object):
   		#First compute the correlation coefficient with just the newly saved fits file 
   		rhoArray = []
 
-  		rhoArray.append(self.crossCorrFirst('maskedObj.fits', 'maskedSky.fits', 0, 2048, 0, 2048))
+  		rhoArray.append(self.crossCorrFirst('maskedObj.fits', 'maskedSky.fits', yMinCorr, yMaxCorr, xMinCorr, xMaxCorr))
 
   		print rhoArray
 
@@ -1462,8 +1625,10 @@ class pipelineOps(object):
   		yArray = np.arange(ymin, ymax, stepsize)
   		yArray = np.around(yArray, decimals = 4)
 
+  		x, y = np.meshgrid(xArray, yArray)
+
   		#Set up mesh grid of rho values for contour plot 
-  		rhoGrid = np.zeros(shape=(len(xArray), len(yArray)))
+  		rhoGrid = np.zeros(shape=(len(x), len(x[0])))
 
   		#Before attempting the interpolation, we want to mask the bad pixel values, 
   		#and save to a fresh temporary fits file. 
@@ -1480,8 +1645,8 @@ class pipelineOps(object):
   				#re-open the shifted file and compute rho
 
   				rho = self.crossCorrZeroth('temp_shift.fits', 'maskedSky.fits',\
-  				 0, 2048, 0, 2048)
-  				rhoGrid[i][j] = rho	
+  				  yMinCorr, yMaxCorr, xMinCorr, xMaxCorr)
+  				rhoGrid[j][i] = rho	
   				#If the correlation coefficient improves, append to new array
   				if rho > rhoArray[0]:
   					print 'SUCCESS, made improvement!'
@@ -1505,12 +1670,13 @@ class pipelineOps(object):
 
   		print rhoGrid
 
-		plt.contour(xArray, yArray, rhoGrid, levels = [(np.max(rhoGrid) - np.std(rhoGrid)), \
-		 (np.max(rhoGrid) - (2 *np.std(rhoGrid))), (np.max(rhoGrid) - (3 * np.std(rhoGrid)))])
+		plt.contour(x, y, rhoGrid, levels = [(np.max(rhoGrid) - (0.25 * np.std(rhoGrid))), \
+		 (np.max(rhoGrid) - (1*np.std(rhoGrid))), (np.max(rhoGrid) - (1.5 * np.std(rhoGrid)))])
 		plt.xlabel('$\Delta x$')
 		plt.ylabel('$\Delta y$')
 		plt.title('Correlation Coefficient Grid')
-		plt.savefig('Correlation_coefficient.png')
+		plotName = infile[:-5] + '_' + interp_type + '_CorrelationGraph.png'
+		plt.savefig(plotName)
 		plt.close('all')
 
 		print 'Made plot Successfully'
@@ -1713,13 +1879,13 @@ class pipelineOps(object):
 		#Should now have two 1D arrays of 2D arrays of equal size
 		for i in range(len(objArray)):
 
-
+			tempObjName = infile[:-5] + str(vertSegments) + str(horSegments) + str(i) + '_temp.fits'
 			#Write out to new temporary fits files - annoyingly need to have 
 			#the data in fits files to be able to use pyraf functions
 			#######OBJECT##########
 			objhdu = fits.PrimaryHDU(header=objPrimHeader)
-			objhdu.writeto('tempObj.fits', clobber=True)
-			fits.append('tempObj.fits', data=objArray[i], header=objExtHeader)
+			objhdu.writeto(tempObjName, clobber=True)
+			fits.append(tempObjName, data=objArray[i], header=objExtHeader)
 
 			#######SKY#############
 			skyhdu = fits.PrimaryHDU(header=skyPrimHeader)
@@ -1749,12 +1915,12 @@ class pipelineOps(object):
 			
 
 
-			shiftArray.append(self.shiftImageFirst(ext, 'tempObj.fits', 'tempSky.fits', 'tempbadp.fits', \
+			shiftArray.append(self.shiftImageFirst(ext, tempObjName, 'tempSky.fits', 'tempbadp.fits', \
 			 interp_type, stepsize, xmin, xmax, ymin, ymax))
 
 
 			#Clean up the temporary fits files during each part of the loop 
-			os.system('rm tempObj.fits')
+			os.system('rm %s' % tempObjName)
 			os.system('rm tempSky.fits')
 			os.system('rm tempbadp.fits')
 
@@ -1869,7 +2035,7 @@ class pipelineOps(object):
   		reconstructedData = np.vstack(vstackArray)
 
   		#Name the shifted data file 
-  		shiftedName = infile[:-5] + '_Shifted.fits' 
+  		shiftedName = infile[:-5] + str(vertSegments) + str(horSegments) + '_' + interp_type + '_Shifted.fits' 
   		print 'Saving %s' % shiftedName
 
   		objhdu = fits.PrimaryHDU(header=objPrimHeader)
