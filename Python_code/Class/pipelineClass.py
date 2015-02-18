@@ -717,8 +717,7 @@ class pipelineOps(object):
 		ext3 = objData[3].data - skyData[3].data
 
 		#Write out to a different fits file, with name user specified
-		nameOfFile = raw_input('Enter the name of the subtracted file: ')
-		nameOfFile = nameOfFile + '.fits'
+		nameOfFile = objectFile[:-5] + '_Subtracted.fits'  
 		hdu = fits.PrimaryHDU(header=header)
 		hdu.writeto(nameOfFile, clobber=True)
 		fits.append(nameOfFile, data=ext1, header=headerOne)	
@@ -1574,12 +1573,17 @@ class pipelineOps(object):
 		badpPrimHeader = badpTable[0].header
 		badpExtHeader = badpTable[1].header
 
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
 		print (objPrimHeader)
 		print (objExtHeader)
 		print (skyPrimHeader)
-		print (skyExtHeader)		
+		print (skyExtHeader)
 		print (badpPrimHeader)
-		print (badpExtHeader) 
+		print (badpExtHeader)
+		sys.stdout.close()
+		sys.stdout = temp
+		
 
 		#Find the coordinates of the bad pixels and the slitlets 
 		bad_pixel_coords = np.where(badpData == 0)
@@ -1668,7 +1672,7 @@ class pipelineOps(object):
   		#Need to find the x and y shift values which correspond to the maximum rho
   		#Only do this if the success dictionary is not empty, if it is empty return 0.0,0.0
 
-  		print rhoGrid
+  		#print rhoGrid
 
 		plt.contour(x, y, rhoGrid, levels = [(np.max(rhoGrid) - (0.25 * np.std(rhoGrid))), \
 		 (np.max(rhoGrid) - (1*np.std(rhoGrid))), (np.max(rhoGrid) - (1.5 * np.std(rhoGrid)))])
@@ -1878,13 +1882,18 @@ class pipelineOps(object):
 		badpPrimHeader = badpTable[0].header
 		badpExtHeader = badpTable[ext].header
 
-
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
 		print (objPrimHeader)
 		print (objExtHeader)
 		print (skyPrimHeader)
 		print (skyExtHeader)
 		print (badpPrimHeader)
 		print (badpExtHeader)
+		sys.stdout.close()
+		sys.stdout = temp
+
+
 		shiftArray = []
 		#Should now have two 1D arrays of 2D arrays of equal size
 		for i in range(len(objArray)):
@@ -1924,10 +1933,10 @@ class pipelineOps(object):
 			#Outside the for loop so that I am not initialising it every time.
 			
 
-			
+			print 'This is shift: %s' % i
 			shiftArray.append(self.shiftImageFirst(ext, tempObjName, 'tempSky.fits', 'tempbadp.fits', \
 			 interp_type, stepsize, xmin, xmax, ymin, ymax))
-			print 'This is shift: %s' % i
+
 
 
 			#Clean up the temporary fits files during each part of the loop 
@@ -1943,7 +1952,6 @@ class pipelineOps(object):
 			#Now just need to vstack all of these arrays and will have a 2048x2048 corrected array
 			#newObjData = np.vstack(vStackArray)	
 		print shiftArray
-		print len(shiftArray)
 		#Now the clever part - to actually apply the shifts to the unmasked infile 
 		#imshift can be used with a list of infile names, outfile names and shift coordinates
 		#If I create these lists I can imshift all at once, read in the data and then recombine
@@ -1991,8 +1999,7 @@ class pipelineOps(object):
 		shiftedDataArray = []
 		vstackArray = []
 		hstackArray = []
-		print xArray
-		print yArray
+
 
 		#Should now have two 1D arrays of 2D arrays of equal size
 		for i in range(len(objArray)):
@@ -2038,22 +2045,11 @@ class pipelineOps(object):
   			x += len(shiftedDataArray) / horSegments
   			a += len(shiftedDataArray) / horSegments
   			
-  			print 'Hello'
 
-  		for item in vstackArray:
-  			print item.shape	
+  		#for item in vstackArray:
+  			#print item.shape	
   		#Reconstruct by vstacking the final array	
   		reconstructedData = np.vstack(vstackArray)
-
-  		#Name the shifted data file 
-  		shiftedName = infile[:-5] + '_' + str(ext) + '_' + str(vertSegments) + str(horSegments) + '_' + interp_type + '_Shifted.fits' 
-  		print 'Saving %s' % shiftedName
-
-  		objhdu = fits.PrimaryHDU(header=objPrimHeader)
-		objhdu.writeto(shiftedName, clobber=True)
-		fits.append(shiftedName, data=reconstructedData, header=objExtHeader)
-
-	
 
   		#Clean up by getting rid of uneeded files
 		for item in inFileArray:
@@ -2062,13 +2058,80 @@ class pipelineOps(object):
 			os.system('rm %s' % item)
 		os.system('rm coords.txt')	
 		os.system('rm temp_masked.fits')
+		os.system('rm log.txt')
 
-		#Actually works
+		return reconstructedData
+
+	def shiftAllExtensions(self, infile, skyfile, badpmap,\
+  	 vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax ):
+
+		"""
+		Def: Uses the shiftImageSegments method for each extensions and then combines
+		all of these together into a single shifted fits file 
+
+		"""
+
+		#Prepare the headers for writing out the fits file
+		objTable = fits.open(infile)
+		objPrimHeader = objTable[0].header
+		objExtHeader1 = objTable[1].header
+		objExtHeader2 = objTable[2].header
+		objExtHeader3 = objTable[3].header
+
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
+		print (objPrimHeader)
+		print (objExtHeader1)
+		print (objExtHeader2)
+		print (objExtHeader3)						
+		sys.stdout.close()
+		sys.stdout = temp
+
+		#Set up the array 
+		reconstructedDataArray = []
+
+		#Use the shifted image segment function 
+		for i in range(1, 4):
+			print 'Shifting Extension: %s' % i
+			reconstructedDataArray.append(self.shiftImageSegments(i, infile, skyfile, badpmap,\
+  	 vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax))
 
 
+		#Name the shifted data file 
+  		shiftedName = infile[:-5] + '_' + str(vertSegments) + str(horSegments) + '_' + interp_type + '_Shifted.fits' 
+  		print 'Saving %s' % shiftedName
+
+  		objhdu = fits.PrimaryHDU(header=objPrimHeader)
+		objhdu.writeto(shiftedName, clobber=True)
+		fits.append(shiftedName, data=reconstructedDataArray[0], header=objExtHeader1)
+		fits.append(shiftedName, data=reconstructedDataArray[1], header=objExtHeader2)
+		fits.append(shiftedName, data=reconstructedDataArray[2], header=objExtHeader3)
 
 
+	def applyShiftAllExtensions(self, fileList, badpmap,\
+  	 vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax):
+		#Read in the data from the fileList
+		data = np.genfromtxt(fileList, dtype='str')
+		#Save the names and types as lists 
+		names = data[0:,0]
+		types = data[0:,1]
+		#Loop round all names and apply the computeOffsetSegments method
+		for i in range(1, len(names)):
+			if types[i] == 'O':
+				objFile = names[i]
+				if i == 1:
+					skyFile = names[i + 1]
+				elif types[i - 1] == 'S':
+					skyFile = names[i - 1]
+				else:
+					skyFile = names[i + 1]
 
+				print 'Shifting file: %s : %s' % (i, objFile)	
+				#Now use the method defined within this class 
+				self.shiftAllExtensions(objFile, skyFile, badpmap,\
+  	 vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax )
+				#Which will loop through all and save the corrected object file 
+				#as objectFile_Corrected.fits. These are then fed through the pipeline. 
 
 
 

@@ -11,7 +11,7 @@ sys.path.append('/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_c
 from pipelineClass import pipelineOps
 
 objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected.fits'
-skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0008.fits'
+skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0008_masked.fits'
 badPMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/badpixel_dark_Added.fits'
 lcalMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/26-1-15/Calibration_Files/lcal_YJYJYJ.fits'
 
@@ -25,7 +25,7 @@ pipe_methods = pipelineOps()
 newFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0003_Corrected.fits'
 
 #Now try the subtraction method 
-#pipe_methods.subFrames('topFour_1_Corrected.fits', skyFile)
+#pipe_methods.subFrames('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits', skyFile)
 #pipe_methods.subFrames('KMOS_SPEC_OBS258_0001_Corrected.fits', skyFile)
 #print 'all good'
 #print 'Hello'
@@ -50,8 +50,12 @@ newFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_S
 # interp_type = 'spline3', stepsize=0.01, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
 #pipe_methods.rotateImage(ext=1, infile=objFile, skyfile=skyFile, interp_type = 'linear', stepsize=0.002, minAngle=-0.1, maxAngle=0.1)
 #array = pipe_methods.imSplit(ext=1, infile=objFile, vertSegments=5, horSegments=4)
-pipe_methods.shiftImageSegments(ext=3, infile=objFile, skyfile=skyFile, badpmap=badPMap, \
-  	 vertSegments=2, horSegments=8, interp_type='spline3', \
+#pipe_methods.shiftAllExtensions(infile=objFile, skyfile=skyFile, badpmap=badPMap, \
+#  	 vertSegments=1, horSegments=1, interp_type='spline3', \
+#  	 stepsize=0.01, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
+
+pipe_methods.applyShiftAllExtensions(fileList = 'NGC55_14-9-2014_fileNames_short.txt', badpmap=badPMap, \
+  	 vertSegments=1, horSegments=1, interp_type='spline3', \
   	 stepsize=0.01, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
 
 
