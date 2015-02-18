@@ -1675,7 +1675,7 @@ class pipelineOps(object):
 		plt.xlabel('$\Delta x$')
 		plt.ylabel('$\Delta y$')
 		plt.title('Correlation Coefficient Grid')
-		plotName = infile[:-5] + '_' + interp_type + '_CorrelationGraph.png'
+		plotName = infile[:-5]  + '_'  + str(ext)  + '_' + interp_type + '_CorrelationGraph.png'
 		plt.savefig(plotName)
 		plt.close('all')
 
@@ -1791,17 +1791,25 @@ class pipelineOps(object):
   		#Initialise the empty array
   		segmentArray = []
 
+  		#We can't do this if 2048 isn't divisible by the segments 
+  		#write an error function to check that this is the case 
+  		#And exit if it isn't 
+  		if ((2048 % vertSegments != 0) or  (2048 % horSegments != 0)):
+  			raise ValueError('Please ensure that 2048 is divisible by your segment choice')
+
 		#Counters for the horizontal slicing
 		hor1 = 0
 		hor2 = (2048 / horSegments)
 
 		for j in range(horSegments):
+			
 
 			#Counters for the vertical slicing
 			x = 0
 			y = (2048 / vertSegments)
 
 			for i in range(vertSegments):
+
 			   
 			   #Slice the data according to user selection
 			   segmentArray.append(data[hor1:hor2,x:y])
@@ -1811,7 +1819,9 @@ class pipelineOps(object):
 			hor1 += (2048 / horSegments)
 			hor2 += (2048 / horSegments)   
 
+		#print segmentArray	
 		return segmentArray	
+
 
 
 
@@ -1914,9 +1924,10 @@ class pipelineOps(object):
 			#Outside the for loop so that I am not initialising it every time.
 			
 
-
+			
 			shiftArray.append(self.shiftImageFirst(ext, tempObjName, 'tempSky.fits', 'tempbadp.fits', \
 			 interp_type, stepsize, xmin, xmax, ymin, ymax))
+			print 'This is shift: %s' % i
 
 
 			#Clean up the temporary fits files during each part of the loop 
@@ -2014,7 +2025,7 @@ class pipelineOps(object):
   		#to be recombined into the original 2048 x 2048 which created it 
   		#Ordering depends on the number of vertical and horizontal segments 
  
-  		x = len(shiftedDataArray) / vertSegments	
+  		x = len(shiftedDataArray) / horSegments	
   		a = 0 
 
   		while x <= len(shiftedDataArray):
@@ -2024,8 +2035,8 @@ class pipelineOps(object):
 
   			vstackArray.append(np.hstack(hstackArray))
   			hstackArray = []
-  			x += len(shiftedDataArray) / vertSegments
-  			a += len(shiftedDataArray) / vertSegments
+  			x += len(shiftedDataArray) / horSegments
+  			a += len(shiftedDataArray) / horSegments
   			
   			print 'Hello'
 
@@ -2035,7 +2046,7 @@ class pipelineOps(object):
   		reconstructedData = np.vstack(vstackArray)
 
   		#Name the shifted data file 
-  		shiftedName = infile[:-5] + str(vertSegments) + str(horSegments) + '_' + interp_type + '_Shifted.fits' 
+  		shiftedName = infile[:-5] + '_' + str(ext) + '_' + str(vertSegments) + str(horSegments) + '_' + interp_type + '_Shifted.fits' 
   		print 'Saving %s' % shiftedName
 
   		objhdu = fits.PrimaryHDU(header=objPrimHeader)

@@ -49,10 +49,10 @@ newFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_S
 #pipe_methods.shiftImage(ext=1, infile=objFile, skyfile=skyFile, badpmap=badPMap, \
 # interp_type = 'spline3', stepsize=0.01, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
 #pipe_methods.rotateImage(ext=1, infile=objFile, skyfile=skyFile, interp_type = 'linear', stepsize=0.002, minAngle=-0.1, maxAngle=0.1)
-#array = pipe_methods.imSplit(ext=1, infile=objFile, vertSegments=4, horSegments=4)
-pipe_methods.shiftImageSegments(ext=1, infile=objFile, skyfile=skyFile, badpmap=badPMap, \
-  	 vertSegments=1, horSegments=1, interp_type='spline3', \
-  	 stepsize=0.01, xmin=-0.1, xmax=0.1, ymin=-0.05, ymax=0.15)
+#array = pipe_methods.imSplit(ext=1, infile=objFile, vertSegments=5, horSegments=4)
+pipe_methods.shiftImageSegments(ext=3, infile=objFile, skyfile=skyFile, badpmap=badPMap, \
+  	 vertSegments=2, horSegments=8, interp_type='spline3', \
+  	 stepsize=0.01, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
 
 
 
