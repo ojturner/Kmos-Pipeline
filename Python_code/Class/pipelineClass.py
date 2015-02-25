@@ -949,11 +949,14 @@ class pipelineOps(object):
 		ext2Header = badpTable[2].header
 		ext3Header = badpTable[3].header
 
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')		
 		print primHeader
 		print ext1Header
 		print ext2Header
 		print ext3Header
-
+		sys.stdout.close()
+		sys.stdout = temp
 
 		#Loop around the extensions and make ammendments  
 		for i in range(1,4):
@@ -968,7 +971,7 @@ class pipelineOps(object):
 				#Because of the way np.where works, need to define the x and y coords in this way
 
 				if (badpCoords[0][i] < 2047) and (badpCoords[1][i] < 2047):
-					print badpCoords[0][i], badpCoords[1][i]
+					#print badpCoords[0][i], badpCoords[1][i]
 					xcoord = badpCoords[0][i]
 					ycoord = badpCoords[1][i]
 					#Now set all positions where there is a dead pixel to np.nan in the object and sky
@@ -991,6 +994,8 @@ class pipelineOps(object):
 		fits.append(badpName, data=extArray[0], header=ext1Header)	
 		fits.append(badpName, data=extArray[1], header=ext2Header)	
 		fits.append(badpName, data=extArray[2], header=ext3Header)
+
+		os.system('rm log.txt')
 
 
 	def maskFile(self, inFile, badpFile):
@@ -2061,6 +2066,8 @@ class pipelineOps(object):
 		os.system('rm log.txt')
 
 		return reconstructedData
+
+
 
 	def shiftAllExtensions(self, infile, skyfile, badpmap,\
   	 vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax ):
