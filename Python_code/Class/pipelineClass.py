@@ -997,6 +997,23 @@ class pipelineOps(object):
 
 		os.system('rm log.txt')
 
+	def extensionMedians(self, subbedFile):
+		"""
+		Def:
+		Take the masked subtracted file and compute the median and standard deviation of each extension 
+		then print out these values to the terminal
+
+		"""	
+
+		dataTable = fits.open(subbedFile)
+		for i in range(1, 4):
+			print i
+			data = dataTable[i].data
+			med = np.nanmedian(data)
+			st = np.nanstd(data)
+			print 'The median of extension %s is: %s \n The standard Deviation of extension %s is: %s' % (i, med, i, st)
+
+
 
 	def maskFile(self, inFile, badpFile):
 		"""	
@@ -1016,10 +1033,15 @@ class pipelineOps(object):
 		ext2Header = dataTable[2].header
 		ext3Header = dataTable[3].header
 
+
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
 		print primHeader
 		print ext1Header
 		print ext2Header
 		print ext3Header
+		sys.stdout.close()
+		sys.stdout = temp
 
 		for i in range(1, 4):
 
@@ -1046,6 +1068,7 @@ class pipelineOps(object):
 		fits.append(fileName, data=extArray[0], header=ext1Header)	
 		fits.append(fileName, data=extArray[1], header=ext2Header)	
 		fits.append(fileName, data=extArray[2], header=ext3Header)	
+		os.system('rm log.txt')
 
 
 								
@@ -1087,14 +1110,41 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.nanmedian(objData)
-  		objDataStd = np.nanstd(objData)
-  		skyDataMedian = np.nanmedian(skyData)	
-  		skyDataStd = np.nanstd(skyData)
-  		#print objDataMedian
-  		#print skyDataMedian
+  		#The imshift method converts nan pixels to 0. Investigating the impact of this right now. 
+  		#Maybe there are implications for the imshift actually being performed properly. 
+  		#If we can mask off all the pixels marked as 0, marked as np.nan and lying a certain 
+  		#number of standard deviations from the median, this should be a robust way of computing 
+  		#the correlation coefficient and should lead to an exact match between the 0 shift 
+  		#value and the value found before shifting.
 
-  		###############NEW METHOD OF MASKING BAD PIXELS FOR BETTER RHO##########################
+  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY############
+
+		obj_bad_pixel_coords = np.where(objData == 0)
+		sky_bad_pixel_coords = np.where(skyData == 0)
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(obj_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = obj_bad_pixel_coords[0][i]
+			ycoord = obj_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(sky_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = sky_bad_pixel_coords[0][i]
+			ycoord = sky_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
+			skyData[xcoord][ycoord] = np.nan
+
+
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
+		skyDataStd = np.nanstd(skyData)
+  		objDataStd = np.nanstd(objData)
+
+  		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
 		#Find the coordinates of the bad pixels and the slitlets 
 		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
@@ -1117,7 +1167,7 @@ class pipelineOps(object):
 			skyData[xcoord][ycoord] = np.nan
 
 		newobjDataMedian = np.nanmedian(objData)				
-		newskyDataMedian = np.nanmedian(skyData)		
+		newskyDataMedian = np.nanmedian(skyData)			
 
   		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
   		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
@@ -1125,7 +1175,7 @@ class pipelineOps(object):
   		#print denom
   		numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
   		rho = numer / denom
-  		#print rho
+  		print rho
   		return rho
 
 	def crossCorrZeroth(self, objFile, skyFile, y1, y2, x1, x2):
@@ -1167,14 +1217,41 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.nanmedian(objData)
-  		objDataStd = np.nanstd(objData)
-  		skyDataMedian = np.nanmedian(skyData)	
-  		skyDataStd = np.nanstd(skyData)
-  		#print objDataMedian
-  		#print skyDataMedian
+  		#The imshift method converts nan pixels to 0. Investigating the impact of this right now. 
+  		#Maybe there are implications for the imshift actually being performed properly. 
+  		#If we can mask off all the pixels marked as 0, marked as np.nan and lying a certain 
+  		#number of standard deviations from the median, this should be a robust way of computing 
+  		#the correlation coefficient and should lead to an exact match between the 0 shift 
+  		#value and the value found before shifting.
 
-  		###############NEW METHOD OF MASKING BAD PIXELS FOR BETTER RHO##########################
+  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY############
+
+		obj_bad_pixel_coords = np.where(objData == 0)
+		sky_bad_pixel_coords = np.where(skyData == 0)
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(obj_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = obj_bad_pixel_coords[0][i]
+			ycoord = obj_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(sky_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = sky_bad_pixel_coords[0][i]
+			ycoord = sky_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
+			skyData[xcoord][ycoord] = np.nan
+
+
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
+		skyDataStd = np.nanstd(skyData)
+  		objDataStd = np.nanstd(objData)
+
+  		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
 		#Find the coordinates of the bad pixels and the slitlets 
 		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
@@ -1246,14 +1323,41 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.nanmedian(objData)
-  		objDataStd = np.nanstd(objData)
-  		skyDataMedian = np.nanmedian(skyData)	
-  		skyDataStd = np.nanstd(skyData)
-  		#print objDataMedian
-  		#print skyDataMedian
+  		#The imshift method converts nan pixels to 0. Investigating the impact of this right now. 
+  		#Maybe there are implications for the imshift actually being performed properly. 
+  		#If we can mask off all the pixels marked as 0, marked as np.nan and lying a certain 
+  		#number of standard deviations from the median, this should be a robust way of computing 
+  		#the correlation coefficient and should lead to an exact match between the 0 shift 
+  		#value and the value found before shifting.
 
-  		###############NEW METHOD OF MASKING BAD PIXELS FOR BETTER RHO##########################
+  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY############
+
+		obj_bad_pixel_coords = np.where(objData == 0)
+		sky_bad_pixel_coords = np.where(skyData == 0)
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(obj_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = obj_bad_pixel_coords[0][i]
+			ycoord = obj_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(sky_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = sky_bad_pixel_coords[0][i]
+			ycoord = sky_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
+			skyData[xcoord][ycoord] = np.nan
+
+
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
+		skyDataStd = np.nanstd(skyData)
+  		objDataStd = np.nanstd(objData)
+
+  		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
 		#Find the coordinates of the bad pixels and the slitlets 
 		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
@@ -1326,14 +1430,45 @@ class pipelineOps(object):
   		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
   		#Correlation coefficient 
 
-  		objDataMedian = np.nanmedian(objData)
-  		objDataStd = np.nanstd(objData)
-  		skyDataMedian = np.nanmedian(skyData)	
-  		skyDataStd = np.nanstd(skyData)
+
   		#print objDataMedian
   		#print skyDataMedian
 
-  		###############NEW METHOD OF MASKING BAD PIXELS FOR BETTER RHO##########################
+  		#The imshift method converts nan pixels to 0. Investigating the impact of this right now. 
+  		#Maybe there are implications for the imshift actually being performed properly. 
+  		#If we can mask off all the pixels marked as 0, marked as np.nan and lying a certain 
+  		#number of standard deviations from the median, this should be a robust way of computing 
+  		#the correlation coefficient and should lead to an exact match between the 0 shift 
+  		#value and the value found before shifting.
+
+  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY############
+
+		obj_bad_pixel_coords = np.where(objData == 0)
+		sky_bad_pixel_coords = np.where(skyData == 0)
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(obj_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = obj_bad_pixel_coords[0][i]
+			ycoord = obj_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(sky_bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = sky_bad_pixel_coords[0][i]
+			ycoord = sky_bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
+			skyData[xcoord][ycoord] = np.nan
+
+
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
+		skyDataStd = np.nanstd(skyData)
+  		objDataStd = np.nanstd(objData)
+
+  		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
 		#Find the coordinates of the bad pixels and the slitlets 
 		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
@@ -1364,7 +1499,7 @@ class pipelineOps(object):
   		#print denom
   		numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
   		rho = numer / denom
-  		#print rho
+  		print rho
   		return rho		
 
   	def shiftImage(self, ext, infile, skyfile, badpmap, interp_type, stepsize, xmin, xmax, ymin, ymax):
@@ -1715,7 +1850,7 @@ class pipelineOps(object):
 
   		"""
   		Def:
-  		Compute the correlation coefficient for a grid of pixel shift values and 
+  		Compute the correlation coefficient for a line of rotation angles and 
   		decide which one is best (if better than the original) and apply this to 
   		the object image to align with the sky.
 
