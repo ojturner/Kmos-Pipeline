@@ -1768,6 +1768,8 @@ class pipelineOps(object):
   		xArray = np.around(xArray, decimals = 4)
   		yArray = np.arange(ymin, ymax, stepsize)
   		yArray = np.around(yArray, decimals = 4)
+  		thArray = np.arange(-0.05, 0.05, 0.01)
+  		thArray = np.around(thArray, decimals =4)
 
   		x, y = np.meshgrid(xArray, yArray)
 
@@ -1787,22 +1789,28 @@ class pipelineOps(object):
   				pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
   					xshift=xArray[i], yshift=yArray[j], interp_type=interp_type)
   				#re-open the shifted file and compute rho
+  				#Also try a rotation at each stage
+  				for th in range(len(thArray)):
+  					pyraf.iraf.rotate(input='temp_shift.fits[0]', output='temp_rot.fits', \
+				rotation=thArray[th], interpolant=interp_type)
 
-  				rho = self.crossCorrZeroth('temp_shift.fits', 'maskedSky.fits',\
-  				  yMinCorr, yMaxCorr, xMinCorr, xMaxCorr)
-  				rhoGrid[j][i] = rho	
-  				#If the correlation coefficient improves, append to new array
-  				if rho > rhoArray[0]:
-  					print 'SUCCESS, made improvement!'
-  					entryName = str(xArray[i]) + ' and ' + str(yArray[j])
-  					entryValue = [round(xArray[i], 3), round(yArray[j], 3)]
-  					successDict[str(round(rho, 4))] = entryValue
-  				rhoArray.append(rho)
-  				#Clean up by deleting the created temporary fits file
-  				os.system('rm temp_shift.fits')
-  				#Go back through loop, append next value of rho
-  				print 'Finished shift: %s %s, rho = %s ' % (xArray[i], yArray[j], rho)
-  				#sys.stdout.flush()
+
+	  				rho = self.crossCorrZeroth('temp_rot.fits', 'maskedSky.fits',\
+	  				  yMinCorr, yMaxCorr, xMinCorr, xMaxCorr)
+	  				rhoGrid[j][i] = rho	
+	  				#If the correlation coefficient improves, append to new array
+	  				if rho > rhoArray[0]:
+	  					print 'SUCCESS, made improvement!'
+	  					entryName = str(xArray[i]) + ' and ' + str(yArray[j]) + ' and ' + str(thArray[th])
+	  					entryValue = [round(xArray[i], 3), round(yArray[j], 3), round(thArray[th], 3)]
+	  					successDict[str(round(rho, 4))] = entryValue
+	  				rhoArray.append(rho)
+	  				#Clean up by deleting the created temporary fits file
+	  				os.system('rm temp_rot.fits')
+	  				#Go back through loop, append next value of rho
+	  				print 'Finished shift: %s %s %s, rho = %s ' % (xArray[i], yArray[j], thArray[th], rho)
+	  				#sys.stdout.flush()
+	  			os.system('rm temp_shift.fits')
   		os.system('rm maskedObj.fits')
   		os.system('rm maskedSky.fits')
   		#print round(max(rhoArray), 4)
