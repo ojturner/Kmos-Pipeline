@@ -11,6 +11,9 @@ from matplotlib.colors import LogNorm
 import numpy.polynomial.polynomial as poly
 import lmfit
 from lmfit.models import GaussianModel, ExponentialModel, LorentzianModel, VoigtModel, PolynomialModel
+from scipy import stats
+from scipy.optimize import minimize
+from scipy.optimize import basinhopping
 
 #add my toolkit.py file to the PYTHONPATH
 sys.path.append('/Users/owenturner/Documents/PhD/SUPA_Courses/AdvancedDataAnalysis/Homeworks')
@@ -227,8 +230,8 @@ class pipelineOps(object):
 				#have value nan. Can then just do np.nanmean(objTemp) which will ignore nan's
 				#then repeat the process for the sky, compare the mean's, compute and apply the offset.
 
-				obj_mean = np.nanmedian(manObjArray[num])
-				sky_mean = np.nanmedian(manSkyArray[num])
+				obj_mean = stats.nanmedian(manObjArray[num])
+				sky_mean = stats.nanmedian(manSkyArray[num])
 				print sky_mean
 				print obj_mean
 
@@ -383,8 +386,8 @@ class pipelineOps(object):
 				#have value nan. Can then just do np.nanmean(objTemp) which will ignore nan's
 				#then repeat the process for the sky, compare the mean's, compute and apply the offset.
 
-				obj_mean = np.nanmedian(objTemp[num])
-				sky_mean = np.nanmedian(skyTemp[num])
+				obj_mean = stats.nanmedian(objTemp[num])
+				sky_mean = stats.nanmedian(skyTemp[num])
 				print sky_mean
 				print obj_mean
 
@@ -654,8 +657,8 @@ class pipelineOps(object):
 					#have value nan. Can then just do np.nanmean(objTemp) which will ignore nan's
 					#then repeat the process for the sky, compare the mean's, compute and apply the offset.
 
-					obj_mean = np.nanmedian(manObjArray[num])
-					sky_mean = np.nanmedian(manSkyArray[num])
+					obj_mean = stats.nanmedian(manObjArray[num])
+					sky_mean = stats.nanmedian(manSkyArray[num])
 					#print sky_mean
 					#print obj_mean
 
@@ -711,7 +714,18 @@ class pipelineOps(object):
 		headerTwo = objData[2].header
 		headerThree = objData[3].header
 
+
+
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
 		print header
+		print headerOne
+		print headerTwo
+		print headerThree
+		sys.stdout.close()
+		sys.stdout = temp
+
+
 		ext1 = objData[1].data - skyData[1].data
 		ext2 = objData[2].data - skyData[2].data
 		ext3 = objData[3].data - skyData[3].data
@@ -723,6 +737,8 @@ class pipelineOps(object):
 		fits.append(nameOfFile, data=ext1, header=headerOne)	
 		fits.append(nameOfFile, data=ext2, header=headerTwo)	
 		fits.append(nameOfFile, data=ext3, header=headerThree)
+
+		os.system('rm log.txt')
 
 	def pixelHistogram(self, subFile, subCorFile, x1, x2):
 
@@ -1009,8 +1025,8 @@ class pipelineOps(object):
 		for i in range(1, 4):
 			print i
 			data = dataTable[i].data
-			med = np.nanmedian(data)
-			st = np.nanstd(data)
+			med = stats.nanmedian(data)
+			st = stats.nanstd(data)
 			print 'The median of extension %s is: %s \n The standard Deviation of extension %s is: %s' % (i, med, i, st)
 
 
@@ -1139,10 +1155,10 @@ class pipelineOps(object):
 			skyData[xcoord][ycoord] = np.nan
 
 
-  		objDataMedian = np.nanmedian(objData)
-  		skyDataMedian = np.nanmedian(skyData)	
-		skyDataStd = np.nanstd(skyData)
-  		objDataStd = np.nanstd(objData)
+  		objDataMedian = stats.nanmedian(objData)
+  		skyDataMedian = stats.nanmedian(skyData)	
+		skyDataStd = stats.nanstd(skyData)
+  		objDataStd = stats.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
@@ -1166,8 +1182,8 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
 			skyData[xcoord][ycoord] = np.nan
 
-		newobjDataMedian = np.nanmedian(objData)				
-		newskyDataMedian = np.nanmedian(skyData)			
+		newobjDataMedian = stats.nanmedian(objData)				
+		newskyDataMedian = stats.nanmedian(skyData)			
 
   		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
   		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
@@ -1246,10 +1262,10 @@ class pipelineOps(object):
 			skyData[xcoord][ycoord] = np.nan
 
 
-  		objDataMedian = np.nanmedian(objData)
-  		skyDataMedian = np.nanmedian(skyData)	
-		skyDataStd = np.nanstd(skyData)
-  		objDataStd = np.nanstd(objData)
+  		objDataMedian = stats.nanmedian(objData)
+  		skyDataMedian = stats.nanmedian(skyData)	
+		skyDataStd = stats.nanstd(skyData)
+  		objDataStd = stats.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
@@ -1273,8 +1289,8 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
 			skyData[xcoord][ycoord] = np.nan
 
-		newobjDataMedian = np.nanmedian(objData)				
-		newskyDataMedian = np.nanmedian(skyData)		
+		newobjDataMedian = stats.nanmedian(objData)				
+		newskyDataMedian = stats.nanmedian(skyData)		
 
   		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
   		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
@@ -1352,10 +1368,10 @@ class pipelineOps(object):
 			skyData[xcoord][ycoord] = np.nan
 
 
-  		objDataMedian = np.nanmedian(objData)
-  		skyDataMedian = np.nanmedian(skyData)	
-		skyDataStd = np.nanstd(skyData)
-  		objDataStd = np.nanstd(objData)
+  		objDataMedian = stats.nanmedian(objData)
+  		skyDataMedian = stats.nanmedian(skyData)	
+		skyDataStd = stats.nanstd(skyData)
+  		objDataStd = stats.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
@@ -1379,8 +1395,8 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
 			skyData[xcoord][ycoord] = np.nan
 
-		newobjDataMedian = np.nanmedian(objData)				
-		newskyDataMedian = np.nanmedian(skyData)		
+		newobjDataMedian = stats.nanmedian(objData)				
+		newskyDataMedian = stats.nanmedian(skyData)		
 
   		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
   		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
@@ -1463,10 +1479,10 @@ class pipelineOps(object):
 			skyData[xcoord][ycoord] = np.nan
 
 
-  		objDataMedian = np.nanmedian(objData)
-  		skyDataMedian = np.nanmedian(skyData)	
-		skyDataStd = np.nanstd(skyData)
-  		objDataStd = np.nanstd(objData)
+  		objDataMedian = stats.nanmedian(objData)
+  		skyDataMedian = stats.nanmedian(skyData)	
+		skyDataStd = stats.nanstd(skyData)
+  		objDataStd = stats.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
@@ -1490,8 +1506,8 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
 			skyData[xcoord][ycoord] = np.nan
 
-		newobjDataMedian = np.nanmedian(objData)				
-		newskyDataMedian = np.nanmedian(skyData)		
+		newobjDataMedian = stats.nanmedian(objData)				
+		newskyDataMedian = stats.nanmedian(skyData)		
 
   		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
   		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
@@ -1603,7 +1619,7 @@ class pipelineOps(object):
   		rhoGrid = np.zeros(shape=(len(xArray), len(yArray)))
 
   		#Before attempting the interpolation, we want to mask the bad pixel values, 
-  		#and save to a fresh temporary fits file. 
+  		#and save to a fresh temporary fits file. matty was here :) 
 
   		#Loop over all values in the grid, shift the image by this 
   		#amount each time and compute the correlation coefficient
@@ -2276,6 +2292,552 @@ class pipelineOps(object):
   	 vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax )
 				#Which will loop through all and save the corrected object file 
 				#as objectFile_Corrected.fits. These are then fed through the pipeline. 
+
+##########################################################################################################################
+##########################################################################################################################
+#                          ALTERNATE SET OF FUNCTIONS USING MINIMISATION INSTEAD OF GRIDSEARCH                           #
+##########################################################################################################################
+##########################################################################################################################
+
+  	def shiftImageFirstMin(self, xArray, infile, skyfile, badpmap, interp_type):
+
+  		"""
+  		Def:
+  		Compute the correlation coefficient for a grid of pixel shift values and 
+  		decide which one is best (if better than the original) and apply this to 
+  		the object image to align with the sky. First because we use only the 
+  		first extension because of the way the shiftImageSegments function is 
+  		defined. This function now applies the bad pixel map both before cross 
+  		correlating and before interpolation - need to ignore bad pixels.
+
+		Inputs: 
+		ext - detector extension, must be either 1, 2, 3
+		infile - Input object file to shift 
+		skyFile - sky image to compare objFile with
+		interp_type - type of interpolation function for the shift. 
+
+			-'nearest': nearest neighbour
+			-'linear':bilinear x,y, interpolation
+			-'poly3':third order interior polynomial
+			-'poly5':fifth order interior polynomial
+			-'spline3':third order spline3
+
+		stepsize - value to increment grid by each time, increasing 
+		this increases the time taken for the computation 
+		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
+
+  		"""
+  		#We first want to apply the bad pixel map 
+  		objTable = fits.open(infile)
+  		objData = objTable[1].data
+  		skyTable = fits.open(skyfile)
+  		skyData = skyTable[1].data
+  		badpTable = fits.open(badpmap)
+  		badpData = badpTable[1].data
+
+		#Find the headers of the primary HDU and chosen extension 
+		objPrimHeader = objTable[0].header
+		objExtHeader = objTable[1].header
+		skyPrimHeader = skyTable[0].header
+		skyExtHeader = skyTable[1].header		
+		badpPrimHeader = badpTable[0].header
+		badpExtHeader = badpTable[1].header
+
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
+		print (objPrimHeader)
+		print (objExtHeader)
+		print (skyPrimHeader)
+		print (skyExtHeader)
+		print (badpPrimHeader)
+		print (badpExtHeader)
+		sys.stdout.close()
+		sys.stdout = temp
+		
+
+		#Find the coordinates of the bad pixels and the slitlets 
+		bad_pixel_coords = np.where(badpData == 0)
+
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = bad_pixel_coords[0][i]
+			ycoord = bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+			skyData[xcoord][ycoord] = np.nan
+		#fits.writeto('pom.fits', data=objData, clobber=True)	
+
+		#Define the minimum and maximum ranges for the correlation 
+		xMinCorr = (1 * len(objData[0]))*0.125
+		xMaxCorr = (7 * len(objData[0]))*0.125
+		yMinCorr = (1 * len(objData))*0.125
+		yMaxCorr = (7 * len(objData))*0.125
+
+		#Write out to new temporary fits files - annoyingly need to have 
+		#the data in fits files to be able to use pyraf functions
+		#######OBJECT##########
+		objhdu = fits.PrimaryHDU(header=objPrimHeader)
+		objhdu.writeto('maskedObj.fits', clobber=True)
+		fits.append('maskedObj.fits', data=objData, header=objExtHeader)
+
+		#######Sky##########
+		skyhdu = fits.PrimaryHDU(header=skyPrimHeader)
+		skyhdu.writeto('maskedSky.fits', clobber=True)
+		fits.append('maskedSky.fits', data=skyData, header=skyExtHeader)		
+
+
+  		#Before attempting the interpolation, we want to mask the bad pixel values, 
+  		#and save to a fresh temporary fits file. 
+
+  		#Loop over all values in the grid, shift the image by this 
+
+  		infileName = 'maskedObj.fits[1]'
+
+  		print 'Shifting: %s %s' % (xArray[0], xArray[1])
+  		pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
+  			xshift=xArray[0], yshift=xArray[1], interp_type=interp_type)
+  				#re-open the shifted file and compute rho
+
+		rho = self.crossCorrZeroth('temp_shift.fits', 'maskedSky.fits',\
+		  yMinCorr, yMaxCorr, xMinCorr, xMaxCorr)
+
+		#Tidy up
+		os.system('rm temp_shift.fits')
+  		os.system('rm maskedObj.fits')
+  		os.system('rm maskedSky.fits')
+
+  		#Return the correlation coefficient
+  		print (1 / rho)
+  		return (1.0 / rho)
+  		
+
+
+  	def minimiseRho(self, infile, skyfile, badpmap, interp_type):
+  		#print 'Hello'
+  		#Minimise the function recipShift with respect to x and y
+  		#Define the shift starting points
+  		x0 = [0.1, 0.1]	
+  		minimizer_kwargs = {'method':'Nelder-Mead' ,'args': (infile, skyfile, badpmap, interp_type,)}
+
+  		#First Method - using simple downhill simplex 
+  		res = minimize(self.shiftImageFirstMin, x0, args=(infile, skyfile, badpmap, interp_type,), \
+  			bounds=[(-2.0, 2.0), (-2.0, 2.0)], method = 'Nelder-Mead', tol=1E-3, options={'disp': True})
+
+  		#Second method - more suited to a global minimization procedure. Takes longer.
+		#res = basinhopping(self.shiftImageFirstMin, x0, niter=20, stepsize = 0.01, minimizer_kwargs = minimizer_kwargs, disp=True)
+  			
+
+
+  		#Return the shift array which minimises the inverse correlation coefficient
+  		print res.x
+  		return res.x
+
+
+
+
+  	def rotateImageMin(self, ext, infile, skyfile, interp_type, minAngle, maxAngle, stepsize):
+
+  		"""
+  		Def:
+  		Compute the correlation coefficient for a line of rotation angles and 
+  		decide which one is best (if better than the original) and apply this to 
+  		the object image to align with the sky.
+
+		Inputs: 
+		ext - detector extension, must be either 1, 2, 3
+		infile - Input object file to shift 
+		skyFile - sky image to compare objFile with
+		interp_type - type of interpolation function for the shift. 
+
+			-'nearest': nearest neighbour
+			-'linear':bilinear x,y, interpolation
+			-'poly3':third order interior polynomial
+			-'poly5':fifth order interior polynomial
+			-'spline3':third order spline3
+
+		stepsize - value to increment grid by each time, increasing 
+		this increases the time taken for the computation 
+		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
+
+  		"""
+  		#First compute the correlation coefficient with just infile 
+  		rhoArray = []
+  		rhoArray.append(self.crossCorr(ext, infile, skyfile, 1000, 1200, 1000, 1200))
+  		print rhoArray
+
+  		#Working. Now create grid of fractional shift values. 
+  		rotArray = np.arange(minAngle, maxAngle, stepsize)
+  		rotArray = np.around(rotArray, decimals = 4)
+
+
+  		#Loop over all values in the grid, shift the image by this 
+  		#amount each time and compute the correlation coefficient
+  		successDict = {}
+
+		for number in rotArray:
+			#Perform the shift 
+			infileName = infile + '[' + str(ext) + ']'
+			pyraf.iraf.rotate(input=infileName, output='temp_rot.fits', \
+				rotation=number, interpolant=interp_type)
+			#re-open the shifted file and compute rho
+			rho = self.crossCorrOne(ext,'temp_rot.fits', skyfile,\
+			 1000, 1200, 1000, 1200)
+			#If the correlation coefficient improves, append to new array
+			if rho > rhoArray[0]:
+				print 'SUCCESS, made improvement!'
+				entryName = str(number)
+				entryValue = [number, rho]
+				successDict[entryName] = entryValue
+			rhoArray.append(rho)
+			#Clean up by deleting the created temporary fits file
+			os.system('rm temp_rot.fits')
+			#Go back through loop, append next value of rho
+			print 'Finished shift: %s, rho = %s ' % (number, rho)
+			#sys.stdout.flush()
+
+  		print max(rhoArray)
+  		print rhoArray[0]		
+  		print successDict 		
+
+
+
+
+
+
+  	def shiftImageSegmentsMin(self, ext, infile, skyfile, badpmap,\
+  	 vertSegments, horSegments, interp_type):
+
+  		"""
+  		Def: 
+  		Lots of arguments because of using lots of different functions. 
+  		This is taking an object and a sky image, splitting them into a specified 
+  		number of segments, performing shifts to each of the segments and then 
+  		computing the cross-correlation function to see if we can improve the 
+  		alignment at all. Should give better results than a global shift 
+
+  		Inputs: 
+  		infile - file to be divided
+		skyFile - sky image to compare objFile with
+  		vertSegments - number of vertical segments (2048 must be divisible by) 
+  		horSegments - number of horizontal segments (2048 must be divisible by)
+  		ext - extension number
+		interp_type - type of interpolation function for the shift. 
+
+			-'nearest': nearest neighbour
+			-'linear':bilinear x,y, interpolation
+			-'poly3':third order interior polynomial
+			-'poly5':fifth order interior polynomial
+			-'spline3':third order spline3
+
+		stepsize - value to increment grid by each time, increasing 
+		this increases the time taken for the computation 
+		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
+
+		"""
+		########################TO ADD###############################
+		#Make sure that 2048 is divisible by the segment numbers 
+
+
+
+		#Create arrays of the split files using the imSplit function 
+		objArray = self.imSplit(ext, infile, vertSegments, horSegments)
+		skyArray = self.imSplit(ext, skyfile, vertSegments, horSegments)
+		badpArray = self.imSplit(ext, badpmap, vertSegments, horSegments)
+
+		#Find the headers of the primary HDU and chosen extension 
+		objTable = fits.open(infile)
+		objPrimHeader = objTable[0].header
+		objExtHeader = objTable[ext].header
+		skyTable = fits.open(skyfile)
+		skyPrimHeader = skyTable[0].header
+		skyExtHeader = skyTable[ext].header
+		badpTable = fits.open(badpmap)
+		badpPrimHeader = badpTable[0].header
+		badpExtHeader = badpTable[ext].header
+
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
+		print (objPrimHeader)
+		print (objExtHeader)
+		print (skyPrimHeader)
+		print (skyExtHeader)
+		print (badpPrimHeader)
+		print (badpExtHeader)
+		sys.stdout.close()
+		sys.stdout = temp
+
+
+		shiftArray = []
+		#Should now have two 1D arrays of 2D arrays of equal size
+		for i in range(len(objArray)):
+
+			tempObjName = infile[:-5] + str(vertSegments) + str(horSegments) + str(i) + '_temp.fits'
+			#Write out to new temporary fits files - annoyingly need to have 
+			#the data in fits files to be able to use pyraf functions
+			#######OBJECT##########
+			objhdu = fits.PrimaryHDU(header=objPrimHeader)
+			objhdu.writeto(tempObjName, clobber=True)
+			fits.append(tempObjName, data=objArray[i], header=objExtHeader)
+
+			#######SKY#############
+			skyhdu = fits.PrimaryHDU(header=skyPrimHeader)
+			skyhdu.writeto('tempSky.fits', clobber=True)
+			fits.append('tempSky.fits', data=skyArray[i], header=skyExtHeader)
+
+			#######BADPIXEL#############
+			badphdu = fits.PrimaryHDU(header=badpPrimHeader)
+			badphdu.writeto('tempbadp.fits', clobber=True)
+			fits.append('tempbadp.fits', data=badpArray[i], header=badpExtHeader)
+
+			#NOTES FOR RESUMING - I now have temporary files containing the object 
+			#and sky segments to be shifted and cross correlated. The shiftImage function 
+			#can be applied to each of these directly within the for loop!! - remember to 
+			# a) clean up the fits files after each loop 
+			# b) Find a way to look at the cross correlation results for each segment independently
+			# probably by returning the cross correlation arrays into a new array  
+			# c) find a way to search specifically for shift success and apply to each segment 
+			# d) find a way to recombine all segments together after the shift has happened 
+			# e) make sure to use the crossCorrFirst function here, otherwise it will break in 
+			# certain situations (i.e. when not using extension one	)
+
+			#Now need to apply the shiftImageFirst function, which compares the chosen 
+			#extension shifted object and sky files. 
+			#Create an array to hold the shift coordinates for each segment. This is defined 
+			#Outside the for loop so that I am not initialising it every time.
+			
+
+			print 'This is shift: %s' % i
+			shiftArray.append(self.minimiseRho(tempObjName, 'tempSky.fits', 'tempbadp.fits', interp_type))
+
+
+
+			#Clean up the temporary fits files during each part of the loop 
+			os.system('rm %s' % tempObjName)
+			os.system('rm tempSky.fits')
+			os.system('rm tempbadp.fits')
+
+			#That should work then for each segment in turn. Does work. 
+			#vStackArray.append(np.hstack(objArray))		
+			#	hor1 += 128
+			#	hor2 += 128	
+
+			#Now just need to vstack all of these arrays and will have a 2048x2048 corrected array
+			#newObjData = np.vstack(vStackArray)	
+		print shiftArray
+		#Now the clever part - to actually apply the shifts to the unmasked infile 
+		#imshift can be used with a list of infile names, outfile names and shift coordinates
+		#If I create these lists I can imshift all at once, read in the data and then recombine
+		#First get the x and y vectors for the shift coordinates
+		xArray = []
+		yArray = []
+		for item in shiftArray:
+			xArray.append(item[0])
+			yArray.append(item[1])
+		xArray = np.array(np.around(xArray, 3))
+		yArray = np.array(np.around(yArray, 3))	
+		#Create the .txt file with the two columns specifying the shift coordinates
+		np.savetxt('coords.txt', np.c_[xArray, yArray], fmt=('%5.3f', '%5.3f'))
+
+		#Coordinates list sorted. Now need list of input files and input file names 
+		#To do this need to go back to the imSplit method with the unmasked file 
+		#Write to a list of temporary fits files, which will become temporary 
+		#Output fits files, which will be read back in as data before recombining 
+		#Must clean everything up at the end by removing with os.system()
+		#Create arrays of the split files using the imSplit function 
+
+		#Need to apply the shifts to a masked object file. Open the bad pixel map 
+		#and the object file and mask the pixels and save to temporary file 
+		#Find the coordinates of the bad pixels and the slitlets 
+		objData = objTable[ext].data
+		badpData = badpTable[ext].data
+		bad_pixel_coords = np.where(badpData == 0)
+		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+		for i in range(len(bad_pixel_coords[0])):
+			#Because of the way np.where works, need to define the x and y coords in this way
+			xcoord = bad_pixel_coords[0][i]
+			ycoord = bad_pixel_coords[1][i]
+			#Now set all positions where there is a dead pixel to np.nan in the object and sky
+			objData[xcoord][ycoord] = np.nan
+
+		#Write out to new file which will then be read in to split up the data
+		objhdu = fits.PrimaryHDU(header=objPrimHeader)
+		objhdu.writeto('temp_masked.fits', clobber=True)
+		fits.append('temp_masked.fits', data=objData, header=objExtHeader)
+
+
+		objArray = self.imSplit(1, 'temp_masked.fits', vertSegments, horSegments)
+		inFileArray = []
+		outFileArray = []
+		shiftedDataArray = []
+		vstackArray = []
+		hstackArray = []
+
+
+		#Should now have two 1D arrays of 2D arrays of equal size
+		for i in range(len(objArray)):
+
+			inFileName = 'tempObjin'+str(i)+'.fits'
+			outFileName = 'tempObjout'+str(i)+'.fits'
+			inFileArray.append(inFileName)
+			outFileArray.append(outFileName)
+
+			#Write out to new temporary fits files - annoyingly need to have 
+			#the data in fits files to be able to use pyraf functions
+			#######OBJECT##########
+			objhdu = fits.PrimaryHDU(header=objPrimHeader)
+			objhdu.writeto(inFileName, clobber=True)
+			fits.append(inFileName, data=objArray[i], header=objExtHeader)
+
+			inFileName = inFileName + '[1]'
+
+  			#Now apply imshift with all the parameters 
+  			pyraf.iraf.imshift(input = inFileName, output=outFileName, \
+  				xshift=xArray[i], yshift=yArray[i] ,interp_type=interp_type)
+
+  			#We want a 1D array of 2D arrays again, read the data files back in 
+  			data = fits.open(outFileName)
+  			data = data[0].data
+  			shiftedDataArray.append(data)
+  			#Go back to the top of the loop and grab the next file
+
+  		#The final problem is that we have a 1D arrays of 2D arrays that needs 
+  		#to be recombined into the original 2048 x 2048 which created it 
+  		#Ordering depends on the number of vertical and horizontal segments 
+ 
+  		x = len(shiftedDataArray) / horSegments	
+  		a = 0 
+
+  		while x <= len(shiftedDataArray):
+  			for i in range(a, x): 
+  				print i
+  				hstackArray.append(shiftedDataArray[i])
+
+  			vstackArray.append(np.hstack(hstackArray))
+  			hstackArray = []
+  			x += len(shiftedDataArray) / horSegments
+  			a += len(shiftedDataArray) / horSegments
+  			
+
+  		#for item in vstackArray:
+  			#print item.shape	
+  		#Reconstruct by vstacking the final array	
+  		reconstructedData = np.vstack(vstackArray)
+
+  		#Clean up by getting rid of uneeded files
+		for item in inFileArray:
+			os.system('rm %s' % item)
+		for item in outFileArray:
+			os.system('rm %s' % item)
+		os.system('rm coords.txt')	
+		os.system('rm temp_masked.fits')
+		os.system('rm log.txt')
+
+		return reconstructedData
+
+
+
+	def shiftAllExtensionsMin(self, infile, skyfile, badpmap,\
+  	 vertSegments, horSegments, interp_type):
+
+		"""
+		Def: Uses the shiftImageSegments method for each extensions and then combines
+		all of these together into a single shifted fits file 
+
+		"""
+
+		#Prepare the headers for writing out the fits file
+		objTable = fits.open(infile)
+		objPrimHeader = objTable[0].header
+		objExtHeader1 = objTable[1].header
+		objExtHeader2 = objTable[2].header
+		objExtHeader3 = objTable[3].header
+
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
+		print (objPrimHeader)
+		print (objExtHeader1)
+		print (objExtHeader2)
+		print (objExtHeader3)						
+		sys.stdout.close()
+		sys.stdout = temp
+
+		#Set up the array 
+		reconstructedDataArray = []
+
+		#Use the shifted image segment function 
+		for i in range(1, 4):
+			print 'Shifting Extension: %s' % i
+			reconstructedDataArray.append(self.shiftImageSegmentsMin(i, infile, skyfile, badpmap,\
+  	 vertSegments, horSegments, interp_type))
+
+
+		#Name the shifted data file 
+  		shiftedName = infile[:-5] + '_' + str(vertSegments) + str(horSegments) + '_' + interp_type + '_Shifted.fits' 
+  		print 'Saving %s' % shiftedName
+
+  		objhdu = fits.PrimaryHDU(header=objPrimHeader)
+		objhdu.writeto(shiftedName, clobber=True)
+		fits.append(shiftedName, data=reconstructedDataArray[0], header=objExtHeader1)
+		fits.append(shiftedName, data=reconstructedDataArray[1], header=objExtHeader2)
+		fits.append(shiftedName, data=reconstructedDataArray[2], header=objExtHeader3)
+
+
+	def applyShiftAllExtensions(self, fileList, badpmap,\
+  	 vertSegments, horSegments, interp_type):
+		#Read in the data from the fileList
+		data = np.genfromtxt(fileList, dtype='str')
+		#Save the names and types as lists 
+		names = data[0:,0]
+		types = data[0:,1]
+		#Loop round all names and apply the computeOffsetSegments method
+		for i in range(1, len(names)):
+			if types[i] == 'O':
+				objFile = names[i]
+				if i == 1:
+					skyFile = names[i + 1]
+				elif types[i - 1] == 'S':
+					skyFile = names[i - 1]
+				else:
+					skyFile = names[i + 1]
+
+				print 'Shifting file: %s : %s' % (i, objFile)	
+				#Now use the method defined within this class 
+				self.shiftAllExtensionsMin(objFile, skyFile, badpmap,\
+  	 					vertSegments, horSegments, interp_type)
+				#Which will loop through all and save the corrected object file 
+				#as objectFile_Corrected.fits. These are then fed through the pipeline. 
+
+##########################################################################################################################
+##########################################################################################################################
+#                          ALTERNATE SET OF FUNCTIONS USING MINIMISATION INSTEAD OF GRIDSEARCH                           #
+##########################################################################################################################
+##########################################################################################################################
+
+
+
+	def applySubtraction(self, fileList, objFile, skyFile):
+		#Read in the data from the fileList
+		data = np.genfromtxt(fileList, dtype='str')
+		#Save the names and types as lists 
+		names = data[0:,0]
+		types = data[0:,1]
+		#Loop round all names and apply the computeOffsetSegments method
+		for i in range(1, len(names)):
+			if types[i] == 'O':
+				objFile = names[i]
+				if i == 1:
+					skyFile = names[i + 1]
+				elif types[i - 1] == 'S':
+					skyFile = names[i - 1]
+				else:
+					skyFile = names[i + 1]
+
+				print 'Subbing file: %s : ' %  objFile	
+				#Now use the method defined within this class 
+				self.subFrames(objFile, skyFile)
+				#Which will loop through all and save the corrected object file 
+				#as objectFile_Corrected.fits. These are then fed through the pipeline.
 
 
 
