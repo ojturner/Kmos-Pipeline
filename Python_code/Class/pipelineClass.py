@@ -1,7 +1,7 @@
-#This class houses the methods which are relevant 
-#For fiting gaussians to a galactic spectra, 
-#fitting template spectra to an observed spectrum 
-#and estimating the galactic physical properties 
+#This class houses the methods which are relevant to manual additions to the ESO KMOS pipeline
+#Mainly concentrating on two procedures - 1) pedestal readout column correction and  
+# 2) shifting and aligning sky and object images before data cube reconstruction
+
 
 #import the relevant modules
 import os, sys, numpy as np, random, matplotlib.mlab as mlab, matplotlib.pyplot as plt, math, matplotlib.cm as cm
@@ -230,8 +230,8 @@ class pipelineOps(object):
 				#have value nan. Can then just do np.nanmean(objTemp) which will ignore nan's
 				#then repeat the process for the sky, compare the mean's, compute and apply the offset.
 
-				obj_mean = stats.nanmedian(manObjArray[num])
-				sky_mean = stats.nanmedian(manSkyArray[num])
+				obj_mean = np.nanmedian(manObjArray[num])
+				sky_mean = np.nanmedian(manSkyArray[num])
 				print sky_mean
 				print obj_mean
 
@@ -386,8 +386,8 @@ class pipelineOps(object):
 				#have value nan. Can then just do np.nanmean(objTemp) which will ignore nan's
 				#then repeat the process for the sky, compare the mean's, compute and apply the offset.
 
-				obj_mean = stats.nanmedian(objTemp[num])
-				sky_mean = stats.nanmedian(skyTemp[num])
+				obj_mean = np.nanmedian(objTemp[num])
+				sky_mean = np.nanmedian(skyTemp[num])
 				print sky_mean
 				print obj_mean
 
@@ -510,10 +510,14 @@ class pipelineOps(object):
 		header_two = table_o[2].header 
 		header_three = table_o[3].header
 
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')		
 		print fitsHeader
 		print header_one
 		print header_two
 		print header_three
+		sys.stdout.close()
+		sys.stdout = temp
 
 		table_s = fits.open(skyFile)
 		bad_pixel_table = fits.open(badPMap)
@@ -657,8 +661,8 @@ class pipelineOps(object):
 					#have value nan. Can then just do np.nanmean(objTemp) which will ignore nan's
 					#then repeat the process for the sky, compare the mean's, compute and apply the offset.
 
-					obj_mean = stats.nanmedian(manObjArray[num])
-					sky_mean = stats.nanmedian(manSkyArray[num])
+					obj_mean = np.nanmedian(manObjArray[num])
+					sky_mean = np.nanmedian(manSkyArray[num])
 					#print sky_mean
 					#print obj_mean
 
@@ -1025,8 +1029,8 @@ class pipelineOps(object):
 		for i in range(1, 4):
 			print i
 			data = dataTable[i].data
-			med = stats.nanmedian(data)
-			st = stats.nanstd(data)
+			med = np.nanmedian(data)
+			st = np.nanstd(data)
 			print 'The median of extension %s is: %s \n The standard Deviation of extension %s is: %s' % (i, med, i, st)
 
 
@@ -1155,10 +1159,10 @@ class pipelineOps(object):
 			skyData[xcoord][ycoord] = np.nan
 
 
-  		objDataMedian = stats.nanmedian(objData)
-  		skyDataMedian = stats.nanmedian(skyData)	
-		skyDataStd = stats.nanstd(skyData)
-  		objDataStd = stats.nanstd(objData)
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
+		skyDataStd = np.nanstd(skyData)
+  		objDataStd = np.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
@@ -1182,8 +1186,8 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
 			skyData[xcoord][ycoord] = np.nan
 
-		newobjDataMedian = stats.nanmedian(objData)				
-		newskyDataMedian = stats.nanmedian(skyData)			
+		newobjDataMedian = np.nanmedian(objData)				
+		newskyDataMedian = np.nanmedian(skyData)			
 
   		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
   		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
@@ -1262,10 +1266,10 @@ class pipelineOps(object):
 			skyData[xcoord][ycoord] = np.nan
 
 
-  		objDataMedian = stats.nanmedian(objData)
-  		skyDataMedian = stats.nanmedian(skyData)	
-		skyDataStd = stats.nanstd(skyData)
-  		objDataStd = stats.nanstd(objData)
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
+		skyDataStd = np.nanstd(skyData)
+  		objDataStd = np.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
@@ -1289,8 +1293,8 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
 			skyData[xcoord][ycoord] = np.nan
 
-		newobjDataMedian = stats.nanmedian(objData)				
-		newskyDataMedian = stats.nanmedian(skyData)		
+		newobjDataMedian = np.nanmedian(objData)				
+		newskyDataMedian = np.nanmedian(skyData)		
 
   		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
   		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
@@ -1368,10 +1372,10 @@ class pipelineOps(object):
 			skyData[xcoord][ycoord] = np.nan
 
 
-  		objDataMedian = stats.nanmedian(objData)
-  		skyDataMedian = stats.nanmedian(skyData)	
-		skyDataStd = stats.nanstd(skyData)
-  		objDataStd = stats.nanstd(objData)
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
+		skyDataStd = np.nanstd(skyData)
+  		objDataStd = np.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
@@ -1395,8 +1399,8 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
 			skyData[xcoord][ycoord] = np.nan
 
-		newobjDataMedian = stats.nanmedian(objData)				
-		newskyDataMedian = stats.nanmedian(skyData)		
+		newobjDataMedian = np.nanmedian(objData)				
+		newskyDataMedian = np.nanmedian(skyData)		
 
   		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
   		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
@@ -1479,10 +1483,10 @@ class pipelineOps(object):
 			skyData[xcoord][ycoord] = np.nan
 
 
-  		objDataMedian = stats.nanmedian(objData)
-  		skyDataMedian = stats.nanmedian(skyData)	
-		skyDataStd = stats.nanstd(skyData)
-  		objDataStd = stats.nanstd(objData)
+  		objDataMedian = np.nanmedian(objData)
+  		skyDataMedian = np.nanmedian(skyData)	
+		skyDataStd = np.nanstd(skyData)
+  		objDataStd = np.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than a standard deviation from the median
@@ -1506,8 +1510,8 @@ class pipelineOps(object):
 			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
 			skyData[xcoord][ycoord] = np.nan
 
-		newobjDataMedian = stats.nanmedian(objData)				
-		newskyDataMedian = stats.nanmedian(skyData)		
+		newobjDataMedian = np.nanmedian(objData)				
+		newskyDataMedian = np.nanmedian(skyData)		
 
   		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
   		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
@@ -2422,10 +2426,10 @@ class pipelineOps(object):
 
   		#First Method - using simple downhill simplex 
   		res = minimize(self.shiftImageFirstMin, x0, args=(infile, skyfile, badpmap, interp_type,), \
-  			bounds=[(-2.0, 2.0), (-2.0, 2.0)], method = 'Nelder-Mead', tol=1E-3, options={'disp': True})
+  		 method = 'Nelder-Mead', tol=1E-3, options={'disp': True})
 
   		#Second method - more suited to a global minimization procedure. Takes longer.
-		#res = basinhopping(self.shiftImageFirstMin, x0, niter=20, stepsize = 0.01, minimizer_kwargs = minimizer_kwargs, disp=True)
+		#res = basinhopping(self.shiftImageFirstMin, x0, niter=2, stepsize = 0.01, minimizer_kwargs = minimizer_kwargs, disp=True)
   			
 
 
@@ -2783,7 +2787,7 @@ class pipelineOps(object):
 		fits.append(shiftedName, data=reconstructedDataArray[2], header=objExtHeader3)
 
 
-	def applyShiftAllExtensions(self, fileList, badpmap,\
+	def applyShiftAllExtensionsMin(self, fileList, badpmap,\
   	 vertSegments, horSegments, interp_type):
 		#Read in the data from the fileList
 		data = np.genfromtxt(fileList, dtype='str')
@@ -2816,11 +2820,12 @@ class pipelineOps(object):
 
 
 
-	def applySubtraction(self, fileList, objFile, skyFile):
+	def applySubtraction(self, fileList, skyFile):
 		#Read in the data from the fileList
 		data = np.genfromtxt(fileList, dtype='str')
 		#Save the names and types as lists 
 		names = data[0:,0]
+		print names
 		types = data[0:,1]
 		#Loop round all names and apply the computeOffsetSegments method
 		for i in range(1, len(names)):

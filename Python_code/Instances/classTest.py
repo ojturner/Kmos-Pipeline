@@ -14,7 +14,7 @@ objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_S
 skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0008_masked.fits'
 badPMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/badpixel_dark_Added.fits'
 lcalMap = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/26-1-15/Calibration_Files/lcal_YJYJYJ.fits'
-fileNames = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/18-2-15/Calibration_Files/corrected_object_names.txt'
+fileNames = 'corrected_object_names.txt'
 
 #Create an instance of the class
 pipe_methods = pipelineOps()
@@ -23,7 +23,7 @@ pipe_methods = pipelineOps()
 #The following are examples of using the functions within the class
 #pipe_methods.computeOffsetTopFour('KMOS_SPEC_OBS258_0001_m_2_raw.fits', objFile)
 
-newFile1 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits'
+newFile1 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_22_spline3_Shifted.fits'
 newFile2 = '/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/KMOS_SPEC_OBS258_0009_m_8.fits'
 newFile3 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_Subtracted.fits'
 
@@ -64,7 +64,7 @@ newFile3 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_
 #  	 vertSegments=1, horSegments=1, interp_type='spline3', \
 #  	 stepsize=0.01, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
 
-#pipe_methods.applySubtraction(fileNames, newFile1, skyFile)
+pipe_methods.applySubtraction(fileNames, skyFile)
 #pipe_methods.extensionMedians(newFile1)
 #pipe_methods.extensionMedians(newFile2)
 #pipe_methods.extensionMedians(newFile3)
@@ -78,8 +78,8 @@ newFile3 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_
 
 #pipe_methods.minimiseRho(objFile, skyFile, badPMap, interp_type='spline3')
 
-#pipe_methods.shiftAllExtensionsMin(objFile, skyFile, badPMap, vertSegments=1, horSegments=1, interp_type='spline3')
-pipe_methods.subFrames(newFile1, skyFile)
+#pipe_methods.shiftAllExtensionsMin(objFile, skyFile, badPMap, vertSegments=2, horSegments=2, interp_type='spline3')
+#pipe_methods.subFrames(newFile1, skyFile)
 
 
 
