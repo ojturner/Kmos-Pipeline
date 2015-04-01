@@ -2737,7 +2737,7 @@ class pipelineOps(object):
 		os.system('rm temp_masked.fits')
 		os.system('rm log.txt')
 
-		return reconstructedData
+		return reconstructedData, shiftArray
 
 
 
@@ -2768,13 +2768,16 @@ class pipelineOps(object):
 
 		#Set up the array 
 		reconstructedDataArray = []
+		ShiftArrayList = []
 
 		#Use the shifted image segment function 
 		for i in range(1, 4):
 			print 'Shifting Extension: %s' % i
-			reconstructedDataArray.append(self.shiftImageSegmentsMin(i, infile, skyfile, badpmap,\
-  	 vertSegments, horSegments, interp_type))
-
+			reconstructedData, shiftArray = self.shiftImageSegmentsMin(i, infile, skyfile, badpmap,\
+  	 vertSegments, horSegments, interp_type)
+			reconstructedDataArray.append(reconstructedData)
+			ShiftArrayList.append(shiftArray)
+		
 
 		#Name the shifted data file 
   		shiftedName = infile[:-5] + '_' + str(vertSegments) + str(horSegments) + '_' + interp_type + '_Shifted.fits' 
@@ -2786,6 +2789,8 @@ class pipelineOps(object):
 		fits.append(shiftedName, data=reconstructedDataArray[1], header=objExtHeader2)
 		fits.append(shiftedName, data=reconstructedDataArray[2], header=objExtHeader3)
 
+		return ShiftArrayList
+
 
 	def applyShiftAllExtensionsMin(self, fileList, badpmap,\
   	 vertSegments, horSegments, interp_type):
@@ -2794,6 +2799,7 @@ class pipelineOps(object):
 		#Save the names and types as lists 
 		names = data[0:,0]
 		types = data[0:,1]
+		shiftList = []
 		#Loop round all names and apply the computeOffsetSegments method
 		for i in range(1, len(names)):
 			if types[i] == 'O':
@@ -2807,11 +2813,17 @@ class pipelineOps(object):
 
 				print 'Shifting file: %s : %s' % (i, objFile)	
 				#Now use the method defined within this class 
-				self.shiftAllExtensionsMin(objFile, skyFile, badpmap,\
-  	 					vertSegments, horSegments, interp_type)
+				shiftList.append(self.shiftAllExtensionsMin(objFile, skyFile, badpmap,\
+  	 					vertSegments, horSegments, interp_type))
 				#Which will loop through all and save the corrected object file 
-				#as objectFile_Corrected.fits. These are then fed through the pipeline. 
-
+				#as objectFile_Corrected.fits. These are then fed through the pipeline.
+		saveName = fileList + '_Coords.txt' 
+		print shiftList
+		g = []
+		for entry in shiftList:
+			g.append(np.hstack(entry))
+		h = np.vstack(g)	
+		np.savetxt(saveName, h, fmt='%10.5f')
 ##########################################################################################################################
 ##########################################################################################################################
 #                          ALTERNATE SET OF FUNCTIONS USING MINIMISATION INSTEAD OF GRIDSEARCH                           #
