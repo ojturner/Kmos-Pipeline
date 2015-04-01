@@ -25,6 +25,7 @@ class cubeOps(object):
 	#Input must be a combined data cube with two extensions - data and noise 
 	def __init__(self, fileName):
 		self.self = self
+		self.fileName = fileName
 		#Variable containing all the fits extensions 
 		self.Table = fits.open(fileName)
 		#Variable housing the primary data cube
@@ -40,6 +41,22 @@ class cubeOps(object):
 		#Extract the wavelength calibration info 
 		self.start_L = self.dataHeader["CRVAL3"]
 		self.dL = self.dataHeader["CDELT3"]
+		#Extract the IFU number from the data 
+		#Cube may not have this keyword, try statement
+		#Not sure if this is good practice - conditional attribute.
+		try:
+			self.IFUNR = self.dataHeader["HIERARCH ESO PRO IFUNR"]
+			key = 'HIERARCH ESO OCS ARM' + str(self.IFUNR) + ' NAME'
+			#print key
+			self.IFUName = self.dataHeader[key]
+		except KeyError:
+			print 'This is not a combined Frame, setting arm name...'
+			try:
+				self.IFUNR = self.dataHeader["HIERARCH ESO OCS ARM1 NAME"]
+				self.IFUName = copy(self.IFUNR)
+				print 'You have specified a reconstructed type'
+			except KeyError:
+				raise KeyError("Please Check the type of fits file fed to the class")
 		#Create the wavelength array  
 		self.wave_array = self.start_L + np.arange(0, 2048*(self.dL), self.dL)
 		#Can define all kinds of statistics from the data common to the methods
@@ -71,6 +88,8 @@ class cubeOps(object):
 		"""
 		#If choosing to construct the 1D spectrum from a single pixel:
 		print 'The Brightest Pixel is at: (%s, %s)' % (self.ind1, self.ind2)
+		print self.IFUName
+		print self.IFUNR
 		if gridSize == 1:
 			flux_array = self.data[:,self.ind1, self.ind2]
 		else:
@@ -81,10 +100,46 @@ class cubeOps(object):
 			flux_array = np.nanmedian(lst, axis=0)
 
 		#Now make very basic plot at the moment 
-		plt.plot(self.wave_array, flux_array)	
+		plt.plot(self.wave_array, flux_array)
+		plt.ylim(0,100)
+		saveName = (self.fileName)[:-5] + '.png'
+		plt.savefig(saveName)
+		plt.show()		
+		plt.close('all')
+		return flux_array
 
 
+	def specPlot2D(self, orientation):
+		"""
+		Def:
+		Takes a data cube and creates a median stacked 2-D
+		spectrum across either the horizontal row or vertical column
 
+		Input: 
+		orientation - either 'vertical' or 'horizontal' (default down)
+
+		Output: 
+		2D array specifying the 2D spectrum 
+
+
+		"""
+
+		#Check the orientation input to see what has been specified
+		try:
+			#If 'up' median stack across the rows
+			if orientation == 'vertical':
+				plot_vec = np.nanmedian(self.data, axis=1)
+			elif orientation == 'horizontal':
+				plot_vec = np.nanmedian(self.data, axis=2)
+			else:
+				raise ValueError('Choose either vertical or horizontal for the orientation')
+		except ValueError:
+			print 'check input for Orientation'
+			raise	
+
+		#Now have the plot vector, plot it.
+		plt.imshow(plot_vec)
+		plt.savefig('test.png')				
 
 
 
@@ -106,5 +161,23 @@ class cubeOps(object):
 
 #create class instance 
 #cube = cubeOps('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Science_Output/sci_combined_n55_19__telluric.fits')
-#
+#cube.specPlot2D(orientation='vertical')
 ##############################################################################
+
+#data = np.genfromtxt('15names.txt', dtype='str')
+#Save the names and types as lists 
+#print data
+#for name in data:
+#	cube = cubeOps(name)
+#	cube.specPlot(1)
+
+
+
+
+
+
+
+
+
+
+

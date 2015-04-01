@@ -2820,7 +2820,7 @@ class pipelineOps(object):
 
 
 
-	def applySubtraction(self, fileList, skyFile):
+	def applySubtraction(self, fileList):
 		#Read in the data from the fileList
 		data = np.genfromtxt(fileList, dtype='str')
 		#Save the names and types as lists 
