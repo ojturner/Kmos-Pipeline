@@ -1090,6 +1090,61 @@ class pipelineOps(object):
 		fits.append(fileName, data=extArray[2], header=ext3Header)	
 		os.system('rm log.txt')
 
+	def maskFilelcal(self, inFile, lcalFile):
+		"""	
+		Def:
+		Take the badPixelMap and apply it to any inFile 
+		to mask off the bad pixels. Particularly useful 
+		for applying to skyFiles before subtraction
+
+		"""	
+
+		dataTable = fits.open(inFile)
+		badPTable = fits.open(lcalFile)
+		extArray = []
+
+		primHeader = dataTable[0].header
+		ext1Header = dataTable[1].header
+		ext2Header = dataTable[2].header
+		ext3Header = dataTable[3].header
+
+
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
+		print primHeader
+		print ext1Header
+		print ext2Header
+		print ext3Header
+		sys.stdout.close()
+		sys.stdout = temp
+
+		for i in range(1, 4):
+
+			data = dataTable[i].data
+			badpData = badPTable[i].data
+
+			#Now find the bad pixel locations and mask off the data appropriately
+
+			bad_pixel_coords = np.where(np.isnan(badpData))
+
+			#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+			for i in range(len(bad_pixel_coords[0])):
+				#Because of the way np.where works, need to define the x and y coords in this way
+				xcoord = bad_pixel_coords[0][i]
+				ycoord = bad_pixel_coords[1][i]
+				#Now set all positions where there is a dead pixel to np.nan in the object and sky
+				data[xcoord][ycoord] = np.nan
+
+			extArray.append(data)
+		#Write out the new data
+		fileName = inFile[:-5] + '_masked_lcal.fits'	
+		hdu = fits.PrimaryHDU(header=primHeader)
+		hdu.writeto(fileName, clobber=True)
+		fits.append(fileName, data=extArray[0], header=ext1Header)	
+		fits.append(fileName, data=extArray[1], header=ext2Header)	
+		fits.append(fileName, data=extArray[2], header=ext3Header)	
+		os.system('rm log.txt')
+
 
 								
 	def crossCorr(self, ext, objFile, skyFile, y1, y2, x1, x2):
@@ -1116,76 +1171,22 @@ class pipelineOps(object):
   		skyData = fits.open(skyFile)
   		skyData = skyData[ext].data
 
-  		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
-  		#and save computational time. i.e. how long would it take to compute the correlation coef
-  		#using the whole thing? And would this be meaningful? How do you decide upon which section 
-  		#of the array to use for the correlation coefficient? 
-
   		objData = np.array(objData[y1:y2,x1:x2])
   		skyData = np.array(skyData[y1:y2,x1:x2])
 
-  		#print objData
-  		#print skyData
-
-  		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
-  		#Correlation coefficient 
-
-  		#The imshift method converts nan pixels to 0. Investigating the impact of this right now. 
-  		#Maybe there are implications for the imshift actually being performed properly. 
-  		#If we can mask off all the pixels marked as 0, marked as np.nan and lying a certain 
-  		#number of standard deviations from the median, this should be a robust way of computing 
-  		#the correlation coefficient and should lead to an exact match between the 0 shift 
-  		#value and the value found before shifting.
-
-  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY############
-
-		obj_bad_pixel_coords = np.where(objData == 0)
-		sky_bad_pixel_coords = np.where(skyData == 0)
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(obj_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = obj_bad_pixel_coords[0][i]
-			ycoord = obj_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(sky_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = sky_bad_pixel_coords[0][i]
-			ycoord = sky_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
-			skyData[xcoord][ycoord] = np.nan
-
-
+  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY###########
   		objDataMedian = np.nanmedian(objData)
   		skyDataMedian = np.nanmedian(skyData)	
 		skyDataStd = np.nanstd(skyData)
   		objDataStd = np.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
-  		#Let's try masking the pixels which are bigger than a standard deviation from the median
-		#Find the coordinates of the bad pixels and the slitlets 
-		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
-		sky_bad_pixel_coords = np.where(abs(skyData) >  (skyDataMedian + skyDataStd))
+  		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(obj_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = obj_bad_pixel_coords[0][i]
-			ycoord = obj_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(sky_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = sky_bad_pixel_coords[0][i]
-			ycoord = sky_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
-			skyData[xcoord][ycoord] = np.nan
-
+		objData[objData < 50] = np.nan
+		objData[objData > 1000] = np.nan
+		skyData[skyData < 50] = np.nan
+		skyData[skyData > 1000] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)			
 
@@ -1195,7 +1196,7 @@ class pipelineOps(object):
   		#print denom
   		numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
   		rho = numer / denom
-  		print rho
+  		#print rho
   		return rho
 
 	def crossCorrZeroth(self, objFile, skyFile, y1, y2, x1, x2):
@@ -1223,76 +1224,22 @@ class pipelineOps(object):
   		skyData = fits.open(skyFile)
   		skyData = skyData[1].data
 
-  		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
-  		#and save computational time. i.e. how long would it take to compute the correlation coef
-  		#using the whole thing? And would this be meaningful? How do you decide upon which section 
-  		#of the array to use for the correlation coefficient? 
-
   		objData = np.array(objData[y1:y2,x1:x2])
   		skyData = np.array(skyData[y1:y2,x1:x2])
 
-  		#print objData
-  		#print skyData
-
-  		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
-  		#Correlation coefficient 
-
-  		#The imshift method converts nan pixels to 0. Investigating the impact of this right now. 
-  		#Maybe there are implications for the imshift actually being performed properly. 
-  		#If we can mask off all the pixels marked as 0, marked as np.nan and lying a certain 
-  		#number of standard deviations from the median, this should be a robust way of computing 
-  		#the correlation coefficient and should lead to an exact match between the 0 shift 
-  		#value and the value found before shifting.
-
-  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY############
-
-		obj_bad_pixel_coords = np.where(objData == 0)
-		sky_bad_pixel_coords = np.where(skyData == 0)
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(obj_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = obj_bad_pixel_coords[0][i]
-			ycoord = obj_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(sky_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = sky_bad_pixel_coords[0][i]
-			ycoord = sky_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
-			skyData[xcoord][ycoord] = np.nan
-
-
+  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY###########
   		objDataMedian = np.nanmedian(objData)
   		skyDataMedian = np.nanmedian(skyData)	
 		skyDataStd = np.nanstd(skyData)
   		objDataStd = np.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
-  		#Let's try masking the pixels which are bigger than a standard deviation from the median
-		#Find the coordinates of the bad pixels and the slitlets 
-		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
-		sky_bad_pixel_coords = np.where(abs(skyData) >  (skyDataMedian + skyDataStd))
+  		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(obj_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = obj_bad_pixel_coords[0][i]
-			ycoord = obj_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(sky_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = sky_bad_pixel_coords[0][i]
-			ycoord = sky_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
-			skyData[xcoord][ycoord] = np.nan
-
+		objData[objData < 50] = np.nan
+		objData[objData > 1000] = np.nan
+		skyData[skyData < 50] = np.nan
+		skyData[skyData > 1000] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)		
 
@@ -1329,76 +1276,22 @@ class pipelineOps(object):
   		skyData = fits.open(skyFile)
   		skyData = skyData[1].data
 
-  		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
-  		#and save computational time. i.e. how long would it take to compute the correlation coef
-  		#using the whole thing? And would this be meaningful? How do you decide upon which section 
-  		#of the array to use for the correlation coefficient? 
-
   		objData = np.array(objData[y1:y2,x1:x2])
   		skyData = np.array(skyData[y1:y2,x1:x2])
 
-  		#print objData
-  		#print skyData
-
-  		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
-  		#Correlation coefficient 
-
-  		#The imshift method converts nan pixels to 0. Investigating the impact of this right now. 
-  		#Maybe there are implications for the imshift actually being performed properly. 
-  		#If we can mask off all the pixels marked as 0, marked as np.nan and lying a certain 
-  		#number of standard deviations from the median, this should be a robust way of computing 
-  		#the correlation coefficient and should lead to an exact match between the 0 shift 
-  		#value and the value found before shifting.
-
-  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY############
-
-		obj_bad_pixel_coords = np.where(objData == 0)
-		sky_bad_pixel_coords = np.where(skyData == 0)
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(obj_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = obj_bad_pixel_coords[0][i]
-			ycoord = obj_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(sky_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = sky_bad_pixel_coords[0][i]
-			ycoord = sky_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
-			skyData[xcoord][ycoord] = np.nan
-
-
+  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY###########
   		objDataMedian = np.nanmedian(objData)
   		skyDataMedian = np.nanmedian(skyData)	
 		skyDataStd = np.nanstd(skyData)
   		objDataStd = np.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
-  		#Let's try masking the pixels which are bigger than a standard deviation from the median
-		#Find the coordinates of the bad pixels and the slitlets 
-		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
-		sky_bad_pixel_coords = np.where(abs(skyData) >  (skyDataMedian + skyDataStd))
+  		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(obj_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = obj_bad_pixel_coords[0][i]
-			ycoord = obj_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(sky_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = sky_bad_pixel_coords[0][i]
-			ycoord = sky_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
-			skyData[xcoord][ycoord] = np.nan
-
+		objData[objData < 50] = np.nan
+		objData[objData > 1000] = np.nan
+		skyData[skyData < 50] = np.nan
+		skyData[skyData > 1000] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)		
 
@@ -1436,82 +1329,24 @@ class pipelineOps(object):
   		skyData = fits.open(skyFile)
   		skyData = skyData[ext].data
 
-  		#Now have the arrays stored as vectors - split up into smaller grids to perform this test
-  		#and save computational time. i.e. how long would it take to compute the correlation coef
-  		#using the whole thing? And would this be meaningful? How do you decide upon which section 
-  		#of the array to use for the correlation coefficient? 
-
   		objData = np.array(objData[y1:y2,x1:x2])
   		skyData = np.array(skyData[y1:y2,x1:x2])
 
-  		#print objData
-  		#print skyData
-
-  		#These are both now 2D arrays - (Doesn't necessarily have to be square) let's compute the 
-  		#Correlation coefficient 
-
-
-  		#print objDataMedian
-  		#print skyDataMedian
-
-  		#The imshift method converts nan pixels to 0. Investigating the impact of this right now. 
-  		#Maybe there are implications for the imshift actually being performed properly. 
-  		#If we can mask off all the pixels marked as 0, marked as np.nan and lying a certain 
-  		#number of standard deviations from the median, this should be a robust way of computing 
-  		#the correlation coefficient and should lead to an exact match between the 0 shift 
-  		#value and the value found before shifting.
-
-  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY############
-
-		obj_bad_pixel_coords = np.where(objData == 0)
-		sky_bad_pixel_coords = np.where(skyData == 0)
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(obj_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = obj_bad_pixel_coords[0][i]
-			ycoord = obj_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(sky_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = sky_bad_pixel_coords[0][i]
-			ycoord = sky_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
-			skyData[xcoord][ycoord] = np.nan
-
-
+  		###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY###########
   		objDataMedian = np.nanmedian(objData)
   		skyDataMedian = np.nanmedian(skyData)	
 		skyDataStd = np.nanstd(skyData)
   		objDataStd = np.nanstd(objData)
 
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
-  		#Let's try masking the pixels which are bigger than a standard deviation from the median
-		#Find the coordinates of the bad pixels and the slitlets 
-		obj_bad_pixel_coords = np.where(abs(objData) >  (objDataMedian + objDataStd))
-		sky_bad_pixel_coords = np.where(abs(skyData) >  (skyDataMedian + skyDataStd))
+  		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(obj_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = obj_bad_pixel_coords[0][i]
-			ycoord = obj_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(sky_bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = sky_bad_pixel_coords[0][i]
-			ycoord = sky_bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the skyect and sky
-			skyData[xcoord][ycoord] = np.nan
-
+		objData[objData < 50] = np.nan
+		objData[objData > 1000] = np.nan
+		skyData[skyData < 50] = np.nan
+		skyData[skyData > 1000] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
-		newskyDataMedian = np.nanmedian(skyData)		
+		newskyDataMedian = np.nanmedian(skyData)	
 
   		firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
   		secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
@@ -2331,6 +2166,7 @@ class pipelineOps(object):
 		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
 
   		"""
+  		print 'returning'
   		#We first want to apply the bad pixel map 
   		objTable = fits.open(infile)
   		objData = objTable[1].data
@@ -2373,10 +2209,10 @@ class pipelineOps(object):
 		#fits.writeto('pom.fits', data=objData, clobber=True)	
 
 		#Define the minimum and maximum ranges for the correlation 
-		xMinCorr = (1 * len(objData[0]))*0.125
-		xMaxCorr = (7 * len(objData[0]))*0.125
-		yMinCorr = (1 * len(objData))*0.125
-		yMaxCorr = (7 * len(objData))*0.125
+		xMinCorr = (1 * len(objData[0]))*0.0625
+		xMaxCorr = (15 * len(objData[0]))*0.0625
+		yMinCorr = (1 * len(objData))*0.0625
+		yMaxCorr = (15 * len(objData))*0.0625
 
 		#Write out to new temporary fits files - annoyingly need to have 
 		#the data in fits files to be able to use pyraf functions
@@ -2399,20 +2235,24 @@ class pipelineOps(object):
   		infileName = 'maskedObj.fits[1]'
 
   		print 'Shifting: %s %s' % (xArray[0], xArray[1])
+
+  		print 'before shift'
   		pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
   			xshift=xArray[0], yshift=xArray[1], interp_type=interp_type)
   				#re-open the shifted file and compute rho
+  		print 'after shift'
 
+  		print 'before rho'
 		rho = self.crossCorrZeroth('temp_shift.fits', 'maskedSky.fits',\
 		  yMinCorr, yMaxCorr, xMinCorr, xMaxCorr)
-
+		print 'after rho'
 		#Tidy up
 		os.system('rm temp_shift.fits')
   		os.system('rm maskedObj.fits')
   		os.system('rm maskedSky.fits')
 
   		#Return the correlation coefficient
-  		print (1 / rho)
+  		print (1.0 / rho)
   		return (1.0 / rho)
   		
 
@@ -2421,15 +2261,15 @@ class pipelineOps(object):
   		#print 'Hello'
   		#Minimise the function recipShift with respect to x and y
   		#Define the shift starting points
-  		x0 = [0.1, 0.1]	
+  		x0 = [1.0, 1.0]	
   		minimizer_kwargs = {'method':'Nelder-Mead' ,'args': (infile, skyfile, badpmap, interp_type,)}
 
   		#First Method - using simple downhill simplex 
   		res = minimize(self.shiftImageFirstMin, x0, args=(infile, skyfile, badpmap, interp_type,), \
-  		 method = 'Nelder-Mead', tol=1E-3, options={'disp': True})
+  		 method = 'Nelder-Mead', tol=0.005, options={'disp': True})
 
   		#Second method - more suited to a global minimization procedure. Takes longer.
-		#res = basinhopping(self.shiftImageFirstMin, x0, niter=2, stepsize = 0.01, minimizer_kwargs = minimizer_kwargs, disp=True)
+		#res = basinhopping(self.shiftImageFirstMin, x0, niter=5, stepsize = 0.005, minimizer_kwargs = minimizer_kwargs, disp=True)
   			
 
 
@@ -2609,7 +2449,15 @@ class pipelineOps(object):
 			#extension shifted object and sky files. 
 			#Create an array to hold the shift coordinates for each segment. This is defined 
 			#Outside the for loop so that I am not initialising it every time.
-			
+
+			xMinCorr = (1 * len(objArray[0]))*0.0625
+			xMaxCorr = (15 * len(objArray[0]))*0.0625
+			yMinCorr = (1 * len(objArray[0]))*0.0625
+			yMaxCorr = (15 * len(objArray[0]))*0.0625
+
+
+  			print 'Before shifting, the correlation is: %s ' % \
+  			(1.0 / self.crossCorrFirst(tempObjName, 'tempSky.fits', yMinCorr, yMaxCorr, xMinCorr, xMaxCorr))
 
 			print 'This is shift: %s' % i
 			shiftArray.append(self.minimiseRho(tempObjName, 'tempSky.fits', 'tempbadp.fits', interp_type))
@@ -2695,9 +2543,11 @@ class pipelineOps(object):
 
 			inFileName = inFileName + '[1]'
 
+
   			#Now apply imshift with all the parameters 
   			pyraf.iraf.imshift(input = inFileName, output=outFileName, \
   				xshift=xArray[i], yshift=yArray[i] ,interp_type=interp_type)
+
 
   			#We want a 1D array of 2D arrays again, read the data files back in 
   			data = fits.open(outFileName)

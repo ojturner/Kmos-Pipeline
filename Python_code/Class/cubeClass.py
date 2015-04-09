@@ -57,6 +57,27 @@ class cubeOps(object):
 				print 'You have specified a reconstructed type'
 			except KeyError:
 				raise KeyError("Please Check the type of fits file fed to the class")
+
+		#Set the RA and DEC positions of all the arms. These are in 
+		#sexagesimal format - convert to degrees for the plot 
+		self.raDict = {}
+		self.decDict = {}
+		for i in range(1, 25):
+			try:
+				raName = "HIERARCH ESO OCS ARM" + str(i) + " ALPHA"
+				DictName = 'Arm' + str(i)
+				decName = "HIERARCH ESO OCS ARM" + str(i) + " DELTA"
+				#print raName, decName
+				self.raDict[DictName] = self.raToDeg(self.primHeader[raName])
+				self.decDict[DictName] = self.decToDeg(self.primHeader[decName])
+
+			except KeyError:
+				print 'IFU %s Not in Use' % DictName
+
+		self.raArray = self.raDict.values()
+		self.decArray = self.decDict.values()
+		self.IFUArms = self.raDict.keys()
+
 		#Create the wavelength array  
 		self.wave_array = self.start_L + np.arange(0, 2048*(self.dL), self.dL)
 		#Can define all kinds of statistics from the data common to the methods
@@ -67,6 +88,124 @@ class cubeOps(object):
 		self.ind2 = self.num - (len(self.med_array) * self.ind1)
 
 
+
+	def raToDeg(self, ra):
+		"""
+		Def:
+		Helper function - convert sexagesimal RA to degrees. 
+		Needs to check number digits before the decimal point, 
+		because the fits files doesn't always give 6 
+
+		Input: Sexagesimal RA (HH:MM:SS.SS)
+		Output: Ra in degrees 
+
+		"""
+		ra = str(ra)
+		#Figure out how many characters before the decimal point
+		i = 0
+		for char in ra:
+			if char == '.':
+				break
+			else:
+				i += 1
+		#Conditionally convert, depending on whether i is 4 or 6
+		#Also conditionally execute depending on number decimal places
+		if i == 6:
+			hours = int(ra[0:2])
+			mins = int(ra[2:4])
+			secs = float(ra[4:])
+			raDeg = (hours * 15) + (mins * 0.25) + (secs * 1.0/240)
+		elif i == 4:
+			mins = int(ra[0:2])
+			secs = float(ra[2:])
+			raDeg = (mins * 0.25) + (secs * 1.0/240)			
+		else:
+			secs = float(ra)
+			raDeg = (secs * 1.0/240)
+		return raDeg
+
+
+	def decToDeg(self, dec):
+		"""
+		Def:
+		Helper function - convert sexagesimal dec to degrees. 
+		Needs to check number digits before the decimal point, 
+		because the fits files doesn't always give 6 
+
+		Input: Sexagesimal dec (DD:MM:SS.SS)
+		Output: Dec in degrees 
+
+		"""		
+		dec = str(dec)
+		#Figure out how many characters before the decimal point
+		i = 0
+		if dec[0] == '-':
+
+			for char in dec:
+				if char == '.':
+					break
+				else:
+					i += 1
+			#Conditionally convert, depending on whether i is 4 or 6
+			#Also conditionally execute depending on number decimal places
+			if i == 7:
+				deg = float(dec[1:3])
+				mins = float(dec[3:5])
+				secs = float(dec[5:])
+				#Careful whether deg is negative or not
+				#Becoming more positive if > 0
+				decDeg = (deg * -1) - (mins * 1.0/60) - (secs * 1.0/3600)
+			
+			elif i == 5:
+				mins = float(dec[1:3])
+				secs = float(dec[3:])
+				decDeg = (mins * -1.0/60) - (secs * 1.0/3600)						
+			else:
+				secs = float(dec)
+				decDeg = (secs * 1.0/3600)
+			return decDeg
+
+		else:
+			
+			for char in dec:
+				if char == '.':
+					break
+				else:
+					i += 1
+			#Conditionally convert, depending on whether i is 4 or 6
+			#Also conditionally execute depending on number decimal places
+			print i
+			if i == 6:
+				deg = float(dec[0:2])
+				mins = float(dec[2:4])
+				secs = float(dec[4:])
+				#Careful whether deg is negative or not
+				#Becoming more positive if > 0
+				decDeg = deg + (mins * 1.0/60) + (secs * 1.0/3600)
+			
+			elif i == 4:
+				mins = float(dec[0:2])
+				secs = float(dec[2:])
+				decDeg = (mins * 1.0/60) + (secs * 1.0/3600)						
+			else:
+				secs = float(dec)
+				decDeg = (secs * 1.0/3600)
+			return decDeg
+
+
+	def ifuCoordsPlot(self):
+		"""
+		Def:
+		Plots the already recorded IFU Positions on the sky 
+
+		Inputs: None
+		Output: Matplotlib plot of coordinates
+
+		"""
+
+		plt.scatter(self.raArray, self.decArray)
+		plt.show()
+		plt.close('all')
 
 
 
@@ -100,13 +239,34 @@ class cubeOps(object):
 			flux_array = np.nanmedian(lst, axis=0)
 
 		#Now make very basic plot at the moment 
-		plt.plot(self.wave_array, flux_array)
-		plt.ylim(0,100)
+		fig, ax = plt.subplots(1, 1, figsize=(18.0,12.0))
+		ax.plot(self.wave_array, flux_array)
+		ax.set_title('Flux vs. Wavelength')
+		ax.set_xlabel('Wavelength ($\mu m$)')
+		ax.set_ylim(0,100)
 		saveName = (self.fileName)[:-5] + '.png'
-		plt.savefig(saveName)
+		fig.savefig(saveName)
 		plt.show()		
 		plt.close('all')
 		return flux_array
+
+	def centralSpec(self):
+		"""
+		Def:
+		Takes a data cube and creates a median stacked 1-D
+		spectrum in a 3x3 grid around the central pixel 
+
+		Output: 
+		matplotlib plot of the 1D stacked spectrum 
+
+
+		"""
+		lst = []
+		for i in range((len(self.data[0]) / 2) - 1, (len(self.data[0]) / 2) + 1):
+			for j in range((len(self.data[0]) / 2) - 1, (len(self.data[0]) / 2) + 1):
+				lst.append(self.data[:,i,j])
+		flux_array = np.nanmedian(lst, axis=0)
+		return flux_array				
 
 
 	def specPlot2D(self, orientation):
