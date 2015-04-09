@@ -137,41 +137,19 @@ class pipelineOps(object):
 			manSkyData = copy(data_s)
 
 			#Read in the bad pixel and lcal maps
-			bad_pixel_data = bad_pixel_table[count].data			
+			bad_pixel_data = bad_pixel_table[count].data	
+			bad_pixel_data[bad_pixel_data == 0] = np.nan		
 			lcal_data = lcal_table[val].data
+			lcal_data[np.invert(np.isnan(lcal_data))] = 1.0
 
-			#Find the coordinates of the bad pixels and the slitlets 
-			bad_pixel_coords = np.where(bad_pixel_data == 0)
-			lcal_pixel_coords = np.where(lcal_data > 0)
+			#Mask off the bad pixels in the object and sky data
+			manObjData = manObjData * bad_pixel_data
+			manObjData = manObjData * lcal_data
+			manSkyData = manSkyData * bad_pixel_data
+			manSkyData = manSkyData * lcal_data
 
-			#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-			for i in range(len(bad_pixel_coords[0])):
-				#Because of the way np.where works, need to define the x and y coords in this way
-				xcoord = bad_pixel_coords[0][i]
-				ycoord = bad_pixel_coords[1][i]
-				#Now set all positions where there is a dead pixel to np.nan in the object and sky
-				manObjData[xcoord][ycoord] = np.nan
-				manSkyData[xcoord][ycoord] = np.nan
 
-			#Loop around the slitlet positions
-			for i in range(len(lcal_pixel_coords[0])):
-				#Do the same, this time for the slitlet positions (substantially more will have a value)
-				xcoord = lcal_pixel_coords[0][i]
-				ycoord = lcal_pixel_coords[1][i]
-				#Set all of these locations to nan 
-				manObjData[xcoord][ycoord] = np.nan
-				manSkyData[xcoord][ycoord] = np.nan			
-
-			#Debug to see if mask is being applied properly
-			#test_array = np.zeros(shape=[2048, 2048])
-			#tempName = 'lcal' + str(count) + '.fits'
-			#Loop around the bad pixel locations
-
-			#Now we have both the object and sky data these are 2D arrays, 
-			#essentially a matrix where each number represents a pixel flux, 
-			#And the location of the number in the matrix represents the 
-			#Pixel position on the detector, which in turn corresponds to the 
-			#objects position on the sky. Need to slice this 2D array into a 
+			#Need to slice this 2D array into a 
 			#1D array of 2D arrays, each of which is 64 pixels wide 
 			#so that I can examine these in turn and loop over them 
 
@@ -566,45 +544,16 @@ class pipelineOps(object):
 			manSkyData = copy(data_s)
 
 			#Read in the bad pixel and lcal maps
-			bad_pixel_data = bad_pixel_table[count].data			
+			bad_pixel_data = bad_pixel_table[count].data	
+			bad_pixel_data[bad_pixel_data == 0] = np.nan		
 			lcal_data = lcal_table[val].data
+			lcal_data[np.invert(np.isnan(lcal_data))] = 1.0
 
-			#Find the coordinates of the bad pixels and the slitlets 
-			bad_pixel_coords = np.where(bad_pixel_data == 0)
-			lcal_pixel_coords = np.where(lcal_data > 0)
-
-			#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-			for i in range(len(bad_pixel_coords[0])):
-				#Because of the way np.where works, need to define the x and y coords in this way
-				xcoord = bad_pixel_coords[0][i]
-				ycoord = bad_pixel_coords[1][i]
-				#Now set all positions where there is a dead pixel to np.nan in the object and sky
-				manObjData[xcoord][ycoord] = np.nan
-				manSkyData[xcoord][ycoord] = np.nan
-
-			#Loop around the slitlet positions
-			for i in range(len(lcal_pixel_coords[0])):
-				#Do the same, this time for the slitlet positions (substantially more will have a value)
-				xcoord = lcal_pixel_coords[0][i]
-				ycoord = lcal_pixel_coords[1][i]
-				#Set all of these locations to nan 
-				manObjData[xcoord][ycoord] = np.nan
-				manSkyData[xcoord][ycoord] = np.nan			
-
-			#fits.writeto('test.fits', data=manObjData, clobber=True)
-			#fits.writeto('test1.fits', data=manSkyData, clobber=True)	
-			#Debug to see if mask is being applied properly
-			#test_array = np.zeros(shape=[2048, 2048])
-			#tempName = 'lcal' + str(count) + '.fits'
-			#Loop around the bad pixel locations
-
-			#Now we have both the object and sky data these are 2D arrays, 
-			#essentially a matrix where each number represents a pixel flux, 
-			#And the location of the number in the matrix represents the 
-			#Pixel position on the detector, which in turn corresponds to the 
-			#objects position on the sky. Need to slice this 2D array into a 
-			#1D array of 2D arrays, each of which is 64 pixels wide 
-			#so that I can examine these in turn and loop over them 
+			#Mask off the bad pixels in the object and sky data
+			manObjData = manObjData * bad_pixel_data
+			manObjData = manObjData * lcal_data
+			manSkyData = manSkyData * bad_pixel_data
+			manSkyData = manSkyData * lcal_data
 
 
 			#Counters for the horizontal slicing
@@ -1580,17 +1529,9 @@ class pipelineOps(object):
 		sys.stdout = temp
 		
 
-		#Find the coordinates of the bad pixels and the slitlets 
-		bad_pixel_coords = np.where(badpData == 0)
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = bad_pixel_coords[0][i]
-			ycoord = bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-			skyData[xcoord][ycoord] = np.nan
+		badpData[badpData == 0] = np.nan
+		objData = objData * badpData
+		skyData = skyData * badpData
 		#fits.writeto('pom.fits', data=objData, clobber=True)	
 
 		#Define the minimum and maximum ranges for the correlation 
@@ -1975,14 +1916,8 @@ class pipelineOps(object):
 		#Find the coordinates of the bad pixels and the slitlets 
 		objData = objTable[ext].data
 		badpData = badpTable[ext].data
-		bad_pixel_coords = np.where(badpData == 0)
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = bad_pixel_coords[0][i]
-			ycoord = bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
+		badpData[badpData == 0] = np.nan
+		objData = objData * badpData
 
 		#Write out to new file which will then be read in to split up the data
 		objhdu = fits.PrimaryHDU(header=objPrimHeader)
@@ -2166,7 +2101,7 @@ class pipelineOps(object):
 		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
 
   		"""
-  		print 'returning'
+  		
   		#We first want to apply the bad pixel map 
   		objTable = fits.open(infile)
   		objData = objTable[1].data
@@ -2196,17 +2131,11 @@ class pipelineOps(object):
 		
 
 		#Find the coordinates of the bad pixels and the slitlets 
-		bad_pixel_coords = np.where(badpData == 0)
-
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = bad_pixel_coords[0][i]
-			ycoord = bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
-			skyData[xcoord][ycoord] = np.nan
-		#fits.writeto('pom.fits', data=objData, clobber=True)	
+		#Instead of looping, do much faster multiplication
+		#Want to avoid loops at all costs
+		badpData[badpData == 0] = np.nan
+		objData = objData * badpData
+		skyData = skyData * badpData
 
 		#Define the minimum and maximum ranges for the correlation 
 		xMinCorr = (1 * len(objData[0]))*0.0625
@@ -2236,16 +2165,12 @@ class pipelineOps(object):
 
   		print 'Shifting: %s %s' % (xArray[0], xArray[1])
 
-  		print 'before shift'
   		pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
   			xshift=xArray[0], yshift=xArray[1], interp_type=interp_type)
   				#re-open the shifted file and compute rho
-  		print 'after shift'
 
-  		print 'before rho'
 		rho = self.crossCorrZeroth('temp_shift.fits', 'maskedSky.fits',\
 		  yMinCorr, yMaxCorr, xMinCorr, xMaxCorr)
-		print 'after rho'
 		#Tidy up
 		os.system('rm temp_shift.fits')
   		os.system('rm maskedObj.fits')
@@ -2276,77 +2201,6 @@ class pipelineOps(object):
   		#Return the shift array which minimises the inverse correlation coefficient
   		print res.x
   		return res.x
-
-
-
-
-  	def rotateImageMin(self, ext, infile, skyfile, interp_type, minAngle, maxAngle, stepsize):
-
-  		"""
-  		Def:
-  		Compute the correlation coefficient for a line of rotation angles and 
-  		decide which one is best (if better than the original) and apply this to 
-  		the object image to align with the sky.
-
-		Inputs: 
-		ext - detector extension, must be either 1, 2, 3
-		infile - Input object file to shift 
-		skyFile - sky image to compare objFile with
-		interp_type - type of interpolation function for the shift. 
-
-			-'nearest': nearest neighbour
-			-'linear':bilinear x,y, interpolation
-			-'poly3':third order interior polynomial
-			-'poly5':fifth order interior polynomial
-			-'spline3':third order spline3
-
-		stepsize - value to increment grid by each time, increasing 
-		this increases the time taken for the computation 
-		xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
-
-  		"""
-  		#First compute the correlation coefficient with just infile 
-  		rhoArray = []
-  		rhoArray.append(self.crossCorr(ext, infile, skyfile, 1000, 1200, 1000, 1200))
-  		print rhoArray
-
-  		#Working. Now create grid of fractional shift values. 
-  		rotArray = np.arange(minAngle, maxAngle, stepsize)
-  		rotArray = np.around(rotArray, decimals = 4)
-
-
-  		#Loop over all values in the grid, shift the image by this 
-  		#amount each time and compute the correlation coefficient
-  		successDict = {}
-
-		for number in rotArray:
-			#Perform the shift 
-			infileName = infile + '[' + str(ext) + ']'
-			pyraf.iraf.rotate(input=infileName, output='temp_rot.fits', \
-				rotation=number, interpolant=interp_type)
-			#re-open the shifted file and compute rho
-			rho = self.crossCorrOne(ext,'temp_rot.fits', skyfile,\
-			 1000, 1200, 1000, 1200)
-			#If the correlation coefficient improves, append to new array
-			if rho > rhoArray[0]:
-				print 'SUCCESS, made improvement!'
-				entryName = str(number)
-				entryValue = [number, rho]
-				successDict[entryName] = entryValue
-			rhoArray.append(rho)
-			#Clean up by deleting the created temporary fits file
-			os.system('rm temp_rot.fits')
-			#Go back through loop, append next value of rho
-			print 'Finished shift: %s, rho = %s ' % (number, rho)
-			#sys.stdout.flush()
-
-  		print max(rhoArray)
-  		print rhoArray[0]		
-  		print successDict 		
-
-
-
-
 
 
   	def shiftImageSegmentsMin(self, ext, infile, skyfile, badpmap,\
@@ -2503,14 +2357,8 @@ class pipelineOps(object):
 		#Find the coordinates of the bad pixels and the slitlets 
 		objData = objTable[ext].data
 		badpData = badpTable[ext].data
-		bad_pixel_coords = np.where(badpData == 0)
-		#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-		for i in range(len(bad_pixel_coords[0])):
-			#Because of the way np.where works, need to define the x and y coords in this way
-			xcoord = bad_pixel_coords[0][i]
-			ycoord = bad_pixel_coords[1][i]
-			#Now set all positions where there is a dead pixel to np.nan in the object and sky
-			objData[xcoord][ycoord] = np.nan
+		badpData[badpData == 0] = np.nan
+		objData = objData * badpData
 
 		#Write out to new file which will then be read in to split up the data
 		objhdu = fits.PrimaryHDU(header=objPrimHeader)

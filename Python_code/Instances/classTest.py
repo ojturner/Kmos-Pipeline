@@ -12,8 +12,8 @@ sys.path.append('/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_c
 from pipelineClass import pipelineOps
 from cubeClass import cubeOps
 
-objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0013_Corrected.fits'
-skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0014.fits'
+objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0022_Corrected_11_spline3_Shifted.fits'
+skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0023.fits'
 badPMap14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/badpixel_dark_Added.fits'
 badPMap15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/Calibration_Files/badpixel_dark_Added.fits'
 lcalMap14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/lcal_YJYJYJ.fits'
@@ -107,16 +107,16 @@ namesOfFile = np.genfromtxt(sci_names_15_noTel, dtype='str')
 #pipe_methods.shiftAllExtensionsMin(objFile, skyFile, badPMap, vertSegments=2, horSegments=2, interp_type='spline3')
 #pipe_methods.subFrames(newFile1, skyFile)
 
-data, coords = pipe_methods.shiftImageSegmentsMin(ext=2, infile=objFile, skyfile=skyFile, badpmap=badPMap14,\
-  	 vertSegments=1, horSegments=1, interp_type='spline3')
+#data, coords = pipe_methods.shiftImageSegmentsMin(ext=2, infile=objFile, skyfile=skyFile, badpmap=badPMap14,\
+#  	 vertSegments=1, horSegments=1, interp_type='spline3')
 #np.savetxt('testCoords.txt', coords, fmt='%10.5f')
 
 #objhdu = fits.PrimaryHDU()
 #objhdu.writeto('test.fits', clobber=True)
 #fits.append('test.fits', data=data)
 
-#pipe_methods.applyShiftAllExtensionsMin(fileList=names_14, badpmap=badPMap14,\
-#  	 vertSegments=1, horSegments=1, interp_type='spline3')
+pipe_methods.applyShiftAllExtensionsMin(fileList=names_15, badpmap=badPMap15,\
+  	 vertSegments=1, horSegments=1, interp_type='spline3')
 
 ####
 ##Routine to look at the pixels contaminated by OH emission
