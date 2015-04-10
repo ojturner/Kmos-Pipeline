@@ -10,10 +10,12 @@ from pylab import *
 from matplotlib.colors import LogNorm
 import numpy.polynomial.polynomial as poly
 import lmfit
+import random
 from lmfit.models import GaussianModel, ExponentialModel, LorentzianModel, VoigtModel, PolynomialModel
 from scipy import stats
 from scipy.optimize import minimize
 from scipy.optimize import basinhopping
+
 
 #add my toolkit.py file to the PYTHONPATH
 sys.path.append('/Users/owenturner/Documents/PhD/SUPA_Courses/AdvancedDataAnalysis/Homeworks')
@@ -102,8 +104,11 @@ class pipelineOps(object):
 		angleList = np.array([0, 60, 120, 180, 240, 300])
 		#Select the ocs.rot.naangle keyword 
 		obsAngle = table_o[0].header["HIERARCH ESO OCS ROT NAANGLE"]
+		#If negative, add 360 to get the actual rotation angle
+		if obsAngle < 0:
+			obsAngle = obsAngle + 360
 		#Find where the difference between the observed and idealised angle is minimum
-		newAngleList = abs( abs(obsAngle) - angleList )
+		newAngleList = abs( obsAngle - angleList )
 		n = newAngleList.argmin()
 		obsAngleNew = angleList[n]
 
@@ -507,10 +512,13 @@ class pipelineOps(object):
 		#Select the ocs.rot.naangle keyword 
 		obsAngle = table_o[0].header["HIERARCH ESO OCS ROT NAANGLE"]
 		print obsAngle
+		if obsAngle < 0:
+			obsAngle = obsAngle + 360
 		#Find where the difference between the observed and idealised angle is minimum
-		newAngleList = abs( abs(obsAngle) - angleList)
+		newAngleList = abs( obsAngle - angleList )
 		n = newAngleList.argmin()
 		obsAngleNew = angleList[n]
+		print obsAngleNew
 
 
 		#Find the extension to which this corresponds
@@ -544,16 +552,45 @@ class pipelineOps(object):
 			manSkyData = copy(data_s)
 
 			#Read in the bad pixel and lcal maps
-			bad_pixel_data = bad_pixel_table[count].data	
-			bad_pixel_data[bad_pixel_data == 0] = np.nan		
+			bad_pixel_data = bad_pixel_table[count].data			
 			lcal_data = lcal_table[val].data
-			lcal_data[np.invert(np.isnan(lcal_data))] = 1.0
 
-			#Mask off the bad pixels in the object and sky data
-			manObjData = manObjData * bad_pixel_data
-			manObjData = manObjData * lcal_data
-			manSkyData = manSkyData * bad_pixel_data
-			manSkyData = manSkyData * lcal_data
+			#Find the coordinates of the bad pixels and the slitlets 
+			bad_pixel_coords = np.where(bad_pixel_data == 0)
+			lcal_pixel_coords = np.where(lcal_data > 0)
+
+			#Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+			for i in range(len(bad_pixel_coords[0])):
+				#Because of the way np.where works, need to define the x and y coords in this way
+				xcoord = bad_pixel_coords[0][i]
+				ycoord = bad_pixel_coords[1][i]
+				#Now set all positions where there is a dead pixel to np.nan in the object and sky
+				manObjData[xcoord][ycoord] = np.nan
+				manSkyData[xcoord][ycoord] = np.nan
+
+			#Loop around the slitlet positions
+			for i in range(len(lcal_pixel_coords[0])):
+				#Do the same, this time for the slitlet positions (substantially more will have a value)
+				xcoord = lcal_pixel_coords[0][i]
+				ycoord = lcal_pixel_coords[1][i]
+				#Set all of these locations to nan 
+				manObjData[xcoord][ycoord] = np.nan
+				manSkyData[xcoord][ycoord] = np.nan			
+
+			#fits.writeto('test.fits', data=manObjData, clobber=True)
+			#fits.writeto('test1.fits', data=manSkyData, clobber=True)	
+			#Debug to see if mask is being applied properly
+			#test_array = np.zeros(shape=[2048, 2048])
+			#tempName = 'lcal' + str(count) + '.fits'
+			#Loop around the bad pixel locations
+
+			#Now we have both the object and sky data these are 2D arrays, 
+			#essentially a matrix where each number represents a pixel flux, 
+			#And the location of the number in the matrix represents the 
+			#Pixel position on the detector, which in turn corresponds to the 
+			#objects position on the sky. Need to slice this 2D array into a 
+			#1D array of 2D arrays, each of which is 64 pixels wide 
+			#so that I can examine these in turn and loop over them 
 
 
 			#Counters for the horizontal slicing
@@ -1132,10 +1169,10 @@ class pipelineOps(object):
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
-		objData[objData < 50] = np.nan
-		objData[objData > 1000] = np.nan
-		skyData[skyData < 50] = np.nan
-		skyData[skyData > 1000] = np.nan		
+		objData[objData < 250] = np.nan
+		objData[objData > 1500] = np.nan
+		skyData[skyData < 250] = np.nan
+		skyData[skyData > 1500] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)			
 
@@ -1185,10 +1222,10 @@ class pipelineOps(object):
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
-		objData[objData < 50] = np.nan
-		objData[objData > 1000] = np.nan
-		skyData[skyData < 50] = np.nan
-		skyData[skyData > 1000] = np.nan		
+		objData[objData < 250] = np.nan
+		objData[objData > 1500] = np.nan
+		skyData[skyData < 250] = np.nan
+		skyData[skyData > 1500] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)		
 
@@ -1237,10 +1274,22 @@ class pipelineOps(object):
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
-		objData[objData < 50] = np.nan
-		objData[objData > 1000] = np.nan
-		skyData[skyData < 50] = np.nan
-		skyData[skyData > 1000] = np.nan		
+
+ # 		print np.percentile(objData, 60)
+ # 		print np.percentile(objData, 70)
+ # 		print np.percentile(objData, 94)
+ # 		print np.percentile(objData, 99.6)  		 
+ # 		print np.percentile(skyData, 60)
+ # 		print np.percentile(skyData, 70)
+ # 		print np.percentile(skyData, 94)
+ # 		print np.percentile(skyData, 99.6)  		
+#
+ # 		print len(g)
+
+		objData[objData < 250] = np.nan
+		objData[objData > 1500] = np.nan
+		skyData[skyData < 250] = np.nan
+		skyData[skyData > 1500] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)		
 
@@ -1290,10 +1339,10 @@ class pipelineOps(object):
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
-		objData[objData < 50] = np.nan
-		objData[objData > 1000] = np.nan
-		skyData[skyData < 50] = np.nan
-		skyData[skyData > 1000] = np.nan		
+		objData[objData < 250] = np.nan
+		objData[objData > 1500] = np.nan
+		skyData[skyData < 250] = np.nan
+		skyData[skyData > 1500] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)	
 
@@ -2288,17 +2337,6 @@ class pipelineOps(object):
 			badphdu.writeto('tempbadp.fits', clobber=True)
 			fits.append('tempbadp.fits', data=badpArray[i], header=badpExtHeader)
 
-			#NOTES FOR RESUMING - I now have temporary files containing the object 
-			#and sky segments to be shifted and cross correlated. The shiftImage function 
-			#can be applied to each of these directly within the for loop!! - remember to 
-			# a) clean up the fits files after each loop 
-			# b) Find a way to look at the cross correlation results for each segment independently
-			# probably by returning the cross correlation arrays into a new array  
-			# c) find a way to search specifically for shift success and apply to each segment 
-			# d) find a way to recombine all segments together after the shift has happened 
-			# e) make sure to use the crossCorrFirst function here, otherwise it will break in 
-			# certain situations (i.e. when not using extension one	)
-
 			#Now need to apply the shiftImageFirst function, which compares the chosen 
 			#extension shifted object and sky files. 
 			#Create an array to hold the shift coordinates for each segment. This is defined 
@@ -2323,17 +2361,11 @@ class pipelineOps(object):
 			os.system('rm tempSky.fits')
 			os.system('rm tempbadp.fits')
 
-			#That should work then for each segment in turn. Does work. 
-			#vStackArray.append(np.hstack(objArray))		
-			#	hor1 += 128
-			#	hor2 += 128	
-
 			#Now just need to vstack all of these arrays and will have a 2048x2048 corrected array
-			#newObjData = np.vstack(vStackArray)	
 		print shiftArray
-		#Now the clever part - to actually apply the shifts to the unmasked infile 
+		#apply the shifts to the unmasked infile 
 		#imshift can be used with a list of infile names, outfile names and shift coordinates
-		#If I create these lists I can imshift all at once, read in the data and then recombine
+		#create these lists and imshift all at once, read in the data and then recombine
 		#First get the x and y vectors for the shift coordinates
 		xArray = []
 		yArray = []
@@ -2344,13 +2376,6 @@ class pipelineOps(object):
 		yArray = np.array(np.around(yArray, 3))	
 		#Create the .txt file with the two columns specifying the shift coordinates
 		np.savetxt('coords.txt', np.c_[xArray, yArray], fmt=('%5.3f', '%5.3f'))
-
-		#Coordinates list sorted. Now need list of input files and input file names 
-		#To do this need to go back to the imSplit method with the unmasked file 
-		#Write to a list of temporary fits files, which will become temporary 
-		#Output fits files, which will be read back in as data before recombining 
-		#Must clean everything up at the end by removing with os.system()
-		#Create arrays of the split files using the imSplit function 
 
 		#Need to apply the shifts to a masked object file. Open the bad pixel map 
 		#and the object file and mask the pixels and save to temporary file 

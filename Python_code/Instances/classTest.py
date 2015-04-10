@@ -12,8 +12,12 @@ sys.path.append('/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_c
 from pipelineClass import pipelineOps
 from cubeClass import cubeOps
 
-objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0022_Corrected_11_spline3_Shifted.fits'
-skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0023.fits'
+
+oldbadP = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/badpixel_dark.fits'
+oldlcal = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/lcal_YJYJYJ.fits'
+
+objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/KMOS_SPEC_OBS259_0017_Corrected.fits'
+skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/KMOS_SPEC_OBS259_0016.fits'
 badPMap14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/badpixel_dark_Added.fits'
 badPMap15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/Calibration_Files/badpixel_dark_Added.fits'
 lcalMap14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/lcal_YJYJYJ.fits'
@@ -31,13 +35,15 @@ sky_cube = cubeOps(skyCube)
 #pipe_methods.computeOffsetTopFour('KMOS_SPEC_OBS258_0001_m_2_raw.fits', objFile)
 
 #Permanent Names
+raw_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Names.txt'
 names_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names.txt'
 names_14_short = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names_short.txt'
 names_14_shifted = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names_shifted.txt'
 
+raw_15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Names.txt'
 names_15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names.txt'
 names_15_short = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names_short.txt'
-names_15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names_shifted.txt'
+names_15_shifted = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names_shifted.txt'
 
 noTel_names_15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names_noTel.txt'
 noTel_names_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names_noTel.txt'
@@ -45,8 +51,8 @@ noTel_names_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014
 #Changes depending on reduction process
 sci_names_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/5sig_Science_Output'
 sci_names_15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/5sig_Science_Output'
-sci_names_14_noTel = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/2-4-15_Pairs_14/First8_Science_Output/sci_names_noTel.txt'
-sci_names_15_noTel = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/2-4-15_Pairs_15/obj1422_Science_Output/sci_names_noTel.txt'
+sci_names_14_noTel = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/9-4-15_new_14/Science_Output/sci_names_noTel.txt'
+sci_names_15_noTel = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/9-4-15_new_15/Science_Output/sci_names_noTel.txt'
 
 
 newFile2 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/KMOS_SPEC_OBS259_0014_Corrected_22_spline3_Shifted.fits'
@@ -65,7 +71,7 @@ namesOfFile = np.genfromtxt(sci_names_15_noTel, dtype='str')
 #pipe_methods.stackLcal(lcalMap)
 #pipe_methods.computeOffsetTopFour('KMOS_SPEC_OBS258_0007_m_8_raw.fits', objFile)
 #pipe_methods.subFrames(objFile, skyFile)
-#pipe_methods.applyCorrection(newFile1, badPMap, lcalMap)
+#pipe_methods.applyCorrection(raw_14, badPMap14, lcalMap14)
 #pipe_methods.plotMedian('KMOS_SPEC_OBS258_0009_m_8_raw.fits', 'KMOS_SPEC_OBS258_0009_m_8.fits', \
 #	'segmentsSubtracted_9_m_8_128.fits', 'topFour_9_m_8.fits', 1000, 1200, 800, 1270)
 #pipe_methods.plotMedian('KMOS_SPEC_OBS258_0009_m_8_raw.fits', 'KMOS_SPEC_OBS258_0009_m_8.fits', \
@@ -90,7 +96,7 @@ namesOfFile = np.genfromtxt(sci_names_15_noTel, dtype='str')
 #  	 vertSegments=1, horSegments=1, interp_type='spline3', \
 #  	 stepsize=0.01, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
 
-#pipe_methods.applySubtraction(names_14_shifted)
+#pipe_methods.applySubtraction(names_14)
 #pipe_methods.extensionMedians(newFile1)
 #pipe_methods.extensionMedians(newFile2)
 #pipe_methods.extensionMedians(newFile3)
@@ -107,7 +113,7 @@ namesOfFile = np.genfromtxt(sci_names_15_noTel, dtype='str')
 #pipe_methods.shiftAllExtensionsMin(objFile, skyFile, badPMap, vertSegments=2, horSegments=2, interp_type='spline3')
 #pipe_methods.subFrames(newFile1, skyFile)
 
-#data, coords = pipe_methods.shiftImageSegmentsMin(ext=2, infile=objFile, skyfile=skyFile, badpmap=badPMap14,\
+#data, coords = pipe_methods.shiftImageSegmentsMin(ext=1, infile=objFile, skyfile=skyFile, badpmap=badPMap14,\
 #  	 vertSegments=1, horSegments=1, interp_type='spline3')
 #np.savetxt('testCoords.txt', coords, fmt='%10.5f')
 
@@ -152,7 +158,7 @@ pipe_methods.applyShiftAllExtensionsMin(fileList=names_15, badpmap=badPMap15,\
 #ax.set_xlabel('Detector ID')
 #ax.set_xticks((np.arange(min(xAxis), max(xAxis)+1, 1.0)))
 #ax.grid(b=True, which='both', linestyle='--')
-#fig.savefig('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/2-4-15_Pairs_15/obj1422_Science_Output/median_notelluric.png')
+#fig.savefig('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/9-4-15_new_15/Science_Output/median_notelluric.png')
 #fig
 #print d.keys()
 ##print d.values()	
