@@ -51,16 +51,20 @@ noTel_names_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014
 #Changes depending on reduction process
 sci_names_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/5sig_Science_Output'
 sci_names_15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/5sig_Science_Output'
-sci_names_14_noTel = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/9-4-15_new_14/Science_Output/sci_names_noTel.txt'
-sci_names_15_noTel = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/9-4-15_new_15/Science_Output/sci_names_noTel.txt'
+sci_names_14_noTel = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9_ws/sci_names_noTel.txt'
+sci_names_14_noTel_1 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_names_noTel.txt'
+sci_names_15_noTel = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_250-1500_15/Science_Output/sci_names_noTel.txt'
 
 
 newFile2 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/KMOS_SPEC_OBS259_0014_Corrected_22_spline3_Shifted.fits'
 newFile3 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_Subtracted.fits'
-namesOfFile = np.genfromtxt(sci_names_15_noTel, dtype='str')
+
+namesOfFile = np.genfromtxt(sci_names_14_noTel, dtype='str')
+namesOfFile_1 = np.genfromtxt(sci_names_14_noTel_1, dtype='str')
 
 
 
+pipe_methods.compareSky(skyCube, sci_names_14_noTel)
 #Now try the subtraction method 
 #pipe_methods.subFrames('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits', skyFile)
 #pipe_methods.subFrames('KMOS_SPEC_OBS258_0001_Corrected.fits', skyFile)
@@ -121,8 +125,8 @@ namesOfFile = np.genfromtxt(sci_names_15_noTel, dtype='str')
 #objhdu.writeto('test.fits', clobber=True)
 #fits.append('test.fits', data=data)
 
-pipe_methods.applyShiftAllExtensionsMin(fileList=names_15, badpmap=badPMap15,\
-  	 vertSegments=1, horSegments=1, interp_type='spline3')
+#pipe_methods.applyShiftAllExtensionsMin(fileList=names_14, badpmap=badPMap15,\
+#  	 vertSegments=1, horSegments=1, interp_type='spline3')
 
 ####
 ##Routine to look at the pixels contaminated by OH emission
@@ -136,10 +140,10 @@ pipe_methods.applyShiftAllExtensionsMin(fileList=names_15, badpmap=badPMap15,\
 ##find the mean difference between these and the sky points 
 ##and add this to a dictionary labelled by IFU number 
 #d = {}
-#print namesOfFile
+#e = {}
 #for fileName in namesOfFile:
 #	tempCube = cubeOps(fileName)
-#	tempFlux = tempCube.specPlot(1)
+#	tempFlux = tempCube.specPlot(3)
 #	tempValues = tempFlux[indices]
 #	#Array of the differences, take absolute values 
 #	diff = abs(values - tempValues)
@@ -149,19 +153,37 @@ pipe_methods.applyShiftAllExtensionsMin(fileList=names_15, badpmap=badPMap15,\
 #	#Either use the values themselves or the difference
 #	d[tempCube.IFUNR] = np.median(tempValues)
 #	#d[tempCube.IFUNR] = meanDiff
+#for fileName in namesOfFile_1:
+#	tempCube = cubeOps(fileName)
+#	tempFlux = tempCube.specPlot(3)
+#	tempValues = tempFlux[indices]
+#	#Array of the differences, take absolute values 
+#	diff = abs(values - tempValues)
+#	#print diff
+#	#Find the average
+#	meanDiff = np.median(diff)
+#	#Either use the values themselves or the difference
+#	e[tempCube.IFUNR] = np.median(tempValues)
+#	#d[tempCube.IFUNR] = meanDiff
 ##Now have a dictionary with the IFU NR and a badness indicator. Print this.
 #xAxis = d.keys()
 #yAxis = d.values()
+#xAxis_1 = e.keys()
+#yAxis_1 = e.values()
 #fig, ax = plt.subplots(1, 1, figsize=(12.0,12.0))
 #ax.plot(xAxis, yAxis)
+#ax.plot(xAxis_1, yAxis_1)
 #ax.set_title('Sky Tweak Performance vs. IFU ID')
 #ax.set_xlabel('Detector ID')
 #ax.set_xticks((np.arange(min(xAxis), max(xAxis)+1, 1.0)))
 #ax.grid(b=True, which='both', linestyle='--')
-#fig.savefig('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/9-4-15_new_15/Science_Output/median_notelluric.png')
-#fig
+#fig.savefig('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9_ws/median_comparison.png')
+#plt.show()
+#plt.close('all')
 #print d.keys()
 ##print d.values()	
+
+
 
 
 

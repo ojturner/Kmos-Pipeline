@@ -15,14 +15,12 @@ from lmfit.models import GaussianModel, ExponentialModel, LorentzianModel, Voigt
 from scipy import stats
 from scipy.optimize import minimize
 from scipy.optimize import basinhopping
-
-
-#add my toolkit.py file to the PYTHONPATH
-sys.path.append('/Users/owenturner/Documents/PhD/SUPA_Courses/AdvancedDataAnalysis/Homeworks')
-
-#and import the toolkit
-import toolkit
 from astropy.io import fits
+
+#add the class file to the PYTHONPATH
+sys.path.append('/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_code/Class')
+from cubeClass import cubeOps
+
 
 #Import pyraf - python iraf 
 import pyraf
@@ -1169,6 +1167,12 @@ class pipelineOps(object):
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
+ 		#NOTE FOR FUTURE - THIS IS NOT A TOTALLY SECURE WAY OF COMPUTING THE CROSS CORR 
+ 		#I'VE HAD VERY SUCCESSFUL RUNS OF THE ALGORITHM HARD-CODING IN THESE LIMITS 
+ 		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
+ 		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
+ 		
+
 		objData[objData < 250] = np.nan
 		objData[objData > 1500] = np.nan
 		skyData[skyData < 250] = np.nan
@@ -1222,6 +1226,11 @@ class pipelineOps(object):
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
+ 		#NOTE FOR FUTURE - THIS IS NOT A TOTALLY SECURE WAY OF COMPUTING THE CROSS CORR 
+ 		#I'VE HAD VERY SUCCESSFUL RUNS OF THE ALGORITHM HARD-CODING IN THESE LIMITS 
+ 		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
+ 		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
+ 		
 		objData[objData < 250] = np.nan
 		objData[objData > 1500] = np.nan
 		skyData[skyData < 250] = np.nan
@@ -1275,21 +1284,27 @@ class pipelineOps(object):
   		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
 
- # 		print np.percentile(objData, 60)
- # 		print np.percentile(objData, 70)
- # 		print np.percentile(objData, 94)
- # 		print np.percentile(objData, 99.6)  		 
- # 		print np.percentile(skyData, 60)
- # 		print np.percentile(skyData, 70)
- # 		print np.percentile(skyData, 94)
- # 		print np.percentile(skyData, 99.6)  		
+
+ 		x1 = np.percentile(objData, 94)
+ 		x2 = np.percentile(objData, 98)  		 
+ 		y1 = np.percentile(skyData, 94)
+ 		y2 = np.percentile(skyData, 98)
+
+ 		print x1, x2, y1, y2  		
 #
  # 		print len(g)
+
+
+ 		#NOTE FOR FUTURE - THIS IS NOT A TOTALLY SECURE WAY OF COMPUTING THE CROSS CORR 
+ 		#I'VE HAD VERY SUCCESSFUL RUNS OF THE ALGORITHM HARD-CODING IN THESE LIMITS 
+ 		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
+ 		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
 
 		objData[objData < 250] = np.nan
 		objData[objData > 1500] = np.nan
 		skyData[skyData < 250] = np.nan
-		skyData[skyData > 1500] = np.nan		
+		skyData[skyData > 1500] = np.nan	
+
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)		
 
@@ -1339,6 +1354,11 @@ class pipelineOps(object):
   		###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
   		#Let's try masking the pixels which are bigger than 1000 counts and less than 50
 
+ 		#NOTE FOR FUTURE - THIS IS NOT A TOTALLY SECURE WAY OF COMPUTING THE CROSS CORR 
+ 		#I'VE HAD VERY SUCCESSFUL RUNS OF THE ALGORITHM HARD-CODING IN THESE LIMITS 
+ 		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
+ 		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
+ 		
 		objData[objData < 250] = np.nan
 		objData[objData > 1500] = np.nan
 		skyData[skyData < 250] = np.nan
@@ -2547,6 +2567,8 @@ class pipelineOps(object):
 			g.append(np.hstack(entry))
 		h = np.vstack(g)	
 		np.savetxt(saveName, h, fmt='%10.5f')
+
+
 ##########################################################################################################################
 ##########################################################################################################################
 #                          ALTERNATE SET OF FUNCTIONS USING MINIMISATION INSTEAD OF GRIDSEARCH                           #
@@ -2554,8 +2576,18 @@ class pipelineOps(object):
 ##########################################################################################################################
 
 
-
+	#Apply the 
 	def applySubtraction(self, fileList):
+		"""
+		Def: 
+		Apply the subframes method to a list of files
+
+		Input: fileList - list of files, where the top line is 
+		the name and type, the two columns and the name of the file 
+		and either O for object and S for sky. 
+
+		Output: List of subtracted files saved in the object directory 
+		"""
 		#Read in the data from the fileList
 		data = np.genfromtxt(fileList, dtype='str')
 		#Save the names and types as lists 
@@ -2580,7 +2612,51 @@ class pipelineOps(object):
 				#as objectFile_Corrected.fits. These are then fed through the pipeline.
 
 
+	def compareSky(self, skyCube, combNames):
+		"""
+		Def: 
+		From an input sky cube and set of sci_combined file names, 
+		work out the median difference between the bright sky lines  
+		and the corresponding object pixels 
 
+		Input: skyCube - Any reconstructed skyCube only 
+			   combNames - List of the sci_combined names 
+
+		Ouptut: medianVal - median difference between the sky and object values 
+
+		"""
+
+		#Create instance from the skycube 
+		sky_cube = cubeOps(skyCube)
+
+		#Extract the sky flux
+		flux = sky_cube.centralSpec()
+		#Check for where the flux exceeds a certain number of counts 
+		indices = np.where(flux > 500)
+		#Find the sky values at these pixels
+		values = flux[indices] 
+
+		#The combNames should be generated from within the Next routine
+		namesOfFiles = np.genfromtxt(combNames, dtype='str')
+		#Initialise an empty dictionary 
+		medVals = {}
+		#Loop round each of the cubes in combNames, create a cube 
+		#and store the median 
+
+		for fileName in namesOfFiles:
+			tempCube = cubeOps(fileName)
+			tempFlux = tempCube.specPlot(3)
+			tempValues = tempFlux[indices]
+			#Array of the differences, take absolute values 
+			diff = abs(values - tempValues)
+			#print diff
+			#Find the average
+			meanDiff = np.median(diff)
+			#Either use the values themselves or the difference
+			medVals[tempCube.IFUNR] = np.median(tempValues)
+		medVector = np.median(medVals.values())
+		print medVector
+		return medVector
 
 
 

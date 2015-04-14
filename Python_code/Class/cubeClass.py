@@ -299,7 +299,11 @@ class cubeOps(object):
 
 		#Now have the plot vector, plot it.
 		plt.imshow(plot_vec)
-		plt.savefig('test.png')				
+		plt.savefig('test.png')		
+
+	
+
+			
 
 
 
