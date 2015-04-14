@@ -2659,6 +2659,41 @@ class pipelineOps(object):
 		return medVector
 
 
+	def frameCheck(self, skyCube, frameNames):
+
+		"""
+		Def: 
+		Executes the kmo_sci_red recipe with skytweak 
+		for each of the individual object sky pairs and then 
+		applies compareSky to the science products. Plots a graph 
+		for the identification of bad science frames 
+
+		Input: skyCube - any reconstructed sky cube 
+				frameNames - list of object/sky pairs with 
+				the names in the first column and type in second 
+
+		Outpt: Plot of frame performance against ID
+		"""
+
+		#Read in the data from the frameNames
+		data = np.genfromtxt(frameNames, dtype='str')
+		#Save the names and types as lists 
+		names = data[0:,0]
+		print names
+		types = data[0:,1]
+		#Loop round all names and apply the computeOffsetSegments method
+		for i in range(1, len(names)):
+			if types[i] == 'O':
+				objFile = names[i]
+				if i == 1:
+					skyFile = names[i + 1]
+				elif types[i - 1] == 'S':
+					skyFile = names[i - 1]
+				else:
+					skyFile = names[i + 1]
+
+				print 'reducing file: %s : ' %  objFile
+				
 
 
 
