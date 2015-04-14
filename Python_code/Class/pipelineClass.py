@@ -2653,13 +2653,13 @@ class pipelineOps(object):
 			#Find the average
 			meanDiff = np.median(diff)
 			#Either use the values themselves or the difference
-			medVals[tempCube.IFUNR] = np.median(tempValues)
+			medVals[tempCube.IFUNR] = np.mean(tempValues)
 		medVector = np.median(medVals.values())
 		print medVector
 		return medVector
 
 
-	def frameCheck(self, skyCube, frameNames):
+	def frameCheck(self, skyCube, frameNames, combNames):
 
 		"""
 		Def: 
@@ -2682,8 +2682,11 @@ class pipelineOps(object):
 		print names
 		types = data[0:,1]
 		#Loop round all names and apply the computeOffsetSegments method
+		counter = 0
+		medValVec = []
 		for i in range(1, len(names)):
 			if types[i] == 'O':
+				counter += 1
 				objFile = names[i]
 				if i == 1:
 					skyFile = names[i + 1]
@@ -2693,8 +2696,41 @@ class pipelineOps(object):
 					skyFile = names[i + 1]
 
 				print 'reducing file: %s : ' %  objFile
-				
+				#Create the new .sof file at each stage for just the object sky pair
+				#the .sof file must be in the directory, and must have all the other 
+				#files required already specified.
 
+				#Create a copy of the sci_reduc.sof in a new temporary file
+				with open('sci_reduc.sof') as f:
+				    with open('sci_reduc_temp.sof', 'w') as f1:
+				        for line in f:
+				                f1.write(line)
+
+				#Append the current object and skyfile names to the newly created .sof file
+				with open('sci_reduc_temp.sof', 'a') as f:
+					f.write('\n%s\tSCIENCE' % objFile)
+					f.write('\n%s\tSCIENCE' % skyFile)
+				#Now just execute the esorex recipe for this new file 
+				os.system('esorex kmo_sci_red --sky_tweak=TRUE sci_reduc_temp.sof')
+
+				#We have all the science products now execute the above method for each 
+				#of the pairs. Should think of a better way to create the combNames file
+				medValVec.append(self.compareSky(skyCube, combNames))
+				#remove the temporary .sof file and go back to the start of the loop 
+				os.system('rm sci_reduc_temp.sof') 	
+
+		#Should now have populated the medValVec and incremented counter 
+		ID = np.arange(0, counter, 1)
+		#Create a figure and plot the results  
+		fig, ax = plt.subplots(1, 1, figsize=(12.0,12.0))
+		ax.plot(ID, medValVec)
+		ax.set_title('Sky Tweak Performance vs. Frame ID')
+		ax.set_xlabel('Frame ID')
+		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+		ax.grid(b=True, which='both', linestyle='--')
+		fig.savefig('frame_performance.png')
+		plt.show()
+		plt.close('all')
 
 
 
