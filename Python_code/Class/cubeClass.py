@@ -8,8 +8,10 @@ import os, sys, numpy as np, random, matplotlib.mlab as mlab, matplotlib.pyplot 
 import pyraf
 import numpy.polynomial.polynomial as poly
 import lmfit
+import scipy
 from lmfit.models import GaussianModel, ExponentialModel, LorentzianModel, VoigtModel, PolynomialModel
 from scipy import stats
+from scipy import optimize
 from scipy.optimize import minimize
 from scipy.optimize import basinhopping
 from astropy.io import fits
@@ -21,6 +23,14 @@ from matplotlib.colors import LogNorm
 ####################################################################
 
 class cubeOps(object):
+	"""
+	Def: 
+	Class mainly for combined data cubes output from the
+	kmo_sci_red recipe. Contains a series of functions and 
+	definitions useful for manipulating the datacubes. 
+	Input: 
+	sci_combined datacube
+	"""
 	#Initialiser creates an instance of the cube object
 	#Input must be a combined data cube with two extensions - data and noise 
 	def __init__(self, fileName):
@@ -30,6 +40,9 @@ class cubeOps(object):
 		self.Table = fits.open(fileName)
 		#Variable housing the primary data cube
 		self.data = self.Table[1].data
+		#Collapse over the wavelength axis to get an image
+		self.imData = np.median(self.data, axis=0)
+		#Create a plot of the image 
 		#Variable housing the noise data cube
 		self.noise = self.Table[2].data
 		#Primary Header 
@@ -62,6 +75,7 @@ class cubeOps(object):
 		#sexagesimal format - convert to degrees for the plot 
 		self.raDict = {}
 		self.decDict = {}
+		self.offList = []
 		for i in range(1, 25):
 			try:
 				raName = "HIERARCH ESO OCS ARM" + str(i) + " ALPHA"
@@ -73,7 +87,10 @@ class cubeOps(object):
 
 			except KeyError:
 				print 'IFU %s Not in Use' % DictName
+				self.offList.append(i)
 
+		self.offList = np.array(self.offList)
+		self.offList = self.offList - 1
 		self.raArray = self.raDict.values()
 		self.decArray = self.decDict.values()
 		self.IFUArms = self.raDict.keys()
@@ -246,7 +263,7 @@ class cubeOps(object):
 		ax.set_ylim(0,100)
 		saveName = (self.fileName)[:-5] + '.png'
 		fig.savefig(saveName)
-		plt.show()		
+		#plt.show()		
 		plt.close('all')
 		return flux_array
 
@@ -300,21 +317,81 @@ class cubeOps(object):
 		#Now have the plot vector, plot it.
 		plt.imshow(plot_vec)
 		plt.savefig('test.png')		
-
-	
-
-			
+		plt.close('all')
 
 
+	#Attempt to use someone elses code to fit a 2D gaussian to the data	
+	def gaussian(self, height, center_x, center_y, width_x, width_y):
+	    """Returns a gaussian function with the given parameters"""
+	    width_x = float(width_x)
+	    width_y = float(width_y)
+	    return lambda x,y: height*exp(
+	                -(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
 
+	def moments(self, data):
+	    """Returns (height, center_x, center_y, width_x, width_y)
+	    the gaussian parameters of a 2D distribution by calculating its
+	    moments """
+	    #First set all np.nan values in data to 0 
+	    #And all the negative values to 0 
+	    #These shouldn't influence the moment calculation
+	    data[np.isnan(data)] = 0
+	    data[data < 0] = 0
+	    total = np.nansum(data)
+	    print 'The sum over the data is: %s' % total
+	    X, Y = indices(data.shape)
+	    print 'The Indices are: %s, %s' % (X, Y)
+	    x = np.nansum((X*data))/total
+	    y = np.nansum((Y*data))/total
+	    print x, y
+	    col = data[:, int(y)]
+	    width_x = sqrt(abs((arange(col.size)-y)**2*col).sum()/col.sum())
+	    row = data[int(x), :]
+	    width_y = sqrt(abs((arange(row.size)-x)**2*row).sum()/row.sum())
+	    height = data.max()
+	    return height, x, y, width_x, width_y
 
+	def fitgaussian(self, data):
+	    """Returns (height, x, y, width_x, width_y)
+	    the gaussian parameters of a 2D distribution found by a fit"""
+	    params = self.moments(data)
+	    errorfunction = lambda p: ravel(self.gaussian(*p)(*indices(data.shape)) -
+	                                 data)
+	    p, success = optimize.leastsq(errorfunction, params)
+	    return p
 
+	def psfMask(self):
+		"""Returns (FWHM, psfMask) which are the FWHM of the 2D gaussian 
+		fit to the collapsed object image and the mask of values found 
+		after integrating the gaussian function over all the pixels and 
+		normalising by this value. 	
+		"""
+		#Find the FWHM and the masking profile of a given datacube
 
-
-
-
-
-
+		#Step 1 - perform least squares minimisation to find the parameters  
+		params = self.fitgaussian(self.imData)
+		sigma = (params[3] + params[4]) / 2.0
+		FWHM = 2.3548 * sigma
+		print 'The FWHM is: %s' % FWHM
+		#Step 2 - Return a gaussian function with the fit parameters 
+		fit = self.gaussian(*params)
+		#Step 3 - Evaluate the gaussian over the pixel range 
+		gEval = fit(*indices(self.imData.shape))
+		#This is the initial grid of values, but need to normalise to 1 
+		#Integrate the gaussian using double quadrature 
+		integral = scipy.integrate.dblquad(fit, a=0, b=self.imData.shape[1],\
+ 			gfun=lambda x: 0 , hfun=lambda x: self.imData.shape[1])
+		#Plot the image and the fit 
+		colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
+		colCax = colAx.imshow(self.imData, interpolation='bicubic')
+		colAx.contour(fit(*indices(self.imData.shape)))
+		colFig.colorbar(colCax)
+		saveName = (self.fileName)[:-5] + '_gauss.png'
+		colFig.savefig(saveName)
+		#plt.show()		
+		plt.close('all')
+		#return the FWHM and the masked profile 
+		return (gEval / integral[0]), FWHM, self.offList
 
 
 ##############################################################################
@@ -324,7 +401,6 @@ class cubeOps(object):
 #		print self.data	
 
 #create class instance 
-#cube = cubeOps('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Science_Output/sci_combined_n55_19__telluric.fits')
 #cube.specPlot2D(orientation='vertical')
 ##############################################################################
 
@@ -335,8 +411,23 @@ class cubeOps(object):
 #	cube = cubeOps(name)
 #	cube.specPlot(1)
 
+##Attempting to fit 2D gaussian
+#cube = cubeOps('sci_combined_n55_19__skytweak.fits')
+#params = cube.fitgaussian(cube.imData)
+#fit = cube.gaussian(*params)
+#print params
+##indices creates the grid of x,y pairs to evaluate the gaussian at. 
+#cube.colAx.contour(fit(*indices(cube.imData.shape)))#
 
-
+##print fit(*indices(cube.imData.shape))
+##Now try evaluating the gaussian at each point
+#integral = scipy.integrate.dblquad(fit, a=0, b=cube.imData.shape[1],\
+# gfun=lambda x: 0 , hfun=lambda x: cube.imData.shape[1])
+#print integral[0]
+##Now just need to fold all of this into a function in pipeline class  
+##to recover the FWHM of the gaussian in each case and plot this in the 
+##same way as before. Each analysis gives a full set of IFU combined frames 
+##Each of those gives a FWHM. 
 
 
 

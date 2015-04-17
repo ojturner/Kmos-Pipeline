@@ -16,8 +16,8 @@ from cubeClass import cubeOps
 oldbadP = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/badpixel_dark.fits'
 oldlcal = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/lcal_YJYJYJ.fits'
 
-objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/KMOS_SPEC_OBS259_0017_Corrected.fits'
-skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/KMOS_SPEC_OBS259_0016.fits'
+objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/KMOS.2014-08-05T03_14_39.263.fits'
+skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/KMOS.2014-08-05T03_15_35.245.fits'
 badPMap14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/badpixel_dark_Added.fits'
 badPMap15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/Calibration_Files/badpixel_dark_Added.fits'
 lcalMap14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/lcal_YJYJYJ.fits'

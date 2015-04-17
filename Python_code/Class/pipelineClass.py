@@ -2647,16 +2647,39 @@ class pipelineOps(object):
 			tempCube = cubeOps(fileName)
 			tempFlux = tempCube.specPlot(3)
 			tempValues = tempFlux[indices]
-			#Array of the differences, take absolute values 
-			diff = abs(values - tempValues)
-			#print diff
-			#Find the average
-			meanDiff = np.median(diff)
 			#Either use the values themselves or the difference
-			medVals[tempCube.IFUNR] = np.mean(tempValues)
-		medVector = np.median(medVals.values())
+			medVals[tempCube.IFUNR] = np.median(tempValues)
+		medVector = np.mean(medVals.values())
 		print medVector
-		return medVector
+		return np.array(medVals.values())
+
+	def gaussFit(self, combNames):
+
+		"""
+		Def: 
+		Uses the psfMask function from cubeClass to 
+		loop round the list of combNames and return a 
+		list of FWHM values and a list of mask profiles 
+
+		Input: combNames - list of sci_combined files produced 
+		by the pipeline 
+		"""
+		namesOfFiles = np.genfromtxt(combNames, dtype='str')
+
+		fwhmArray = []
+		psfArray = []
+		#Loop round and create an instance of the class each time
+		for fileName in namesOfFiles:
+			print 'Gaussian fitting science frame: %s' % fileName
+			tempCube = cubeOps(fileName)
+			psfProfile, fwhm, offList = tempCube.psfMask()
+			fwhmArray.append(fwhm)
+			psfArray.append(psfProfile)
+		return fwhmArray, psfArray, offList
+
+
+
+
 
 
 	def frameCheck(self, skyCube, frameNames, combNames):
@@ -2666,7 +2689,8 @@ class pipelineOps(object):
 		Executes the kmo_sci_red recipe with skytweak 
 		for each of the individual object sky pairs and then 
 		applies compareSky to the science products. Plots a graph 
-		for the identification of bad science frames 
+		for the identification of bad science frames. Also fits a gaussian 
+		function to the collapsed data for each IFU, for each object sky pair.  
 
 		Input: skyCube - any reconstructed sky cube 
 				frameNames - list of object/sky pairs with 
@@ -2675,6 +2699,9 @@ class pipelineOps(object):
 		Outpt: Plot of frame performance against ID
 		"""
 
+		#remove the temporary sof file if it exists
+		if os.path.isfile('sci_reduc_temp.sof'):
+			os.system('rm sci_reduc_temp.sof')
 		#Read in the data from the frameNames
 		data = np.genfromtxt(frameNames, dtype='str')
 		#Save the names and types as lists 
@@ -2683,7 +2710,11 @@ class pipelineOps(object):
 		types = data[0:,1]
 		#Loop round all names and apply the computeOffsetSegments method
 		counter = 0
-		medValVec = []
+		frameValVec = []
+		IFUValVec = []
+		namesVec = []
+		fwhmValVec = []
+		fwhmMeanVec = []
 		for i in range(1, len(names)):
 			if types[i] == 'O':
 				counter += 1
@@ -2696,6 +2727,7 @@ class pipelineOps(object):
 					skyFile = names[i + 1]
 
 				print 'reducing file: %s : ' %  objFile
+				namesVec.append(objFile)
 				#Create the new .sof file at each stage for just the object sky pair
 				#the .sof file must be in the directory, and must have all the other 
 				#files required already specified.
@@ -2711,27 +2743,139 @@ class pipelineOps(object):
 					f.write('\n%s\tSCIENCE' % objFile)
 					f.write('\n%s\tSCIENCE' % skyFile)
 				#Now just execute the esorex recipe for this new file 
-				os.system('esorex kmo_sci_red --sky_tweak=TRUE sci_reduc_temp.sof')
+				os.system('esorex kmo_sci_red --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof')
 
 				#We have all the science products now execute the above method for each 
 				#of the pairs. Should think of a better way to create the combNames file
-				medValVec.append(self.compareSky(skyCube, combNames))
+				print 'Checking IFU sky tweak performance'
+				#This is the array of IFU values for each frame 
+				medVals = self.compareSky(skyCube, combNames)
+				#Append the full vector for a more detailed plot 
+				IFUValVec.append(medVals)
+				#Append the mean value for the average plot
+				frameValVec.append(np.mean(medVals))
 				#remove the temporary .sof file and go back to the start of the loop 
+				print 'Checking PSF of object sky pair'
+				fwhmArray, psfArray, offList = self.gaussFit(combNames)
+				fwhmValVec.append(fwhmArray)
+				fwhmMeanVec.append(np.mean(fwhmArray))
 				os.system('rm sci_reduc_temp.sof') 	
 
-		#Should now have populated the medValVec and incremented counter 
+		##############################################################################
+		#There are the IFU sky tweak performance plots 
+		#Should now have populated the frameValVec, IFUValVec and incremented counter
+		IFUValVec = np.array(IFUValVec)
+		fwhmValVec = np.array(fwhmValVec)
 		ID = np.arange(0, counter, 1)
+		IFUID = np.arange(0, len(IFUValVec[0]), 1)
+		val = 0
+		combinedNames = np.loadtxt(combNames, dtype='str')
+
+		#Collape all the information at the IFU level onto a single plot
+		fig, ax = plt.subplots(1, 1, figsize=(20.0, 20.0))
+		for entry in IFUValVec:
+			ax.plot(IFUID, entry, label=namesVec[val])
+			val += 1
+		ax.set_title('Sky Tweak Performance vs. IFU ID')
+		ax.set_xlabel('IFU ID')
+		ax.set_xticks((np.arange(min(IFUID), max(IFUID)+1, 1.0)))
+		ax.grid(b=True, which='both', linestyle='--')
+		plt.legend(prop={'size':10})
+		fig.savefig('IFU_by_Frame_15.png')
+		plt.show()
+		plt.close('all')		
+
+		#Make a plot for each IFU in a subplot array
+		fig, axArray = plt.subplots(4, 6, figsize=(20.0, 20.0))
+		IFUCount = 0
+		dataCount = 0
+		#Have the data now - populate the subplots 
+		for col in range(4):
+			for row in range(6):
+				#Only plot if the IFU is functioning 
+				if IFUCount not in offList:
+					frameVec = IFUValVec[:, dataCount]
+					axArray[col][row].plot(ID, frameVec)
+					axArray[col][row].set_title('IFU %s' % (IFUCount + 1))
+					axArray[col][row].set_xlabel('Frame ID')
+					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+					axArray[col][row].grid(b=True, which='both', linestyle='--')
+					dataCount += 1
+				#Increment the IFUCount number
+				IFUCount += 1
+		#Subplots populated, save the overall figure 
+		fig.savefig('IFU_subplots_15.png')
+		plt.show()
+		plt.close('all')		
+
+
+		#Make the overall mean plot of performance for the frames  
 		#Create a figure and plot the results  
 		fig, ax = plt.subplots(1, 1, figsize=(12.0,12.0))
-		ax.plot(ID, medValVec)
+		ax.plot(ID, frameValVec)
 		ax.set_title('Sky Tweak Performance vs. Frame ID')
 		ax.set_xlabel('Frame ID')
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
-		fig.savefig('frame_performance.png')
+		fig.savefig('frame_performance_15.png')
 		plt.show()
 		plt.close('all')
+		##################################################################
 
+		##################################################################
+		#These are the psf investigation plots 
+		##################################################################
+		#Collape all the information at the IFU level onto a single plot
+
+		val = 0
+		fig, ax = plt.subplots(1, 1, figsize=(20.0, 20.0))
+		for entry in fwhmValVec:
+			ax.plot(IFUID, entry, label=namesVec[val])
+			val += 1
+		ax.set_title('FWHM vs. IFU ID')
+		ax.set_xlabel('IFU ID')
+		ax.set_xticks((np.arange(min(IFUID), max(IFUID)+1, 1.0)))
+		ax.grid(b=True, which='both', linestyle='--')
+		plt.legend(prop={'size':10})
+		fig.savefig('fwhm_by_Frame_15.png')
+		plt.show()
+		plt.close('all')		
+
+		#Make a plot for each IFU in a subplot array
+		fig, axArray = plt.subplots(4, 6, figsize=(20.0, 20.0))
+		IFUCount = 0
+		dataCount = 0
+		#Have the data now - populate the subplots 
+		for col in range(4):
+			for row in range(6):
+				#Only plot if IFU is functional 
+				if IFUCount not in offList:
+					frameVec = fwhmValVec[:, dataCount]
+					axArray[col][row].plot(ID, frameVec)
+					axArray[col][row].set_title('IFU %s' % (IFUCount + 1))
+					axArray[col][row].set_xlabel('Frame ID')
+					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+					axArray[col][row].grid(b=True, which='both', linestyle='--')
+					dataCount += 1
+				#Increment the IFUCount
+				IFUCount += 1
+		#Subplots populated, save the overall figure 
+		fig.savefig('fwhm_subplots_15.png')
+		plt.show()
+		plt.close('all')		
+
+
+		#Make the overall mean plot of performance for the frames  
+		#Create a figure and plot the results  
+		fig, ax = plt.subplots(1, 1, figsize=(12.0,12.0))
+		ax.plot(ID, fwhmMeanVec)
+		ax.set_title('average fwhm vs. Frame ID')
+		ax.set_xlabel('Frame ID')
+		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+		ax.grid(b=True, which='both', linestyle='--')
+		fig.savefig('frame_fwhm_15.png')
+		plt.show()
+		plt.close('all')
 
 
 
