@@ -51,9 +51,12 @@ class cubeOps(object):
 		self.dataHeader = self.Table[1].header
 		#noise Header 
 		self.noiseHeader = self.Table[2].header
-		#Extract the wavelength calibration info 
-		self.start_L = self.dataHeader["CRVAL3"]
-		self.dL = self.dataHeader["CDELT3"]
+		#Extract the wavelength calibration info
+		try:
+			self.start_L = self.dataHeader["CRVAL3"]
+			self.dL = self.dataHeader["CDELT3"]
+		except KeyError:
+			print 'This is a raw image'
 		#Extract the IFU number from the data 
 		#Cube may not have this keyword, try statement
 		#Not sure if this is good practice - conditional attribute.
@@ -69,15 +72,27 @@ class cubeOps(object):
 				self.IFUName = copy(self.IFUNR)
 				print 'You have specified a reconstructed type'
 			except KeyError:
-				raise KeyError("Please Check the type of fits file fed to the class")
+				print("Warning: not a datacube")
 
 		#Set the RA and DEC positions of all the arms. These are in 
 		#sexagesimal format - convert to degrees for the plot 
 		self.raDict = {}
 		self.decDict = {}
+		self.combDict = {}
 		self.offList = []
 		for i in range(1, 25):
+
+			#Construct the list of combined science frames that will 
+			#be thrown out by the science pipeline
 			try:
+				nuName = "HIERARCH ESO OCS ARM" + str(i) + " NOTUSED"
+				temp = self.primHeader[nuName]
+			except KeyError:
+				combKey = "HIERARCH ESO OCS ARM" + str(i) + " ORIGARM"
+				combName = "HIERARCH ESO OCS ARM" + str(i) + " NAME"
+				self.combDict[self.primHeader[combKey]] = self.primHeader[combName]
+
+			try:				
 				raName = "HIERARCH ESO OCS ARM" + str(i) + " ALPHA"
 				DictName = 'Arm' + str(i)
 				decName = "HIERARCH ESO OCS ARM" + str(i) + " DELTA"
@@ -89,14 +104,23 @@ class cubeOps(object):
 				print 'IFU %s Not in Use' % DictName
 				self.offList.append(i)
 
+		#Construct the list of combiend science names separately
+		#This is now in order of the IFU
+		self.combNames = []
+		for entry in self.combDict.values():
+			combinedName = 'sci_combined_' + entry + '__skytweak.fits'
+			self.combNames.append(combinedName)
 		self.offList = np.array(self.offList)
 		self.offList = self.offList - 1
 		self.raArray = self.raDict.values()
 		self.decArray = self.decDict.values()
 		self.IFUArms = self.raDict.keys()
 
-		#Create the wavelength array  
-		self.wave_array = self.start_L + np.arange(0, 2048*(self.dL), self.dL)
+		#Create the wavelength array if this is a combined data type
+		try:
+			self.wave_array = self.start_L + np.arange(0, 2048*(self.dL), self.dL)
+		except:
+			print 'cannot set wavelength array'
 		#Can define all kinds of statistics from the data common to the methods
 		#Find the brightest median pixel in the array 
 		self.med_array = np.nanmedian(self.data, axis=0)
@@ -318,6 +342,26 @@ class cubeOps(object):
 		plt.imshow(plot_vec)
 		plt.savefig('test.png')		
 		plt.close('all')
+
+	def optimalSpec(self):
+		"""
+		Def: 
+		Optimally extract the spectrum of the object from the whole image. 
+		Use the PSF of the object to get the weighting for the extraction. 
+		Do I just sum over the axis? 
+		Input: None - everything already defined
+		"""
+		#Fit a gaussian to the fully combined science cube
+		#to determine the optimal extraction profile
+		psfMask, fwhm, offList = self.psfMask()
+
+		#Multiply the cube data by the psfMask
+		modCube = psfMask * self.data
+
+		#Sum over each spatial dimension to get the spectrum 
+		first_sum = np.nansum(modCube, axis=1)
+		spectrum = np.nansum(first_sum, axis=1)
+		return spectrum
 
 
 	#Attempt to use someone elses code to fit a 2D gaussian to the data	

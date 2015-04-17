@@ -66,7 +66,7 @@ namesOfFile_1 = np.genfromtxt(sci_names_14_noTel_1, dtype='str')
 
 
 
-pipe_methods.frameCheck(skyCube, names_15_shifted, frame_check_names)
+pipe_methods.frameCheck(skyCube, names_15_shifted)
 #Now try the subtraction method 
 #pipe_methods.subFrames('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits', skyFile)
 #pipe_methods.subFrames('KMOS_SPEC_OBS258_0001_Corrected.fits', skyFile)

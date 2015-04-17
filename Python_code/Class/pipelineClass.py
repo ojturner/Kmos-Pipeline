@@ -2682,7 +2682,7 @@ class pipelineOps(object):
 
 
 
-	def frameCheck(self, skyCube, frameNames, combNames):
+	def frameCheck(self, skyCube, frameNames):
 
 		"""
 		Def: 
@@ -2692,13 +2692,13 @@ class pipelineOps(object):
 		for the identification of bad science frames. Also fits a gaussian 
 		function to the collapsed data for each IFU, for each object sky pair.  
 
-		Input: skyCube - any reconstructed sky cube 
+		Input: 	reconstructed object cube from the current set
+				skyCube - any reconstructed sky cube 
 				frameNames - list of object/sky pairs with 
 				the names in the first column and type in second 
 
 		Outpt: Plot of frame performance against ID
 		"""
-
 		#remove the temporary sof file if it exists
 		if os.path.isfile('sci_reduc_temp.sof'):
 			os.system('rm sci_reduc_temp.sof')
@@ -2715,6 +2715,17 @@ class pipelineOps(object):
 		namesVec = []
 		fwhmValVec = []
 		fwhmMeanVec = []
+		#Set the combined science names 
+		if types[1] == 'O':
+			combNames = cubeOps(names[1]).combNames
+		elif types[2] == 'O':
+			combNames = cubeOps(names[2]).combNames
+		elif types[3] == 'O':
+			combNames = cubeOps(names[3]).combNames
+		else:
+			print 'Having difficulty setting sci_comb names'
+
+
 		for i in range(1, len(names)):
 			if types[i] == 'O':
 				counter += 1
@@ -2786,12 +2797,12 @@ class pipelineOps(object):
 		plt.close('all')		
 
 		#Make a plot for each IFU in a subplot array
-		fig, axArray = plt.subplots(4, 6, figsize=(20.0, 20.0))
+		fig, axArray = plt.subplots(3, 8, figsize=(20.0, 20.0))
 		IFUCount = 0
 		dataCount = 0
 		#Have the data now - populate the subplots 
-		for col in range(4):
-			for row in range(6):
+		for col in range(3):
+			for row in range(8):
 				#Only plot if the IFU is functioning 
 				if IFUCount not in offList:
 					frameVec = IFUValVec[:, dataCount]
@@ -2842,12 +2853,12 @@ class pipelineOps(object):
 		plt.close('all')		
 
 		#Make a plot for each IFU in a subplot array
-		fig, axArray = plt.subplots(4, 6, figsize=(20.0, 20.0))
+		fig, axArray = plt.subplots(3, 8, figsize=(20.0, 20.0))
 		IFUCount = 0
 		dataCount = 0
 		#Have the data now - populate the subplots 
-		for col in range(4):
-			for row in range(6):
+		for col in range(3):
+			for row in range(8):
 				#Only plot if IFU is functional 
 				if IFUCount not in offList:
 					frameVec = fwhmValVec[:, dataCount]
