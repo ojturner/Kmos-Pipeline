@@ -11,6 +11,7 @@ from matplotlib.colors import LogNorm
 import numpy.polynomial.polynomial as poly
 import lmfit
 import random
+from itertools import cycle as cycle
 from lmfit.models import GaussianModel, ExponentialModel, LorentzianModel, VoigtModel, PolynomialModel
 from scipy import stats
 from scipy.optimize import minimize
@@ -2664,21 +2665,33 @@ class pipelineOps(object):
 		Input: combNames - list of sci_combined files produced 
 		by the pipeline 
 		"""
+
 		namesOfFiles = np.genfromtxt(combNames, dtype='str')
 
 		fwhmArray = []
 		psfArray = []
-		#Loop round and create an instance of the class each time
-		for fileName in namesOfFiles:
-			print 'Gaussian fitting science frame: %s' % fileName
-			tempCube = cubeOps(fileName)
-			psfProfile, fwhm, offList = tempCube.psfMask()
+		try:
+
+			#Loop round and create an instance of the class each time
+			for fileName in namesOfFiles:
+				print 'Gaussian fitting science frame: %s' % fileName
+				tempCube = cubeOps(fileName)
+				params, psfProfile, fwhm, offList = tempCube.psfMask()
+				fwhmArray.append(fwhm)
+				psfArray.append(psfProfile)
+
+		except TypeError:
+			#Only one file in the list of files 
+			print namesOfFiles
+			cubeName = str(namesOfFiles)
+			print 'Gaussian fitting science frame: %s' % namesOfFiles
+			tempCube = cubeOps(cubeName)
+			params, psfProfile, fwhm, offList = tempCube.psfMask()
 			fwhmArray.append(fwhm)
-			psfArray.append(psfProfile)
+			psfArray.append(psfProfile)			
+
+		#Return the arrays	
 		return fwhmArray, psfArray, offList
-
-
-
 
 
 
@@ -2702,6 +2715,8 @@ class pipelineOps(object):
 		#remove the temporary sof file if it exists
 		if os.path.isfile('sci_reduc_temp.sof'):
 			os.system('rm sci_reduc_temp.sof')
+		if os.path.isfile('tracked.txt'):
+			os.system('rm tracked.txt')
 		#Read in the data from the frameNames
 		data = np.genfromtxt(frameNames, dtype='str')
 		#Save the names and types as lists 
@@ -2766,29 +2781,75 @@ class pipelineOps(object):
 				#Append the mean value for the average plot
 				frameValVec.append(np.mean(medVals))
 				#remove the temporary .sof file and go back to the start of the loop 
+				##########################################################################
+				###########################HARDWIRED######################################
+				##########################################################################
+
 				print 'Checking PSF of object sky pair'
-				fwhmArray, psfArray, offList = self.gaussFit(combNames)
+				tracked_star = 'sci_combined_n55_19__skytweak.fits'
+				#A-priori selection of brightest object to monitor the PSF
+				with open('tracked.txt', 'a') as f:
+					#Hard-Wired in right now - would need to change for different data set 
+					#And different object names. How can the brightest star be detected 
+					#automatically? Is there a S/N parameter in the header?
+					f.write(tracked_star)	
+				fwhmArray, psfArray, offList = self.gaussFit('tracked.txt')
 				fwhmValVec.append(fwhmArray)
 				fwhmMeanVec.append(np.mean(fwhmArray))
 				os.system('rm sci_reduc_temp.sof') 	
+				os.system('rm tracked.txt')
+
+				#########################################################
+				#Here place the objects into different bins based on the#
+				#computed FWHM of each frame                            #
+				#########################################################
+				#Change FWHM to arcsecond scale, by using the pixel scale
+				pixel_scale = cubeOps(tracked_star).pix_scale
+				fwhmArray = np.array(fwhmArray)
+				fwhmArray = pixel_scale * fwhmArray
+				a_fwhm_names = []
+				b_fwhm_names = []
+				c_fwhm_names = []
+				d_fwhm_names = []
+				#Conditional binning 
+				if (fwhmArray[0] < 0.6):
+					print 'Placing object in best bin'
+					a_fwhm_names.append(objFile)
+				elif (fwhmArray[0] > 0.6 and fwhmArray[0] < 1.0):
+					print 'Placing object in good bin'
+					a_fwhm_names.append(objFile)
+				elif (fwhmArray[0] > 1.0 and fwhmArray[0] < 1.5):
+					print 'Placing object in good bin'
+					a_fwhm_names.append(objFile)
 
 		##############################################################################
 		#There are the IFU sky tweak performance plots 
 		#Should now have populated the frameValVec, IFUValVec and incremented counter
 		IFUValVec = np.array(IFUValVec)
 		fwhmValVec = np.array(fwhmValVec)
-		ID = np.arange(0, counter, 1)
-		IFUID = np.arange(0, len(IFUValVec[0]), 1)
+		ID = np.arange(0.0, counter, 1.0)
+		#Cosntruct ID array of length 24
+		IFUID = np.arange(1.0, 25, 1.0)
+		offList = np.array(offList)
+		#Insert np.nan at the locations where the IFU is off
+		#Initialise the counter for the frame naming
 		val = 0
 		combinedNames = np.loadtxt(combNames, dtype='str')
-
+		colors_plot = cycle(cm.rainbow(np.linspace(0, 1, len(IFUValVec))))
+		colors_scatter = cycle(cm.rainbow(np.linspace(0, 1, len(IFUValVec))))
 		#Collape all the information at the IFU level onto a single plot
 		fig, ax = plt.subplots(1, 1, figsize=(20.0, 20.0))
 		for entry in IFUValVec:
-			ax.plot(IFUID, entry, label=namesVec[val])
+			#Extend the value array to match the IFUID array
+			for value in offList:
+				entry = np.insert(entry, value, np.nan)
+
+			ax.plot(IFUID, entry, label=namesVec[val], color=next(colors_plot))
+			ax.scatter(IFUID, entry, color=next(colors_scatter))
 			val += 1
 		ax.set_title('Sky Tweak Performance vs. IFU ID')
 		ax.set_xlabel('IFU ID')
+		ax.set_xlim(1,24)
 		ax.set_xticks((np.arange(min(IFUID), max(IFUID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
 		plt.legend(prop={'size':10})
@@ -2797,7 +2858,7 @@ class pipelineOps(object):
 		plt.close('all')		
 
 		#Make a plot for each IFU in a subplot array
-		fig, axArray = plt.subplots(3, 8, figsize=(20.0, 20.0))
+		fig, axArray = plt.subplots(3, 8, figsize=(25.0, 20.0))
 		IFUCount = 0
 		dataCount = 0
 		#Have the data now - populate the subplots 
@@ -2811,6 +2872,7 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
+					axArray[col][row].set_ylim(0, 20)
 					dataCount += 1
 				#Increment the IFUCount number
 				IFUCount += 1
@@ -2838,44 +2900,49 @@ class pipelineOps(object):
 		##################################################################
 		#Collape all the information at the IFU level onto a single plot
 
-		val = 0
-		fig, ax = plt.subplots(1, 1, figsize=(20.0, 20.0))
-		for entry in fwhmValVec:
-			ax.plot(IFUID, entry, label=namesVec[val])
-			val += 1
-		ax.set_title('FWHM vs. IFU ID')
-		ax.set_xlabel('IFU ID')
-		ax.set_xticks((np.arange(min(IFUID), max(IFUID)+1, 1.0)))
-		ax.grid(b=True, which='both', linestyle='--')
-		plt.legend(prop={'size':10})
-		fig.savefig('fwhm_by_Frame_15.png')
-		plt.show()
-		plt.close('all')		
+#		val = 0
+#		fig, ax = plt.subplots(1, 1, figsize=(20.0, 20.0))
+#		for entry in fwhmValVec:
+#			#Extend the value array to match the IFUID array
+#			for value in offList:
+#				entry = np.insert(entry, value, np.nan)#
 
-		#Make a plot for each IFU in a subplot array
-		fig, axArray = plt.subplots(3, 8, figsize=(20.0, 20.0))
-		IFUCount = 0
-		dataCount = 0
-		#Have the data now - populate the subplots 
-		for col in range(3):
-			for row in range(8):
-				#Only plot if IFU is functional 
-				if IFUCount not in offList:
-					frameVec = fwhmValVec[:, dataCount]
-					axArray[col][row].plot(ID, frameVec)
-					axArray[col][row].set_title('IFU %s' % (IFUCount + 1))
-					axArray[col][row].set_xlabel('Frame ID')
-					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
-					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					dataCount += 1
-				#Increment the IFUCount
-				IFUCount += 1
-		#Subplots populated, save the overall figure 
-		fig.savefig('fwhm_subplots_15.png')
-		plt.show()
-		plt.close('all')		
+#			ax.plot(IFUID, entry, label=namesVec[val])
+#			val += 1
+#		ax.set_title('FWHM vs. IFU ID')
+#		ax.set_xlabel('IFU ID')
+#		ax.set_xticks((np.arange(min(IFUID), max(IFUID)+1, 1.0)))
+#		ax.grid(b=True, which='both', linestyle='--')
+#		plt.legend(prop={'size':10})
+#		fig.savefig('fwhm_by_Frame_14.png')
+#		plt.show()
+#		plt.close('all')		#
 
+#		#Make a plot for each IFU in a subplot array
+#		fig, axArray = plt.subplots(3, 8, figsize=(25.0, 20.0))
+#		IFUCount = 0
+#		dataCount = 0
+#		#Have the data now - populate the subplots 
+#		for col in range(3):
+#			for row in range(8):
+#				#Only plot if IFU is functional 
+#				if IFUCount not in offList:
+#					frameVec = fwhmValVec[:, dataCount]
+#					axArray[col][row].plot(ID, frameVec)
+#					axArray[col][row].set_title('IFU %s' % (IFUCount + 1))
+#					axArray[col][row].set_xlabel('Frame ID')
+#					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+#					axArray[col][row].grid(b=True, which='both', linestyle='--')
+#					dataCount += 1
+#				#Increment the IFUCount
+#				IFUCount += 1
+#		#Subplots populated, save the overall figure 
+#		fig.savefig('fwhm_subplots_14.png')
+#		plt.show()
+#		plt.close('all')		
 
+		#Only interested in monitoring the FWHM across a single 
+		#IFU. Only plot the evolution of this.
 		#Make the overall mean plot of performance for the frames  
 		#Create a figure and plot the results  
 		fig, ax = plt.subplots(1, 1, figsize=(12.0,12.0))
@@ -2888,7 +2955,9 @@ class pipelineOps(object):
 		plt.show()
 		plt.close('all')
 
-
+###########################################################################################
+###########################################################################################
+#PLOTS CERATED - NOW TO ANALYSE THE BINS OF DIFFERENT FWHM#################################
 
 
 

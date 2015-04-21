@@ -9,6 +9,7 @@ import pyraf
 import numpy.polynomial.polynomial as poly
 import lmfit
 import scipy
+import math
 from lmfit.models import GaussianModel, ExponentialModel, LorentzianModel, VoigtModel, PolynomialModel
 from scipy import stats
 from scipy import optimize
@@ -115,6 +116,13 @@ class cubeOps(object):
 		self.raArray = self.raDict.values()
 		self.decArray = self.decDict.values()
 		self.IFUArms = self.raDict.keys()
+
+		#Find the pixel scale if this is a combined cube 
+		try:
+			self.pix_scale = self.primHeader['HIERARCH ESO PRO REC1 PARAM7 VALUE']
+		except KeyError:
+			print 'Could not set pixel scale - not a datacube'
+			self.pix_scale = 0
 
 		#Create the wavelength array if this is a combined data type
 		try:
@@ -344,6 +352,7 @@ class cubeOps(object):
 		plt.close('all')
 
 	def optimalSpec(self):
+
 		"""
 		Def: 
 		Optimally extract the spectrum of the object from the whole image. 
@@ -353,10 +362,38 @@ class cubeOps(object):
 		"""
 		#Fit a gaussian to the fully combined science cube
 		#to determine the optimal extraction profile
-		psfMask, fwhm, offList = self.psfMask()
+		params, psfMask, fwhm, offList = self.psfMask()
 
 		#Multiply the cube data by the psfMask
 		modCube = psfMask * self.data
+
+		#Recover the width of the gaussian 
+		width = fwhm / 2.3548
+		width = int(np.round(width))
+		#Recover the central value
+		x = params[1]
+		y = params[2]
+
+		#Set the upper and lower limits for optimal spectrum extraction
+		x_upper = int(x + (2*width))
+		if x_upper > len(self.data[0]):
+			x_upper = len(self.data[0])
+		x_lower = int(x - (2*width))
+		if x_lower < 0:
+			x_lower = 0	
+
+		y_upper = int(y + (2*width))
+		if y_upper > len(self.data[0]):
+			y_upper = len(self.data[0])
+		y_lower = int(y - (2*width))
+		if y_lower < 0:
+			y_lower = 0
+
+		print x_lower, x_upper, y_lower, y_upper		
+
+		#Set all values greater than 2sigma from the centre = 0 
+		#Don't want to include these in the final spectrum 
+		modCube[:,y_lower:y_upper, x_lower:x_upper]	
 
 		#Sum over each spatial dimension to get the spectrum 
 		first_sum = np.nansum(modCube, axis=1)
@@ -384,10 +421,10 @@ class cubeOps(object):
 	    total = np.nansum(data)
 	    print 'The sum over the data is: %s' % total
 	    X, Y = indices(data.shape)
-	    print 'The Indices are: %s, %s' % (X, Y)
+	    #print 'The Indices are: %s, %s' % (X, Y)
 	    x = np.nansum((X*data))/total
 	    y = np.nansum((Y*data))/total
-	    print x, y
+	    #print x, y
 	    col = data[:, int(y)]
 	    width_x = sqrt(abs((arange(col.size)-y)**2*col).sum()/col.sum())
 	    row = data[int(x), :]
@@ -402,6 +439,7 @@ class cubeOps(object):
 	    errorfunction = lambda p: ravel(self.gaussian(*p)(*indices(data.shape)) -
 	                                 data)
 	    p, success = optimize.leastsq(errorfunction, params)
+	    print p
 	    return p
 
 	def psfMask(self):
@@ -414,7 +452,7 @@ class cubeOps(object):
 
 		#Step 1 - perform least squares minimisation to find the parameters  
 		params = self.fitgaussian(self.imData)
-		sigma = (params[3] + params[4]) / 2.0
+		sigma = params[3]
 		FWHM = 2.3548 * sigma
 		print 'The FWHM is: %s' % FWHM
 		#Step 2 - Return a gaussian function with the fit parameters 
@@ -432,10 +470,10 @@ class cubeOps(object):
 		colFig.colorbar(colCax)
 		saveName = (self.fileName)[:-5] + '_gauss.png'
 		colFig.savefig(saveName)
-		#plt.show()		
+		plt.show()		
 		plt.close('all')
 		#return the FWHM and the masked profile 
-		return (gEval / integral[0]), FWHM, self.offList
+		return params, (gEval / integral[0]), FWHM, self.offList
 
 
 ##############################################################################
