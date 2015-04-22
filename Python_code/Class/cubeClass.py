@@ -105,12 +105,21 @@ class cubeOps(object):
 				print 'IFU %s Not in Use' % DictName
 				self.offList.append(i)
 
-		#Construct the list of combiend science names separately
+		#Construct the list of combined science names separately
 		#This is now in order of the IFU
 		self.combNames = []
 		for entry in self.combDict.values():
 			combinedName = 'sci_combined_' + entry + '__skytweak.fits'
 			self.combNames.append(combinedName)
+
+		#Also construct the list of kmo_combine recipe combined names 
+		self.rec_combNames = []
+		for entry in self.combDict.values():
+			combinedName = 'combine_sci_reconstructed_' + entry + '.fits'
+			self.rec_combNames.append(combinedName)
+
+
+
 		self.offList = np.array(self.offList)
 		self.offList = self.offList - 1
 		self.raArray = self.raDict.values()
@@ -470,7 +479,7 @@ class cubeOps(object):
 		colFig.colorbar(colCax)
 		saveName = (self.fileName)[:-5] + '_gauss.png'
 		colFig.savefig(saveName)
-		plt.show()		
+		#plt.show()		
 		plt.close('all')
 		#return the FWHM and the masked profile 
 		return params, (gEval / integral[0]), FWHM, self.offList

@@ -2679,6 +2679,7 @@ class pipelineOps(object):
 				params, psfProfile, fwhm, offList = tempCube.psfMask()
 				fwhmArray.append(fwhm)
 				psfArray.append(psfProfile)
+			return fwhmArray, psfArray, offList
 
 		except TypeError:
 			#Only one file in the list of files 
@@ -2687,11 +2688,51 @@ class pipelineOps(object):
 			print 'Gaussian fitting science frame: %s' % namesOfFiles
 			tempCube = cubeOps(cubeName)
 			params, psfProfile, fwhm, offList = tempCube.psfMask()
-			fwhmArray.append(fwhm)
-			psfArray.append(psfProfile)			
+			return fwhm, psfProfile, offList
+
 
 		#Return the arrays	
-		return fwhmArray, psfArray, offList
+		
+
+	def combFrames(self, frame_array):
+		"""
+		Def:
+
+		Helper Function to combine a list of object files 
+		categorised by the frameCheck method. First appends 
+		sci_reconstructed_ to each of the names and then 
+		combines these together using the KMOS pipeline 
+		recipe kmo_combine 
+		Input: frame_array - list of object names as specified 
+		by the frameCheck method
+
+		"""
+		#Remove .sof file if this exists
+		if os.path.isfile('sci_combine.sof'):
+			os.system('rm sci_combine.sof')
+		if len(frame_array) == 0:
+			print 'Empty Array'
+		else:
+
+			#Create new list of arrays with prepended names 
+			new_names = []
+			with open('sci_combine.sof', 'a') as f:
+				for entry in frame_array:
+
+					#If the entry doesn't contain a backslash, the entry 
+					#is the object name and can prepend directly 
+					if entry.find("/") == -1:
+						name = 'sci_reconstructed_' + entry
+						f.write('%s\n' % name)
+					#Otherwise the directory structure is included and have to 
+					#search for the backslash and omit up to the last one 
+					else:
+						objName = entry[len(entry) - entry[::-1].find("/"):]
+						name = 'sci_reconstructed_' + objName
+						f.write('%s\n' % name)
+			#Now execute the recipe 
+			os.system('esorex kmo_combine --edge_nan=TRUE sci_combine.sof')
+			
 
 
 
@@ -2733,13 +2774,35 @@ class pipelineOps(object):
 		#Set the combined science names 
 		if types[1] == 'O':
 			combNames = cubeOps(names[1]).combNames
+			rec_combNames = cubeOps(names[1]).rec_combNames
 		elif types[2] == 'O':
 			combNames = cubeOps(names[2]).combNames
+			rec_combNames = cubeOps(names[2]).rec_combNames
 		elif types[3] == 'O':
 			combNames = cubeOps(names[3]).combNames
+			rec_combNames = cubeOps(names[3]).rec_combNames
 		else:
 			print 'Having difficulty setting sci_comb names'
 
+		##########################################################################
+		###########################HARDWIRED######################################
+		##########################################################################
+		#Can probably in the future get the name of the IFU tracking a standard 
+		#Star straight from the fits header. Will hardwire it in a-priori now 
+		track_name = 'n55_19'
+		#Loop round the list of combNames until the track_name appears 
+		for entry in combNames:
+			if entry.find(track_name) != -1:
+				tracked_star = entry
+
+		#Remove tracked.txt if it already exists
+		if os.path.isfile('tracked.txt'):
+			os.system('rm tracked.txt')
+		with open('tracked.txt', 'a') as f:
+			#Hard-Wired in right now - would need to change for different data set 
+			#And different object names. How can the brightest star be detected 
+			#automatically? Is there a S/N parameter in the header?
+			f.write(tracked_star)
 
 		for i in range(1, len(names)):
 			if types[i] == 'O':
@@ -2780,53 +2843,54 @@ class pipelineOps(object):
 				IFUValVec.append(medVals)
 				#Append the mean value for the average plot
 				frameValVec.append(np.mean(medVals))
-				#remove the temporary .sof file and go back to the start of the loop 
-				##########################################################################
-				###########################HARDWIRED######################################
-				##########################################################################
 
-				print 'Checking PSF of object sky pair'
-				tracked_star = 'sci_combined_n55_19__skytweak.fits'
-				#A-priori selection of brightest object to monitor the PSF
-				with open('tracked.txt', 'a') as f:
-					#Hard-Wired in right now - would need to change for different data set 
-					#And different object names. How can the brightest star be detected 
-					#automatically? Is there a S/N parameter in the header?
-					f.write(tracked_star)	
-				fwhmArray, psfArray, offList = self.gaussFit('tracked.txt')
-				fwhmValVec.append(fwhmArray)
-				fwhmMeanVec.append(np.mean(fwhmArray))
+				#Move onto FWHM analysis of chosen tracked star 	
+				print 'Checking PSF of tracked star'
+				fwhm, psfProfile, offList = self.gaussFit('tracked.txt')
+				fwhmValVec.append(fwhm)
+				fwhmMeanVec.append(fwhm)
+				#remove the temporary .sof file and go back to the start of the loop
 				os.system('rm sci_reduc_temp.sof') 	
-				os.system('rm tracked.txt')
+				
 
 				#########################################################
 				#Here place the objects into different bins based on the#
 				#computed FWHM of each frame                            #
 				#########################################################
 				#Change FWHM to arcsecond scale, by using the pixel scale
-				pixel_scale = cubeOps(tracked_star).pix_scale
-				fwhmArray = np.array(fwhmArray)
-				fwhmArray = pixel_scale * fwhmArray
+				#recover the pixel scale by creating a cubeClass instance
+				pixel_scale = float(cubeOps(tracked_star).pix_scale)
+				arc_fwhm =  fwhm * pixel_scale
+
+				#Set up the different bins 
 				a_fwhm_names = []
 				b_fwhm_names = []
 				c_fwhm_names = []
 				d_fwhm_names = []
-				#Conditional binning 
-				if (fwhmArray[0] < 0.6):
+
+				#Conditional binning - HARDWIRED VALUES 
+				#Could look at percentiles of FWHM distribution? 
+				if (arc_fwhm < 0.6):
 					print 'Placing object in best bin'
 					a_fwhm_names.append(objFile)
-				elif (fwhmArray[0] > 0.6 and fwhmArray[0] < 1.0):
+				elif (arc_fwhm > 0.6 and arc_fwhm < 1.0):
 					print 'Placing object in good bin'
-					a_fwhm_names.append(objFile)
-				elif (fwhmArray[0] > 1.0 and fwhmArray[0] < 1.5):
-					print 'Placing object in good bin'
-					a_fwhm_names.append(objFile)
+					b_fwhm_names.append(objFile)
+				elif (arc_fwhm > 1.0 and arc_fwhm < 1.5):
+					print 'Placing object in okay bin'
+					c_fwhm_names.append(objFile)
+				else:
+					print 'Placing object in bad bin'
+					d_fwhm_names.append(objFile)
+
 
 		##############################################################################
 		#There are the IFU sky tweak performance plots 
 		#Should now have populated the frameValVec, IFUValVec and incremented counter
 		IFUValVec = np.array(IFUValVec)
 		fwhmValVec = np.array(fwhmValVec)
+		#Convert the FWHM to arcseconds instead of pixels
+		fwhmMeanVec = pixel_scale * np.array(fwhmMeanVec)
 		ID = np.arange(0.0, counter, 1.0)
 		#Cosntruct ID array of length 24
 		IFUID = np.arange(1.0, 25, 1.0)
@@ -2868,11 +2932,12 @@ class pipelineOps(object):
 				if IFUCount not in offList:
 					frameVec = IFUValVec[:, dataCount]
 					axArray[col][row].plot(ID, frameVec)
+					axArray[col][row].scatter(ID, frameVec)
 					axArray[col][row].set_title('IFU %s' % (IFUCount + 1))
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					axArray[col][row].set_ylim(0, 20)
+					axArray[col][row].set_ylim(0, 70)
 					dataCount += 1
 				#Increment the IFUCount number
 				IFUCount += 1
@@ -2886,6 +2951,7 @@ class pipelineOps(object):
 		#Create a figure and plot the results  
 		fig, ax = plt.subplots(1, 1, figsize=(12.0,12.0))
 		ax.plot(ID, frameValVec)
+		ax.scatter(ID, frameValVec)
 		ax.set_title('Sky Tweak Performance vs. Frame ID')
 		ax.set_xlabel('Frame ID')
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
@@ -2947,6 +3013,7 @@ class pipelineOps(object):
 		#Create a figure and plot the results  
 		fig, ax = plt.subplots(1, 1, figsize=(12.0,12.0))
 		ax.plot(ID, fwhmMeanVec)
+		ax.scatter(ID, fwhmMeanVec)
 		ax.set_title('average fwhm vs. Frame ID')
 		ax.set_xlabel('Frame ID')
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
@@ -2957,16 +3024,105 @@ class pipelineOps(object):
 
 ###########################################################################################
 ###########################################################################################
-#PLOTS CERATED - NOW TO ANALYSE THE BINS OF DIFFERENT FWHM#################################
+#PLOTS CREATED - NOW TO ANALYSE THE BINS OF DIFFERENT FWHM
+###########################################################################################
+###########################################################################################
+#Use the combFrames method. Only thing to worry about is that at this stage 
+#all of the combined final products will have the same name - so should do analysis 
+#in the loop for each set of combined science images. Or for each FWHM bin append the psf bin 
+#to each of the created products, e.g. okay_combined_sci_n55_19.fits
+
+		#First check the directory for the rec_combNames and delete if they exist 
+		for entry in rec_combNames:
+			if os.path.isfile(entry):
+				os.system('rm %s' % entry)
+
+			#Set the rec_combName of the standard star in the same way as above 
+			if entry.find(track_name) != -1:
+				rec_tracked_star = entry
+
+		fwhm_dict = {}
+		#Now combine the different PSF bins 
+		#Start with best - check to see if this bin is empty or not 
+		if a_fwhm_names:
+			print 'Combining Best PSF Images'
+			self.combFrames(a_fwhm_names)
+			#The output from this is the combined_sci file names contained in rec_combNames
+			#These are all stacked data cubes in bins of seeing 
+			tracked_cube = cubeOps(rec_tracked_star)
+			#Extract the PSFProfile from the stacked, tracked star
+			params, psfProfile, FWHM, offList = cube.psfMask()
+			#Add best stacked FWHM to the dictionary just to check afterwards 
+			fwhm_dict['Best'] = FWHM * float(tracked_cube.pix_scale)
+			#Append best to all the rec_combNames 
+			for entry in rec_combNames:
+				best_name = 'Best_' + entry
+				os.system('mv %s %s' % (entry, best_name))
+
+			#Now do more analysis with the PSF mask like extracting the spectra 
+			#But haven't quite figured out how to do this yet
+
+		#GOOD PSF
+		if b_fwhm_names:
+			print 'Combining good PSF Images'
+			self.combFrames(b_fwhm_names)
+			#The output from this is the combined_sci file names contained in rec_combNames
+			#These are all stacked data cubes in bins of seeing 
+			tracked_cube = cubeOps(rec_tracked_star)
+			#Extract the PSFProfile from the stacked, tracked star
+			params, psfProfile, FWHM, offList = cube.psfMask()
+			#Add good stacked FWHM to the dictionary just to check afterwards 
+			fwhm_dict['Good'] = FWHM * float(tracked_cube.pix_scale)
+			#Append good to all the rec_combNames 
+			for entry in rec_combNames:
+				good_name = 'Good_' + entry
+				os.system('mv %s %s' % (entry, good_name))
+
+			#Now do more analysis with the PSF mask like extracting the spectra 
+			#But haven't quite figured out how to do this yet
+
+		#OKAY PSF
+		if c_fwhm_names:
+			print 'Combining okay PSF Images'
+			self.combFrames(c_fwhm_names)
+			#The output from this is the combined_sci file names contained in rec_combNames
+			#These are all stacked data cubes in bins of seeing 
+			tracked_cube = cubeOps(rec_tracked_star)
+			#Extract the PSFProfile from the stacked, tracked star
+			params, psfProfile, FWHM, offList = cube.psfMask()
+			#Add okay stacked FWHM to the dictionary just to check afterwards 
+			fwhm_dict['Okay'] = FWHM * float(tracked_cube.pix_scale)
+			#Append okay to all the rec_combNames 
+			for entry in rec_combNames:
+				okay_name = 'Okay_' + entry
+				os.system('mv %s %s' % (entry, okay_name))
+
+			#Now do more analysis with the PSF mask like extracting the spectra 
+			#But haven't quite figured out how to do this yet
+
+		#BAD PSF
+		if d_fwhm_names:
+			print 'Combining bad PSF Images'
+			self.combFrames(d_fwhm_names)
+			#The output from this is the combined_sci file names contained in rec_combNames
+			#These are all stacked data cubes in bins of seeing 
+			tracked_cube = cubeOps(rec_tracked_star)
+			#Extract the PSFProfile from the stacked, tracked star
+			params, psfProfile, FWHM, offList = cube.psfMask()
+			#Add bad stacked FWHM to the dictionary just to check afterwards 
+			fwhm_dict['Bad'] = FWHM * float(tracked_cube.pix_scale)
+			#Append bad to all the rec_combNames 
+			for entry in rec_combNames:
+				bad_name = 'Bad_' + entry
+				os.system('mv %s %s' % (entry, bad_name))
+
+			#Now do more analysis with the PSF mask like extracting the spectra 
+			#But haven't quite figured out how to do this yet
 
 
-
-
-
-
-
-
-
+		#print the fwhm dictionary to confirm that this is indeed a sequence 
+		#of increasing fwhm 
+		print fwhm_dict
 
 
 
