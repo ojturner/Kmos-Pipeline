@@ -2771,6 +2771,11 @@ class pipelineOps(object):
 		namesVec = []
 		fwhmValVec = []
 		fwhmMeanVec = []
+		#Set up the different bins 
+		a_fwhm_names = []
+		b_fwhm_names = []
+		c_fwhm_names = []
+		d_fwhm_names = []
 		#Set the combined science names 
 		if types[1] == 'O':
 			combNames = cubeOps(names[1]).combNames
@@ -2839,6 +2844,7 @@ class pipelineOps(object):
 				print 'Checking IFU sky tweak performance'
 				#This is the array of IFU values for each frame 
 				medVals = self.compareSky(skyCube, combNames)
+				print combNames
 				#Append the full vector for a more detailed plot 
 				IFUValVec.append(medVals)
 				#Append the mean value for the average plot
@@ -2862,11 +2868,6 @@ class pipelineOps(object):
 				pixel_scale = float(cubeOps(tracked_star).pix_scale)
 				arc_fwhm =  fwhm * pixel_scale
 
-				#Set up the different bins 
-				a_fwhm_names = []
-				b_fwhm_names = []
-				c_fwhm_names = []
-				d_fwhm_names = []
 
 				#Conditional binning - HARDWIRED VALUES 
 				#Could look at percentiles of FWHM distribution? 
@@ -2917,7 +2918,7 @@ class pipelineOps(object):
 		ax.set_xticks((np.arange(min(IFUID), max(IFUID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
 		plt.legend(prop={'size':10})
-		fig.savefig('IFU_by_Frame_15.png')
+		fig.savefig('IFU_by_Frame.png')
 		plt.show()
 		plt.close('all')		
 
@@ -2942,7 +2943,7 @@ class pipelineOps(object):
 				#Increment the IFUCount number
 				IFUCount += 1
 		#Subplots populated, save the overall figure 
-		fig.savefig('IFU_subplots_15.png')
+		fig.savefig('IFU_subplots.png')
 		plt.show()
 		plt.close('all')		
 
@@ -2956,7 +2957,7 @@ class pipelineOps(object):
 		ax.set_xlabel('Frame ID')
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
-		fig.savefig('frame_performance_15.png')
+		fig.savefig('frame_performance.png')
 		plt.show()
 		plt.close('all')
 		##################################################################
@@ -3018,7 +3019,7 @@ class pipelineOps(object):
 		ax.set_xlabel('Frame ID')
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
-		fig.savefig('frame_fwhm_15.png')
+		fig.savefig('frame_fwhm.png')
 		plt.show()
 		plt.close('all')
 
@@ -3032,6 +3033,10 @@ class pipelineOps(object):
 #in the loop for each set of combined science images. Or for each FWHM bin append the psf bin 
 #to each of the created products, e.g. okay_combined_sci_n55_19.fits
 
+		#retrieve the dictionary combining the science names and IFU numbers 
+		combDict = cubeOps(tracked_star).combDict
+		#Remove the current sci_combined*.fits prior to this analysis
+		os.system('rm sci_combined*.fits')
 		#First check the directory for the rec_combNames and delete if they exist 
 		for entry in rec_combNames:
 			if os.path.isfile(entry):
@@ -3044,80 +3049,423 @@ class pipelineOps(object):
 		fwhm_dict = {}
 		#Now combine the different PSF bins 
 		#Start with best - check to see if this bin is empty or not 
+		print 'These are the best names: %s ' % a_fwhm_names
+		print 'These are the Good names: %s ' % b_fwhm_names
+		print 'These are the Okay names: %s ' % c_fwhm_names
+		print 'These are the Bad names: %s ' % d_fwhm_names
+##########################################################
+#BEST PSF BIN
+##########################################################
 		if a_fwhm_names:
-			print 'Combining Best PSF Images'
-			self.combFrames(a_fwhm_names)
-			#The output from this is the combined_sci file names contained in rec_combNames
-			#These are all stacked data cubes in bins of seeing 
-			tracked_cube = cubeOps(rec_tracked_star)
-			#Extract the PSFProfile from the stacked, tracked star
-			params, psfProfile, FWHM, offList = cube.psfMask()
-			#Add best stacked FWHM to the dictionary just to check afterwards 
-			fwhm_dict['Best'] = FWHM * float(tracked_cube.pix_scale)
-			#Append best to all the rec_combNames 
-			for entry in rec_combNames:
-				best_name = 'Best_' + entry
-				os.system('mv %s %s' % (entry, best_name))
+			#Different action if 1 entry or more than one entry
+			#If only a single frame then there is no combining to be done 
+			#Use the reconstructed frame extensions to assign the cubes 
+			if len(a_fwhm_names) == 1:
+				print 'Only 1 Best PSF frame: Selecting Best PSF Cubes'
 
-			#Now do more analysis with the PSF mask like extracting the spectra 
-			#But haven't quite figured out how to do this yet
+				#Construct the reconstructed file name 
+				#If the entry doesn't contain a backslash, the entry 
+				#is the object name and can prepend directly 
+				if a_fwhm_names[0].find("/") == -1:
+					rec_frame = 'sci_reconstructed_' + a_fwhm_names[0]
+				#Otherwise the directory structure is included and have to 
+				#search for the backslash and omit up to the last character 
+				else:
+					objName = a_fwhm_names[0][len(a_fwhm_names[0]) - a_fwhm_names[0][::-1].find("/"):]
+					rec_frame = 'sci_reconstructed_' + objName
+				#Now have the correct name of the reconstructed file 
+				#Need to select the correct extension for the tracked_star
+				ext = combDict[track_name]	
+				#Open the reconstructed frame and assign the data for the correct IFU:
+				Table = fits.open(rec_frame)
+				primHeader = Table[0].header 	
+				dataHeader = Table[ext].header
+				cube_data = Table[ext].data
 
-		#GOOD PSF
+				#Fix the issue with the fits header
+				temp = sys.stdout
+				sys.stdout = open('log.txt', 'w')
+				print (primHeader)
+				print (dataHeader)						
+				sys.stdout.close()
+				sys.stdout = temp
+				os.system('rm log.txt')
+
+				#Write out to a new fits file
+		  		objhdu = fits.PrimaryHDU(header=primHeader)
+				objhdu.writeto(tracked_star, clobber=True)
+				fits.append(tracked_star, data=cube_data, header=dataHeader)
+				#Now on the same footing as below 
+				tracked_cube = cubeOps(tracked_star)
+				#Extract the PSFProfile from the stacked, tracked star
+				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
+				#Add best stacked FWHM to the dictionary just to check afterwards 
+				fwhm_dict['Best'] = FWHM * float(tracked_cube.pix_scale)
+				#Set the rec_combNames as an iterable for specifying the file name
+				iterCombNames_one = cycle(combNames)
+				iterCombNames_two = cycle(combNames)
+				#Now get all the operational IFUs and do the same
+				for name in combDict.keys():
+					ext = combDict[name]
+					#Open the reconstructed frame:
+					Table = fits.open(rec_frame)
+					primHeader = Table[0].header 	
+					dataHeader = Table[ext].header
+					cube_data = Table[ext].data
+
+					temp = sys.stdout
+					sys.stdout = open('log.txt', 'w')
+					print (primHeader)
+					print (dataHeader)						
+					sys.stdout.close()
+					sys.stdout = temp
+					os.system('rm log.txt')
+
+
+					#Write out to a new fits file
+			  		objhdu = fits.PrimaryHDU(header=primHeader)
+					objhdu.writeto(next(iterCombNames_one), clobber=True)
+					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
+
+				#Append best to all the rec_combNames 
+				for entry in combNames:
+					best_name = 'Best_' + entry
+					os.system('mv %s %s' % (entry, best_name))
+
+				#Now do more analysis with the PSF mask like extracting the spectra 
+				#But haven't quite figured out how to do this yet
+
+
+
+			elif len(a_fwhm_names) > 1:
+				print 'Combining Best PSF Cubes'
+				self.combFrames(a_fwhm_names)
+				#The output from this is the combined_sci file names contained in rec_combNames
+				#These are all stacked data cubes in bins of seeing 
+				tracked_cube = cubeOps(rec_tracked_star)
+				#Extract the PSFProfile from the stacked, tracked star
+				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
+				#Add best stacked FWHM to the dictionary just to check afterwards 
+				fwhm_dict['Best'] = FWHM * float(tracked_cube.pix_scale)
+				#Append best to all the rec_combNames 
+				for entry in rec_combNames:
+					best_name = 'Best_' + entry
+					os.system('mv %s %s' % (entry, best_name))
+
+				#Now do more analysis with the PSF mask like extracting the spectra 
+				#But haven't quite figured out how to do this yet
+##################################################
+#GOOD PSF FRAMES
+##################################################
+
 		if b_fwhm_names:
-			print 'Combining good PSF Images'
-			self.combFrames(b_fwhm_names)
-			#The output from this is the combined_sci file names contained in rec_combNames
-			#These are all stacked data cubes in bins of seeing 
-			tracked_cube = cubeOps(rec_tracked_star)
-			#Extract the PSFProfile from the stacked, tracked star
-			params, psfProfile, FWHM, offList = cube.psfMask()
-			#Add good stacked FWHM to the dictionary just to check afterwards 
-			fwhm_dict['Good'] = FWHM * float(tracked_cube.pix_scale)
-			#Append good to all the rec_combNames 
-			for entry in rec_combNames:
-				good_name = 'Good_' + entry
-				os.system('mv %s %s' % (entry, good_name))
+			#Different action if 1 entry or more than one entry
+			#If only a single frame then there is no combining to be done 
+			#Use the reconstructed frame extensions to assign the cubes 
+			if len(b_fwhm_names) == 1:
+				print 'Only 1 Good PSF frame: Selecting Good PSF Cubes'
 
-			#Now do more analysis with the PSF mask like extracting the spectra 
-			#But haven't quite figured out how to do this yet
+				#Construct the reconstructed file name 
+				#If the entry doesn't contain a backslash, the entry 
+				#is the object name and can prepend directly 
+				if b_fwhm_names[0].find("/") == -1:
+					rec_frame = 'sci_reconstructed_' + b_fwhm_names[0]
+				#Otherwise the directory structure is included and have to 
+				#search for the backslash and omit up to the last character 
+				else:
+					objName = b_fwhm_names[0][len(b_fwhm_names[0]) - b_fwhm_names[0][::-1].find("/"):]
+					rec_frame = 'sci_reconstructed_' + objName
+				#Now have the correct name of the reconstructed file 
+				#Need to select the correct extension for the tracked_star
+				ext = combDict[track_name]	
+				#Open the reconstructed frame and assign the data for the correct IFU:
+				Table = fits.open(rec_frame)
+				primHeader = Table[0].header 	
+				dataHeader = Table[ext].header
+				cube_data = Table[ext].data
 
-		#OKAY PSF
+				#Fix the issue with the fits header
+				temp = sys.stdout
+				sys.stdout = open('log.txt', 'w')
+				print (primHeader)
+				print (dataHeader)						
+				sys.stdout.close()
+				sys.stdout = temp
+				os.system('rm log.txt')
+
+				#Write out to a new fits file
+		  		objhdu = fits.PrimaryHDU(header=primHeader)
+				objhdu.writeto(tracked_star, clobber=True)
+				fits.append(tracked_star, data=cube_data, header=dataHeader)
+				#Now on the same footing as below 
+				tracked_cube = cubeOps(tracked_star)
+				#Extract the PSFProfile from the stacked, tracked star
+				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
+				#Add Good stacked FWHM to the dictionary just to check afterwards 
+				fwhm_dict['Good'] = FWHM * float(tracked_cube.pix_scale)
+				print 'This is the combined Dictionary: %s' % combDict
+				print 'These are the combined names: %s' % combNames
+				#Set the rec_combNames as an iterable for specifying the file name
+				iterCombNames_one = cycle(combNames)
+				iterCombNames_two = cycle(combNames)
+				#Now get all the operational IFUs and do the same
+				for name in combDict.keys():
+					ext = combDict[name]
+					#Open the reconstructed frame:
+					Table = fits.open(rec_frame)
+					primHeader = Table[0].header 	
+					dataHeader = Table[ext].header
+					cube_data = Table[ext].data
+
+					temp = sys.stdout
+					sys.stdout = open('log.txt', 'w')
+					print (primHeader)
+					print (dataHeader)						
+					sys.stdout.close()
+					sys.stdout = temp
+					os.system('rm log.txt')
+
+
+					#Write out to a new fits file
+			  		objhdu = fits.PrimaryHDU(header=primHeader)
+					objhdu.writeto(next(iterCombNames_one), clobber=True)
+					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
+
+				#Append Good to all the rec_combNames 
+				for entry in combNames:
+					Good_name = 'Good_' + entry
+					os.system('mv %s %s' % (entry, Good_name))
+
+				#Now do more analysis with the PSF mask like extracting the spectra 
+				#But haven't quite figured out how to do this yet
+
+
+
+			elif len(b_fwhm_names) > 1:
+				print 'Combining Good PSF Cubes'
+				self.combFrames(b_fwhm_names)
+				#The output from this is the combined_sci file names contained in rec_combNames
+				#These are all stacked data cubes in bins of seeing 
+				tracked_cube = cubeOps(rec_tracked_star)
+				#Extract the PSFProfile from the stacked, tracked star
+				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
+				#Add Good stacked FWHM to the dictionary just to check afterwards 
+				fwhm_dict['Good'] = FWHM * float(tracked_cube.pix_scale)
+				#Append Good to all the rec_combNames 
+				for entry in rec_combNames:
+					Good_name = 'Good_' + entry
+					os.system('mv %s %s' % (entry, Good_name))
+
+				#Now do more analysis with the PSF mask like extracting the spectra 
+				#But haven't quite figured out how to do this yet
+####################################
+#OKAY PSF BIN
+####################################
 		if c_fwhm_names:
-			print 'Combining okay PSF Images'
-			self.combFrames(c_fwhm_names)
-			#The output from this is the combined_sci file names contained in rec_combNames
-			#These are all stacked data cubes in bins of seeing 
-			tracked_cube = cubeOps(rec_tracked_star)
-			#Extract the PSFProfile from the stacked, tracked star
-			params, psfProfile, FWHM, offList = cube.psfMask()
-			#Add okay stacked FWHM to the dictionary just to check afterwards 
-			fwhm_dict['Okay'] = FWHM * float(tracked_cube.pix_scale)
-			#Append okay to all the rec_combNames 
-			for entry in rec_combNames:
-				okay_name = 'Okay_' + entry
-				os.system('mv %s %s' % (entry, okay_name))
+			#Different action if 1 entry or more than one entry
+			#If only a single frame then there is no combining to be done 
+			#Use the reconstructed frame extensions to assign the cubes 
+			if len(c_fwhm_names) == 1:
+				print 'Only 1 Okay PSF frame: Selecting Okay PSF Cubes'
 
-			#Now do more analysis with the PSF mask like extracting the spectra 
-			#But haven't quite figured out how to do this yet
+				#Construct the reconstructed file name 
+				#If the entry doesn't contain a backslash, the entry 
+				#is the object name and can prepend directly 
+				if c_fwhm_names[0].find("/") == -1:
+					rec_frame = 'sci_reconstructed_' + c_fwhm_names[0]
+				#Otherwise the directory structure is included and have to 
+				#search for the backslash and omit up to the last character 
+				else:
+					objName = c_fwhm_names[0][len(c_fwhm_names[0]) - c_fwhm_names[0][::-1].find("/"):]
+					rec_frame = 'sci_reconstructed_' + objName
+				#Now have the correct name of the reconstructed file 
+				#Need to select the correct extension for the tracked_star
+				ext = combDict[track_name]	
+				print 'The extension of the tracked star is: %s' % ext
+				#Open the reconstructed frame and assign the data for the correct IFU:
+				Table = fits.open(rec_frame)
+				primHeader = Table[0].header 	
+				dataHeader = Table[ext].header
+				cube_data = Table[ext].data
 
-		#BAD PSF
+				#Fix the issue with the fits header
+				temp = sys.stdout
+				sys.stdout = open('log.txt', 'w')
+				print (primHeader)
+				print (dataHeader)						
+				sys.stdout.close()
+				sys.stdout = temp
+				os.system('rm log.txt')
+
+				print 'The Save Name for the tracked star is: %s' % tracked_star
+				#Write out to a new fits file
+		  		objhdu = fits.PrimaryHDU(header=primHeader)
+				objhdu.writeto(tracked_star, clobber=True)
+				fits.append(tracked_star, data=cube_data, header=dataHeader)
+				print 'Analysing tracked star: %s' % tracked_star
+				#Now on the same footing as below 
+				tracked_cube = cubeOps(tracked_star)
+				#Extract the PSFProfile from the stacked, tracked star
+				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
+				#Add Okay stacked FWHM to the dictionary just to check afterwards 
+				fwhm_dict['Okay'] = FWHM * float(tracked_cube.pix_scale)
+				print 'This is the combined Dictionary: %s' % combDict
+				#Set the combNames as an iterable for specifying the file name
+				iterCombNames_one = cycle(combNames)
+				iterCombNames_two = cycle(combNames)
+				#Now get all the operational IFUs and do the same
+				for name in combDict.keys():
+					print 'The name extracted from the reconstructed file is: %s' % name
+					ext = combDict[name]
+					#Open the reconstructed frame:
+					Table = fits.open(rec_frame)
+					primHeader = Table[0].header 	
+					dataHeader = Table[ext].header
+					cube_data = Table[ext].data
+
+					temp = sys.stdout
+					sys.stdout = open('log.txt', 'w')
+					print (primHeader)
+					print (dataHeader)						
+					sys.stdout.close()
+					sys.stdout = temp
+					os.system('rm log.txt')
+
+					#print 'The names to be iterated are %s: ' % combNames
+					#Write out to a new fits file
+			  		objhdu = fits.PrimaryHDU(header=primHeader)
+					objhdu.writeto(next(iterCombNames_one), clobber=True)
+					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
+
+				#Append Okay to all the rec_combNames 
+				for entry in combNames:
+					Okay_name = 'Okay_' + entry
+					os.system('mv %s %s' % (entry, Okay_name))
+
+				#Now do more analysis with the PSF mask like extracting the spectra 
+				#But haven't quite figured out how to do this yet
+
+
+
+			elif len(c_fwhm_names) > 1:
+				print 'Combining Okay PSF Cubes'
+				self.combFrames(c_fwhm_names)
+				#The output from this is the combined_sci file names contained in rec_combNames
+				#These are all stacked data cubes in bins of seeing 
+				tracked_cube = cubeOps(rec_tracked_star)
+				#Extract the PSFProfile from the stacked, tracked star
+				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
+				#Add Okay stacked FWHM to the dictionary just to check afterwards 
+				fwhm_dict['Okay'] = FWHM * float(tracked_cube.pix_scale)
+				#Append Okay to all the rec_combNames 
+				for entry in rec_combNames:
+					Okay_name = 'Okay_' + entry
+					os.system('mv %s %s' % (entry, Okay_name))
+
+				#Now do more analysis with the PSF mask like extracting the spectra 
+				#But haven't quite figured out how to do this yet
+#######################
+#BAD PSF BIN
+#######################
+
 		if d_fwhm_names:
-			print 'Combining bad PSF Images'
-			self.combFrames(d_fwhm_names)
-			#The output from this is the combined_sci file names contained in rec_combNames
-			#These are all stacked data cubes in bins of seeing 
-			tracked_cube = cubeOps(rec_tracked_star)
-			#Extract the PSFProfile from the stacked, tracked star
-			params, psfProfile, FWHM, offList = cube.psfMask()
-			#Add bad stacked FWHM to the dictionary just to check afterwards 
-			fwhm_dict['Bad'] = FWHM * float(tracked_cube.pix_scale)
-			#Append bad to all the rec_combNames 
-			for entry in rec_combNames:
-				bad_name = 'Bad_' + entry
-				os.system('mv %s %s' % (entry, bad_name))
+			#Different action if 1 entry or more than one entry
+			#If only a single frame then there is no combining to be done 
+			#Use the reconstructed frame extensions to assign the cubes 
+			if len(d_fwhm_names) == 1:
+				print 'Only 1 Bad PSF frame: Selecting Bad PSF Cubes'
 
-			#Now do more analysis with the PSF mask like extracting the spectra 
-			#But haven't quite figured out how to do this yet
+				#Construct the reconstructed file name 
+				#If the entry doesn't contain a backslash, the entry 
+				#is the object name and can prepend directly 
+				if d_fwhm_names[0].find("/") == -1:
+					rec_frame = 'sci_reconstructed_' + d_fwhm_names[0]
+				#Otherwise the directory structure is included and have to 
+				#search for the backslash and omit up to the last character 
+				else:
+					objName = d_fwhm_names[0][len(d_fwhm_names[0]) - d_fwhm_names[0][::-1].find("/"):]
+					rec_frame = 'sci_reconstructed_' + objName
+				#Now have the correct name of the reconstructed file 
+				#Need to select the correct extension for the tracked_star
+				ext = combDict[track_name]	
+				#Open the reconstructed frame and assign the data for the correct IFU:
+				Table = fits.open(rec_frame)
+				primHeader = Table[0].header 	
+				dataHeader = Table[ext].header
+				cube_data = Table[ext].data
+
+				#Fix the issue with the fits header
+				temp = sys.stdout
+				sys.stdout = open('log.txt', 'w')
+				print (primHeader)
+				print (dataHeader)						
+				sys.stdout.close()
+				sys.stdout = temp
+				os.system('rm log.txt')
+
+				#Write out to a new fits file
+		  		objhdu = fits.PrimaryHDU(header=primHeader)
+				objhdu.writeto(tracked_star, clobber=True)
+				fits.append(tracked_star, data=cube_data, header=dataHeader)
+				#Now on the same footing as below 
+				tracked_cube = cubeOps(tracked_star)
+				#Extract the PSFProfile from the stacked, tracked star
+				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
+				#Add Bad stacked FWHM to the dictionary just to check afterwards 
+				fwhm_dict['Bad'] = FWHM * float(tracked_cube.pix_scale)
+
+				#Set the rec_combNames as an iterable for specifying the file name
+				iterCombNames_one = cycle(combNames)
+				iterCombNames_two = cycle(combNames)
+				#Now get all the operational IFUs and do the same
+				for name in combDict.keys():
+					ext = combDict[name]
+					#Open the reconstructed frame:
+					Table = fits.open(rec_frame)
+					primHeader = Table[0].header 	
+					dataHeader = Table[ext].header
+					cube_data = Table[ext].data
+
+					temp = sys.stdout
+					sys.stdout = open('log.txt', 'w')
+					print (primHeader)
+					print (dataHeader)						
+					sys.stdout.close()
+					sys.stdout = temp
+					os.system('rm log.txt')
+
+					#Write out to a new fits file
+			  		objhdu = fits.PrimaryHDU(header=primHeader)
+					objhdu.writeto(next(iterCombNames_one), clobber=True)
+					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
+
+				#Append Bad to all the rec_combNames 
+				for entry in combNames:
+					Bad_name = 'Bad_' + entry
+					os.system('mv %s %s' % (entry, Bad_name))
+
+				#Now do more analysis with the PSF mask like extracting the spectra 
+				#But haven't quite figured out how to do this yet
+
+
+
+			elif len(d_fwhm_names) > 1:
+				print 'Combining Bad PSF Cubes'
+				self.combFrames(d_fwhm_names)
+				#The output from this is the combined_sci file names contained in rec_combNames
+				#These are all stacked data cubes in bins of seeing 
+				tracked_cube = cubeOps(rec_tracked_star)
+				#Extract the PSFProfile from the stacked, tracked star
+				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
+				#Add Bad stacked FWHM to the dictionary just to check afterwards 
+				fwhm_dict['Bad'] = FWHM * float(tracked_cube.pix_scale)
+				#Append Bad to all the rec_combNames 
+				for entry in rec_combNames:
+					Bad_name = 'Bad_' + entry
+					os.system('mv %s %s' % (entry, Bad_name))
+
+				#Now do more analysis with the PSF mask like extracting the spectra 
+				#But haven't quite figured out how to do this yet
 
 
 		#print the fwhm dictionary to confirm that this is indeed a sequence 

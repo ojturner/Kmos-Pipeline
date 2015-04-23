@@ -45,13 +45,13 @@ class cubeOps(object):
 		self.imData = np.median(self.data, axis=0)
 		#Create a plot of the image 
 		#Variable housing the noise data cube
-		self.noise = self.Table[2].data
+		#self.noise = self.Table[2].data
 		#Primary Header 
 		self.primHeader = self.Table[0].header
 		#data Header 
 		self.dataHeader = self.Table[1].header
 		#noise Header 
-		self.noiseHeader = self.Table[2].header
+		#self.noiseHeader = self.Table[2].header
 		#Extract the wavelength calibration info
 		try:
 			self.start_L = self.dataHeader["CRVAL3"]
@@ -70,7 +70,7 @@ class cubeOps(object):
 			print 'This is not a combined Frame, setting arm name...'
 			try:
 				self.IFUNR = self.dataHeader["HIERARCH ESO OCS ARM1 NAME"]
-				self.IFUName = copy(self.IFUNR)
+				self.IFUName = self.primHeader["HIERARCH ESO OCS ARM" + str(self.IFUNR) + " NAME"]
 				print 'You have specified a reconstructed type'
 			except KeyError:
 				print("Warning: not a datacube")
@@ -91,7 +91,7 @@ class cubeOps(object):
 			except KeyError:
 				combKey = "HIERARCH ESO OCS ARM" + str(i) + " ORIGARM"
 				combName = "HIERARCH ESO OCS ARM" + str(i) + " NAME"
-				self.combDict[self.primHeader[combKey]] = self.primHeader[combName]
+				self.combDict[self.primHeader[combName]] = self.primHeader[combKey]
 
 			try:				
 				raName = "HIERARCH ESO OCS ARM" + str(i) + " ALPHA"
@@ -108,13 +108,13 @@ class cubeOps(object):
 		#Construct the list of combined science names separately
 		#This is now in order of the IFU
 		self.combNames = []
-		for entry in self.combDict.values():
+		for entry in self.combDict.keys():
 			combinedName = 'sci_combined_' + entry + '__skytweak.fits'
 			self.combNames.append(combinedName)
 
 		#Also construct the list of kmo_combine recipe combined names 
 		self.rec_combNames = []
-		for entry in self.combDict.values():
+		for entry in self.combDict.keys():
 			combinedName = 'combine_sci_reconstructed_' + entry + '.fits'
 			self.rec_combNames.append(combinedName)
 
