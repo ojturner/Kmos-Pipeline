@@ -342,7 +342,7 @@ class cubeOps(object):
 
 		"""
 
-		#Check the orientation input to see what has been specified
+		#Check the orientation input to see what has been specified#
 		try:
 			#If 'up' median stack across the rows
 			if orientation == 'vertical':
