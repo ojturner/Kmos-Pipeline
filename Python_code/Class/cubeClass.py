@@ -380,8 +380,8 @@ class cubeOps(object):
 		width = fwhm / 2.3548
 		width = int(np.round(width))
 		#Recover the central value
-		x = params[1]
-		y = params[2]
+		x = params[2]
+		y = params[1]
 
 		#Set the upper and lower limits for optimal spectrum extraction
 		x_upper = int(x + (2*width))
@@ -402,8 +402,69 @@ class cubeOps(object):
 
 		#Set all values greater than 2sigma from the centre = 0 
 		#Don't want to include these in the final spectrum 
-		modCube[:,y_lower:y_upper, x_lower:x_upper]	
+		modCube[:,0:y_lower, :] = 0	
+		modCube[:,y_upper:len(self.data[0]), :] = 0
+		modCube[:,: , 0:x_lower] = 0
+		modCube[:, :, x_upper: len(self.data[0])] = 0
+		#Sum over each spatial dimension to get the spectrum 
+		first_sum = np.nansum(modCube, axis=1)
+		spectrum = np.nansum(first_sum, axis=1)
+		return spectrum
 
+	def optimalSpecFromProfile(self, profile, fwhm, centre_x, centre_y):
+
+		"""
+		Def: 
+		Optimally extract the spectrum of the object from the whole image. 
+		Use the PSF of the object to get the weighting for the extraction. 
+		Do I just sum over the axis? 
+		Input: Profile - a specified 2D normalised profile for extraction
+				fwhm - the fwhm of the tracked star
+		"""
+
+		#Multiply the cube data by the psfMask
+		modCube = profile * self.data
+
+		#Recover the width of the gaussian 
+		width = fwhm / 2.3548
+		#Recover the central value
+		x = copy(centre_x)
+		y = copy(centre_y)
+		print 'The central values of the Gaussian are: %s %s' % (x, y)
+		print 'And the width is: %s' % width
+
+		#Set the upper and lower limits for optimal spectrum extraction
+		x_upper = int(np.round((x + (1.5*width))))
+		if x_upper > len(self.data[0]):
+			x_upper = len(self.data[0])
+		x_lower = int(np.round((x - (1.5*width))))
+		if x_lower < 0:
+			x_lower = 0	
+
+		y_upper = int(np.round((y + (1.5*width))))
+		if y_upper > len(self.data[0]):
+			y_upper = len(self.data[0])
+		y_lower = int(np.round((y - (1.5*width))))
+		if y_lower < 0:
+			y_lower = 0
+
+		print x_lower, x_upper, y_lower, y_upper		
+
+		#Set all values greater than 2sigma from the centre = 0 
+		#Don't want to include these in the final spectrum 
+		modCube[:,0:y_lower, :] = 0	
+		modCube[:,y_upper:len(self.data[0]), :] = 0
+		modCube[:,: , 0:x_lower] = 0
+		modCube[:, :, x_upper: len(self.data[0])] = 0	
+
+		imModCube = copy(modCube)
+		imModCube = np.nanmedian(modCube, axis=0)
+		#Check to see that the gaussian and shifted profile align
+		colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
+		colCax = colAx.imshow(imModCube, interpolation='bicubic')
+		colFig.colorbar(colCax)
+		plt.show()
+		plt.close('all')
 		#Sum over each spatial dimension to get the spectrum 
 		first_sum = np.nansum(modCube, axis=1)
 		spectrum = np.nansum(first_sum, axis=1)
@@ -479,7 +540,7 @@ class cubeOps(object):
 		colFig.colorbar(colCax)
 		saveName = (self.fileName)[:-5] + '_gauss.png'
 		colFig.savefig(saveName)
-		#plt.show()		
+		plt.show()		
 		plt.close('all')
 		#return the FWHM and the masked profile 
 		return params, (gEval / integral[0]), FWHM, self.offList

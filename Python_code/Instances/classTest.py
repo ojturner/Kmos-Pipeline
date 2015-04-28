@@ -66,13 +66,13 @@ namesOfFile_1 = np.genfromtxt(sci_names_14_noTel_1, dtype='str')
 
 
 
-pipe_methods.frameCheck(skyCube, names_14_shifted)
+pipe_methods.frameCheck(skyCube, names_15_shifted)
 #Now try the subtraction method 
 #pipe_methods.subFrames('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits', skyFile)
 #pipe_methods.subFrames('KMOS_SPEC_OBS258_0001_Corrected.fits', skyFile)
 #print 'all good'
 #print 'Hello'
-#pipe_methods.pixelHistogram('KMOS_SPEC_OBS258_0003_m_2_raw.fits', 'KMOS_SPEC_OBS258_0003_m_2.fits', 780, 1270)
+#pipe_methods.pixelHistogram('KMOS_SPEC_OBS258_0001_m_2_raw.fits', 'KMOS_SPEC_OBS258_0001_m_2.fits', 780, 1270)
 
 #pipe_methods.stackLcal(lcalMap)
 #pipe_methods.computeOffsetTopFour('KMOS_SPEC_OBS258_0007_m_8_raw.fits', objFile)
@@ -102,7 +102,7 @@ pipe_methods.frameCheck(skyCube, names_14_shifted)
 #  	 vertSegments=1, horSegments=1, interp_type='spline3', \
 #  	 stepsize=0.01, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
 
-#pipe_methods.applySubtraction(names_14)
+#pipe_methods.applySubtraction(raw_14)
 #pipe_methods.extensionMedians(newFile1)
 #pipe_methods.extensionMedians(newFile2)
 #pipe_methods.extensionMedians(newFile3)

@@ -759,11 +759,12 @@ class pipelineOps(object):
 		bins = np.arange(-15, 15, 1)
 
 		plt.close('all')
+		fig, ax = plt.subplots(1, 1, figsize=(12,12))
 		#Plot the histograms 
-		n1, bins1, patches1 = plt.hist(subData, bins=bins, histtype='step',\
+		n1, bins1, patches1 = ax.hist(subData, bins=bins, histtype='step',\
 		 color='green', linewidth=3, label='Before Correction') 
 
-		n2, bins2, patches2 = plt.hist(subCorData, bins=bins, histtype='step',\
+		n2, bins2, patches2 = ax.hist(subCorData, bins=bins, histtype='step',\
 		 color='blue', linewidth=3, alpha=0.5, label='After Correction')
 
 		#Now want to fit the gaussians to the histograms using lmfit gaussian models 
@@ -781,19 +782,21 @@ class pipelineOps(object):
 		#Perform the actual fit 
 		out1  = mod1.fit(n1, pars1, x=fitBins)
 		#Now want to add this curve to our plot 
-		plt.plot(fitBins, out1.best_fit, linewidth=2.0, label='b.c. model', color='green')
+		ax.plot(fitBins, out1.best_fit, linewidth=2.0, label='b.c. model', color='green')
 
 		#Repeat for the corrected data
 		mod2 = GaussianModel()
 		pars2 = mod2.guess(n2, x=fitBins)
 		out2  = mod2.fit(n2, pars2, x=fitBins)
-		plt.plot(fitBins, out2.best_fit, linewidth=2.0, label='a.c. model', color='blue')
-		plt.xlabel('Counts per pixel')
-		plt.ylabel('Number per bin')
-		plt.title('Subtracted Frame, Improvement after Column Correction')
-		plt.legend(loc='upper left', fontsize='small')
-		plt.savefig(raw_input('Enter the plot name: '), papertype='a4', orientation='landscape')
+		ax.plot(fitBins, out2.best_fit, linewidth=2.0, label='a.c. model', color='blue')
+		ax.set_xlabel('Counts per pixel', fontsize=24)
+		ax.set_ylabel('Number per bin', fontsize=24)
+		ax.set_title('Sub Frame, Improvement After Correction', fontsize=28)
+		ax.tick_params(axis='both', which='major', labelsize=15)
+		ax.legend(loc='upper left', fontsize=10)
+		fig.savefig(raw_input('Enter the plot name: '))
 		plt.show()
+		plt.close('all')
 
 		#Print out the fit reports to look at the centre at S.D. of each model
 		print out1.fit_report() 
@@ -916,17 +919,18 @@ class pipelineOps(object):
 		xVec = np.array(xVec)
 
 		#Plot everything against this xVec in turn 
+		fig, ax = plt.subplots(1,1, figsize=(18, 10))
 
-		plt.plot(xVec, normMed, label='Cor')
-		plt.plot(xVec, segmentsMed, label='Segments')
-		plt.plot(xVec, top4Med, label='top') 
-		plt.plot(xVec, rawMed, label='raw')
-		plt.xlabel('Pixel Number')
-		plt.ylabel('Median')
-		plt.title('Medians for different methods %s' % y1)
-		plt.legend(loc='upper left', fontsize='small')
-		plt.legend()
-		plt.savefig(raw_input('Enter the File name: ') + '.png')
+		ax.plot(xVec, segmentsMed, label='Segments')
+		ax.plot(xVec, normMed, label='Cor')
+		ax.plot(xVec, top4Med, label='top') 
+		ax.plot(xVec, rawMed, label='raw')
+		ax.set_xlabel('Pixel Number', fontsize=24)
+		ax.set_ylabel('Median', fontsize=24)
+		ax.set_title('Pixel Medians for Different Methods', fontsize=30)
+		ax.tick_params(axis='both', which='major', labelsize=15)
+		ax.legend(loc='upper left', fontsize=10)
+		fig.savefig(raw_input('Enter the File name: ') + '.png')
 		plt.show()
 		plt.close('all')
 
@@ -3126,10 +3130,11 @@ class pipelineOps(object):
 			  		objhdu = fits.PrimaryHDU(header=primHeader)
 					objhdu.writeto(next(iterCombNames_one), clobber=True)
 					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
-
+				new_name_vec = []
 				#Append best to all the rec_combNames 
 				for entry in combNames:
 					best_name = 'Best_' + entry
+					new_name_vec.append(best_name)
 					os.system('mv %s %s' % (entry, best_name))
 
 				#Now do more analysis with the PSF mask like extracting the spectra 
@@ -3147,13 +3152,68 @@ class pipelineOps(object):
 				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
 				#Add best stacked FWHM to the dictionary just to check afterwards 
 				fwhm_dict['Best'] = FWHM * float(tracked_cube.pix_scale)
+
+				new_name_vec = []
 				#Append best to all the rec_combNames 
-				for entry in rec_combNames:
-					best_name = 'Best_' + entry
-					os.system('mv %s %s' % (entry, best_name))
+				for entry in zip(rec_combNames, combNames):
+					current_name = entry[0]
+					best_name = 'Best_' + entry[1]
+					new_name_vec.append(best_name)
+					os.system('mv %s %s' % (current_name, best_name))
 
 				#Now do more analysis with the PSF mask like extracting the spectra 
 				#But haven't quite figured out how to do this yet
+
+			#Should now have the working directory filled with objects 
+			#That have the same name, regardless of whether they passed through 
+			#the single object in a bin route or the multi-route, with these names 
+			#stored in the new_name_vec array 
+
+			print 'Fitting Gaussian to each of the stacked objects'
+			#Record the centre of the tracked star 
+			tracked_centre = [params[2], params[1]]
+			tracked_profile = copy(psfProfile)
+			tracked_fwhm = copy(FWHM)
+			#First Fit a gaussian to each of the objects to determine the center! 
+			for name in new_name_vec:
+				cube = cubeOps(name)
+				#Find the central value of the object flux by 
+				#fitting a gaussian to the image
+				params, psfProfile, FWHM, offList = cube.psfMask()
+				obj_centre = [params[2], params[1]]
+				#Find the difference between the tracked centre and obj centre
+				x_shift = obj_centre[0] - tracked_centre[0]
+				y_shift = obj_centre[1] - tracked_centre[1]
+				x_shift = int(np.round(x_shift))
+				y_shift = int(np.round(y_shift))
+				print type(x_shift), type(y_shift)
+				#Use numpy.roll to shift the psfMask to the correct location 
+				new_mask = np.roll(tracked_profile, y_shift, axis=0)
+				#For the x_shift need to loop round the elements of the new_mask 
+				final_new_mask = []
+				for arr in new_mask:
+					final_new_mask.append(np.roll(arr, x_shift))
+				final_new_mask = np.array(final_new_mask)
+				print final_new_mask
+				#Check to see that the gaussian and shifted profile align
+				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
+				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
+				colFig.colorbar(colCax)
+				plt.show()
+				#Extract each optimal spectrum 
+				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
+				#Save the optimal spectrum for each object 
+				#Need to create a new fits table for this 
+				tbhdu = fits.new_table(fits.ColDefs(\
+					[fits.Column(name='Wavelength', format='E', array=cube.wave_array),\
+				     fits.Column(name='Flux', format='E', array=optimal_spec)]))
+				prihdu = fits.PrimaryHDU(header=cube.primHeader)
+				thdulist = fits.HDUList([prihdu, tbhdu])
+				thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
+				#This should save the optimal spectrum for each object 
+
+
+
 ##################################################
 #GOOD PSF FRAMES
 ##################################################
@@ -3230,10 +3290,11 @@ class pipelineOps(object):
 			  		objhdu = fits.PrimaryHDU(header=primHeader)
 					objhdu.writeto(next(iterCombNames_one), clobber=True)
 					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
-
+				new_name_vec = []
 				#Append Good to all the rec_combNames 
 				for entry in combNames:
 					Good_name = 'Good_' + entry
+					new_name_vec.append(Good_name)
 					os.system('mv %s %s' % (entry, Good_name))
 
 				#Now do more analysis with the PSF mask like extracting the spectra 
@@ -3251,13 +3312,63 @@ class pipelineOps(object):
 				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
 				#Add Good stacked FWHM to the dictionary just to check afterwards 
 				fwhm_dict['Good'] = FWHM * float(tracked_cube.pix_scale)
+
+				#Check to see that rec_combNames and combNames align
+				print zip(rec_combNames, combNames)		
+				new_name_vec = []		
 				#Append Good to all the rec_combNames 
-				for entry in rec_combNames:
-					Good_name = 'Good_' + entry
-					os.system('mv %s %s' % (entry, Good_name))
+				for entry in zip(rec_combNames, combNames):
+					current_name = entry[0]
+					Good_name = 'Good_' + entry[1]
+					new_name_vec.append(Good_name)
+					os.system('mv %s %s' % (current_name, Good_name))
 
 				#Now do more analysis with the PSF mask like extracting the spectra 
 				#But haven't quite figured out how to do this yet
+
+			print 'Fitting Gaussian to each of the stacked objects'
+			#Record the centre of the tracked star 
+			tracked_centre = [params[2], params[1]]
+			tracked_profile = copy(psfProfile)
+			tracked_fwhm = copy(FWHM)
+			#First Fit a gaussian to each of the objects to determine the center! 
+			for name in new_name_vec:
+				cube = cubeOps(name)
+				#Find the central value of the object flux by 
+				#fitting a gaussian to the image
+				params, psfProfile, FWHM, offList = cube.psfMask()
+				obj_centre = [params[2], params[1]]
+				#Find the difference between the tracked centre and obj centre
+				x_shift = obj_centre[0] - tracked_centre[0]
+				y_shift = obj_centre[1] - tracked_centre[1]
+				x_shift = int(np.round(x_shift))
+				y_shift = int(np.round(y_shift))
+				print type(x_shift), type(y_shift)
+				#Use numpy.roll to shift the psfMask to the correct location 
+				new_mask = np.roll(tracked_profile, y_shift, axis=0)
+				#For the x_shift need to loop round the elements of the new_mask 
+				final_new_mask = []
+				for arr in new_mask:
+					final_new_mask.append(np.roll(arr, x_shift))
+				final_new_mask = np.array(final_new_mask)
+				print final_new_mask
+				#Check to see that the gaussian and shifted profile align
+				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
+				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
+				colFig.colorbar(colCax)
+				plt.show()
+				#Extract each optimal spectrum 
+				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
+				#Save the optimal spectrum for each object 
+				#Need to create a new fits table for this 
+				tbhdu = fits.new_table(fits.ColDefs(\
+					[fits.Column(name='Wavelength', format='E', array=cube.wave_array),\
+				     fits.Column(name='Flux', format='E', array=optimal_spec)]))
+				prihdu = fits.PrimaryHDU(header=cube.primHeader)
+				thdulist = fits.HDUList([prihdu, tbhdu])
+				thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
+				#This should save the optimal spectrum for each object
+
 ####################################
 #OKAY PSF BIN
 ####################################
@@ -3336,10 +3447,11 @@ class pipelineOps(object):
 			  		objhdu = fits.PrimaryHDU(header=primHeader)
 					objhdu.writeto(next(iterCombNames_one), clobber=True)
 					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
-
+				new_name_vec = []
 				#Append Okay to all the rec_combNames 
 				for entry in combNames:
 					Okay_name = 'Okay_' + entry
+					new_name_vec.append(Okay_name)
 					os.system('mv %s %s' % (entry, Okay_name))
 
 				#Now do more analysis with the PSF mask like extracting the spectra 
@@ -3357,13 +3469,65 @@ class pipelineOps(object):
 				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
 				#Add Okay stacked FWHM to the dictionary just to check afterwards 
 				fwhm_dict['Okay'] = FWHM * float(tracked_cube.pix_scale)
+				new_name_vec = []
 				#Append Okay to all the rec_combNames 
-				for entry in rec_combNames:
-					Okay_name = 'Okay_' + entry
-					os.system('mv %s %s' % (entry, Okay_name))
+				for entry in zip(rec_combNames, combNames):
+					current_name = entry[0]
+					Okay_name = 'Okay_' + entry[1]
+					new_name_vec.append(Okay_name)
+					os.system('mv %s %s' % (current_name, Okay_name))
 
 				#Now do more analysis with the PSF mask like extracting the spectra 
 				#But haven't quite figured out how to do this yet
+
+			print 'Fitting Gaussian to each of the stacked objects'
+			#Record the centre of the tracked star 
+			tracked_centre = [params[2], params[1]]
+			tracked_profile = copy(psfProfile)
+			tracked_fwhm = copy(FWHM)
+			#First Fit a gaussian to each of the objects to determine the center! 
+			for name in new_name_vec:
+				cube = cubeOps(name)
+				#Find the central value of the object flux by 
+				#fitting a gaussian to the image
+				params, objProfile, FWHM, offList = cube.psfMask()
+				obj_centre = [params[2], params[1]]
+
+				print 'The standard star centre is: %s' % tracked_centre
+				print 'The Object centre is: %s' % obj_centre
+				#Find the difference between the tracked centre and obj centre
+				x_shift = obj_centre[0] - tracked_centre[0]
+				y_shift = obj_centre[1] - tracked_centre[1]
+				x_shift = int(np.round(x_shift))
+				y_shift = int(np.round(y_shift))
+				print 'Shifting Profile by: %s %s' % (x_shift, y_shift)
+				#Use numpy.roll to shift the psfMask to the correct location 
+				new_mask = np.roll(tracked_profile, y_shift, axis=0)
+				#For the x_shift need to loop round the elements of the new_mask 
+				final_new_mask = []
+				for arr in new_mask:
+					final_new_mask.append(np.roll(arr, x_shift))
+				final_new_mask = np.array(final_new_mask)
+				print final_new_mask
+
+				#Check to see that the gaussian and shifted profile align
+				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
+				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
+				colFig.colorbar(colCax)
+				plt.show()
+				#Extract each optimal spectrum 
+				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
+				#Save the optimal spectrum for each object 
+				#Need to create a new fits table for this 
+				tbhdu = fits.new_table(fits.ColDefs(\
+					[fits.Column(name='Wavelength', format='E', array=cube.wave_array),\
+				     fits.Column(name='Flux', format='E', array=optimal_spec)]))
+				prihdu = fits.PrimaryHDU(header=cube.primHeader)
+				thdulist = fits.HDUList([prihdu, tbhdu])
+				thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
+				#This should save the optimal spectrum for each object
+
+
 #######################
 #BAD PSF BIN
 #######################
@@ -3438,10 +3602,11 @@ class pipelineOps(object):
 			  		objhdu = fits.PrimaryHDU(header=primHeader)
 					objhdu.writeto(next(iterCombNames_one), clobber=True)
 					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
-
+				new_name_vec = []
 				#Append Bad to all the rec_combNames 
 				for entry in combNames:
 					Bad_name = 'Bad_' + entry
+					new_name_vec.append(Bad_name)
 					os.system('mv %s %s' % (entry, Bad_name))
 
 				#Now do more analysis with the PSF mask like extracting the spectra 
@@ -3459,23 +3624,148 @@ class pipelineOps(object):
 				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
 				#Add Bad stacked FWHM to the dictionary just to check afterwards 
 				fwhm_dict['Bad'] = FWHM * float(tracked_cube.pix_scale)
+				new_name_vec = []
 				#Append Bad to all the rec_combNames 
-				for entry in rec_combNames:
-					Bad_name = 'Bad_' + entry
-					os.system('mv %s %s' % (entry, Bad_name))
+				for entry in zip(rec_combNames, combNames):
+					current_name = entry[0]
+					Bad_name = 'Bad_' + entry[1]
+					new_name_vec.append(Bad_name)
+					os.system('mv %s %s' % (current_name, Bad_name))
 
 				#Now do more analysis with the PSF mask like extracting the spectra 
 				#But haven't quite figured out how to do this yet
+
+			print 'Fitting Gaussian to each of the stacked objects'
+			#Record the centre of the tracked star 
+			tracked_centre = [params[2], params[1]]
+			tracked_profile = copy(psfProfile)
+			tracked_fwhm = copy(FWHM)
+			#First Fit a gaussian to each of the objects to determine the center! 
+			for name in new_name_vec:
+				cube = cubeOps(name)
+				#Find the central value of the object flux by 
+				#fitting a gaussian to the image
+				params, psfProfile, FWHM, offList = cube.psfMask()
+				obj_centre = [params[2], params[1]]
+				#Find the difference between the tracked centre and obj centre
+				x_shift = obj_centre[0] - tracked_centre[0]
+				y_shift = obj_centre[1] - tracked_centre[1]
+				x_shift = int(np.round(x_shift))
+				y_shift = int(np.round(y_shift))
+				print 'Shifting Profile by: %s %s' % (x_shift, y_shift)
+				#Use numpy.roll to shift the psfMask to the correct location 
+				new_mask = np.roll(tracked_profile, y_shift, axis=0)
+				#For the x_shift need to loop round the elements of the new_mask 
+				final_new_mask = []
+				for arr in new_mask:
+					final_new_mask.append(np.roll(arr, x_shift))
+				final_new_mask = np.array(final_new_mask)
+				print final_new_mask
+
+				#Check to see that the gaussian and shifted profile align
+				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
+				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
+				colFig.colorbar(colCax)
+				plt.show()
+				#Extract each optimal spectrum 
+				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
+				#Save the optimal spectrum for each object 
+				#Need to create a new fits table for this 
+				tbhdu = fits.new_table(fits.ColDefs(\
+					[fits.Column(name='Wavelength', format='E', array=cube.wave_array),\
+				     fits.Column(name='Flux', format='E', array=optimal_spec)]))
+				prihdu = fits.PrimaryHDU(header=cube.primHeader)
+				thdulist = fits.HDUList([prihdu, tbhdu])
+				thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
+				#This should save the optimal spectrum for each object
 
 
 		#print the fwhm dictionary to confirm that this is indeed a sequence 
 		#of increasing fwhm 
 		print fwhm_dict
 
+	def saveSpec(self, cubeName):
+		"""
+		Def:
+		Extract a spectrum from a given cube optimally 
+		and save the spectrum to a fits file in the same 
+		format as the frameCheck method 
+		Input - cube: Any reconstructed cube, object or sky 
+		"""
+
+		#Create an instance of the cube class 
+		cube = cubeOps(cubeName)
+		#extract the properties 
+		wave_arr = cube.wave_array
+		spec = cube.optimalSpec()
+		#Save to fits file
+		tbhdu = fits.new_table(fits.ColDefs(\
+			[fits.Column(name='Wavelength', format='E', array=wave_arr),\
+		     fits.Column(name='Flux', format='E', array=spec)]))
+		prihdu = fits.PrimaryHDU(header=cube.primHeader)
+		thdulist = fits.HDUList([prihdu, tbhdu])
+		thdulist.writeto(cubeName[:-5] + '_spectrum.fits', clobber=True)
+		 
 
 
 
+	def plotSpecs(self, objSpec, skySpec, n):
 
+		"""
+		Def: 
+		Takes the object and sky spectra, bins according to n 
+		which must be a factor of the wavelength array and plots both 
+		on the same axes 
+		Input - objSpec: Input spectrum, must be in the fits format specified 
+		in the frameCheck recipe i.e. Table data with one column that has header 
+		FLUX and one with header WAVELENGTH
+			  - skySpec: Input sky spectrum in the same format 
+			  - n: Binning order, must be an integer
+		"""
+		#Read in the files 
+		objTable = fits.open(objSpec)
+		obj_spec = objTable[1].data['FLUX']
+		obj_wave = objTable[1].data['WAVELENGTH']
 
+		#skyTable 
+		skyTable = fits.open(skySpec)
+		sky_spec = skyTable[1].data['FLUX']
+		sky_wave = skyTable[1].data['WAVELENGTH']
+
+		#Variables to house the new binned spectra
+		new_obj_spec = []
+		new_obj_wave = []
+		new_sky_spec = []
+		new_sky_wave = [] 
+
+		#Counters for the binning 
+		lower = 0 
+		upper = copy(n)
+
+		#Bin the data 
+		for i in range(len(obj_wave) / n):
+			#The binned spectra are the sum over the ranges
+			new_obj_spec.append(sum(obj_spec[lower:upper]))
+			new_sky_spec.append(sum(sky_spec[lower:upper]))
+			#The binned wavelengths are the median over the ranges
+			new_obj_wave.append(np.median(obj_wave[lower:upper]))
+			new_sky_wave.append(np.median(sky_wave[lower:upper]))	
+			lower += n 
+			upper += n 
+		#Print to make sure they are the same length 
+		print len(new_obj_spec), len(new_sky_spec)
+
+		#Plot the results 
+		#Now make the plots for both nights, want the same x-axis for all three layers
+		f, (ax1, ax2) = plt.subplots(2, sharex=True, figsize=(18.0, 10.0))
+		ax1.plot(new_obj_spec, new_obj_wave, color='b')
+		ax1.set_title('Object Spectrum', fontsize=24)
+		ax2.plot(new_sky_spec, new_sky_wave, color='g')
+		ax2.set_title('Sky Spectrum')
+		ax2.set_xlabel(r'Wavelength ($\AA$)', fontsize=24)
+		ax2.tick_params(axis='both', which='major', labelsize=15)
+		plt.show()
+		f.savefig('spec_compare.png')
+	
 
 
