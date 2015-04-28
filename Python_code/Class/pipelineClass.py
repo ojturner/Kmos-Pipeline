@@ -3179,14 +3179,17 @@ class pipelineOps(object):
 				cube = cubeOps(name)
 				#Find the central value of the object flux by 
 				#fitting a gaussian to the image
-				params, psfProfile, FWHM, offList = cube.psfMask()
+				params, objProfile, FWHM, offList = cube.psfMask()
 				obj_centre = [params[2], params[1]]
+
+				print 'The standard star centre is: %s' % tracked_centre
+				print 'The Object centre is: %s' % obj_centre
 				#Find the difference between the tracked centre and obj centre
 				x_shift = obj_centre[0] - tracked_centre[0]
 				y_shift = obj_centre[1] - tracked_centre[1]
 				x_shift = int(np.round(x_shift))
 				y_shift = int(np.round(y_shift))
-				print type(x_shift), type(y_shift)
+				print 'Shifting Profile by: %s %s' % (x_shift, y_shift)
 				#Use numpy.roll to shift the psfMask to the correct location 
 				new_mask = np.roll(tracked_profile, y_shift, axis=0)
 				#For the x_shift need to loop round the elements of the new_mask 
@@ -3194,12 +3197,12 @@ class pipelineOps(object):
 				for arr in new_mask:
 					final_new_mask.append(np.roll(arr, x_shift))
 				final_new_mask = np.array(final_new_mask)
-				print final_new_mask
+
 				#Check to see that the gaussian and shifted profile align
 				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
 				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
 				colFig.colorbar(colCax)
-				plt.show()
+				#plt.show()
 				#Extract each optimal spectrum 
 				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
 				#Save the optimal spectrum for each object 
@@ -3210,7 +3213,7 @@ class pipelineOps(object):
 				prihdu = fits.PrimaryHDU(header=cube.primHeader)
 				thdulist = fits.HDUList([prihdu, tbhdu])
 				thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
-				#This should save the optimal spectrum for each object 
+				#This should save the optimal spectrum for each object
 
 
 
@@ -3336,14 +3339,17 @@ class pipelineOps(object):
 				cube = cubeOps(name)
 				#Find the central value of the object flux by 
 				#fitting a gaussian to the image
-				params, psfProfile, FWHM, offList = cube.psfMask()
+				params, objProfile, FWHM, offList = cube.psfMask()
 				obj_centre = [params[2], params[1]]
+
+				print 'The standard star centre is: %s' % tracked_centre
+				print 'The Object centre is: %s' % obj_centre
 				#Find the difference between the tracked centre and obj centre
 				x_shift = obj_centre[0] - tracked_centre[0]
 				y_shift = obj_centre[1] - tracked_centre[1]
 				x_shift = int(np.round(x_shift))
 				y_shift = int(np.round(y_shift))
-				print type(x_shift), type(y_shift)
+				print 'Shifting Profile by: %s %s' % (x_shift, y_shift)
 				#Use numpy.roll to shift the psfMask to the correct location 
 				new_mask = np.roll(tracked_profile, y_shift, axis=0)
 				#For the x_shift need to loop round the elements of the new_mask 
@@ -3351,12 +3357,12 @@ class pipelineOps(object):
 				for arr in new_mask:
 					final_new_mask.append(np.roll(arr, x_shift))
 				final_new_mask = np.array(final_new_mask)
-				print final_new_mask
+
 				#Check to see that the gaussian and shifted profile align
 				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
 				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
 				colFig.colorbar(colCax)
-				plt.show()
+				#plt.show()
 				#Extract each optimal spectrum 
 				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
 				#Save the optimal spectrum for each object 
@@ -3508,13 +3514,12 @@ class pipelineOps(object):
 				for arr in new_mask:
 					final_new_mask.append(np.roll(arr, x_shift))
 				final_new_mask = np.array(final_new_mask)
-				print final_new_mask
 
 				#Check to see that the gaussian and shifted profile align
 				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
 				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
 				colFig.colorbar(colCax)
-				plt.show()
+				#plt.show()
 				#Extract each optimal spectrum 
 				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
 				#Save the optimal spectrum for each object 
@@ -3645,8 +3650,11 @@ class pipelineOps(object):
 				cube = cubeOps(name)
 				#Find the central value of the object flux by 
 				#fitting a gaussian to the image
-				params, psfProfile, FWHM, offList = cube.psfMask()
+				params, objProfile, FWHM, offList = cube.psfMask()
 				obj_centre = [params[2], params[1]]
+
+				print 'The standard star centre is: %s' % tracked_centre
+				print 'The Object centre is: %s' % obj_centre
 				#Find the difference between the tracked centre and obj centre
 				x_shift = obj_centre[0] - tracked_centre[0]
 				y_shift = obj_centre[1] - tracked_centre[1]
@@ -3660,13 +3668,12 @@ class pipelineOps(object):
 				for arr in new_mask:
 					final_new_mask.append(np.roll(arr, x_shift))
 				final_new_mask = np.array(final_new_mask)
-				print final_new_mask
 
 				#Check to see that the gaussian and shifted profile align
 				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
 				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
 				colFig.colorbar(colCax)
-				plt.show()
+				#plt.show()
 				#Extract each optimal spectrum 
 				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
 				#Save the optimal spectrum for each object 
@@ -3722,6 +3729,12 @@ class pipelineOps(object):
 			  - skySpec: Input sky spectrum in the same format 
 			  - n: Binning order, must be an integer
 		"""
+
+		if type(n) != int:
+			raise TypeError('n must be an integer')
+		if n <= 0:
+			raise ValueError("You have specified a value less than or equal 0 for n")
+
 		#Read in the files 
 		objTable = fits.open(objSpec)
 		obj_spec = objTable[1].data['FLUX']
@@ -3732,38 +3745,50 @@ class pipelineOps(object):
 		sky_spec = skyTable[1].data['FLUX']
 		sky_wave = skyTable[1].data['WAVELENGTH']
 
-		#Variables to house the new binned spectra
-		new_obj_spec = []
-		new_obj_wave = []
-		new_sky_spec = []
-		new_sky_wave = [] 
+		if n == 1:
+			new_obj_spec = copy(obj_spec)
+			new_obj_wave = copy(obj_wave)
+			new_sky_spec = copy(sky_spec)
+			new_sky_wave = copy(sky_wave)
 
-		#Counters for the binning 
-		lower = 0 
-		upper = copy(n)
+		elif n > 1:
 
-		#Bin the data 
-		for i in range(len(obj_wave) / n):
-			#The binned spectra are the sum over the ranges
-			new_obj_spec.append(sum(obj_spec[lower:upper]))
-			new_sky_spec.append(sum(sky_spec[lower:upper]))
-			#The binned wavelengths are the median over the ranges
-			new_obj_wave.append(np.median(obj_wave[lower:upper]))
-			new_sky_wave.append(np.median(sky_wave[lower:upper]))	
-			lower += n 
-			upper += n 
-		#Print to make sure they are the same length 
-		print len(new_obj_spec), len(new_sky_spec)
+			#Variables to house the new binned spectra
+			new_obj_spec = []
+			new_obj_wave = []
+			new_sky_spec = []
+			new_sky_wave = [] 
+
+			#Counters for the binning 
+			lower = 0 
+			upper = copy(n)
+
+			#Bin the data 
+			for i in range(len(obj_wave) / n):
+				#The binned spectra are the sum over the ranges
+				new_obj_spec.append(sum(obj_spec[lower:upper]))
+				new_sky_spec.append(sum(sky_spec[lower:upper]))
+				#The binned wavelengths are the median over the ranges
+				new_obj_wave.append(np.median(obj_wave[lower:upper]))
+				new_sky_wave.append(np.median(sky_wave[lower:upper]))	
+				lower += n 
+				upper += n 
+			#Print to make sure they are the same length 
+			print len(new_obj_spec), len(new_sky_spec)
+			new_obj_spec = np.array(new_obj_spec)
+			new_obj_wave = np.array(new_obj_wave)
+			new_sky_spec = np.array(new_sky_spec)
+			new_sky_wave = np.array(new_sky_wave)
 
 		#Plot the results 
 		#Now make the plots for both nights, want the same x-axis for all three layers
 		f, (ax1, ax2) = plt.subplots(2, sharex=True, figsize=(18.0, 10.0))
-		ax1.plot(new_obj_spec, new_obj_wave, color='b')
+		ax1.plot(new_obj_wave, new_obj_spec, color='b')
 		ax1.set_title('Object Spectrum', fontsize=24)
-		ax2.plot(new_sky_spec, new_sky_wave, color='g')
-		ax2.set_title('Sky Spectrum')
+		ax2.plot(new_sky_wave, new_sky_spec, color='g')
 		ax2.set_xlabel(r'Wavelength ($\AA$)', fontsize=24)
 		ax2.tick_params(axis='both', which='major', labelsize=15)
+		f.subplots_adjust(wspace=0)
 		plt.show()
 		f.savefig('spec_compare.png')
 	
