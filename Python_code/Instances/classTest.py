@@ -71,9 +71,9 @@ skySpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/30-
 
 
 #pipe_methods.saveSpec(objCube)
-pipe_methods.plotSpecs(objSpec, skySpec, 1)
+#pipe_methods.plotSpecs(objSpec, skySpec, 1)
 
-#pipe_methods.frameCheck(skyCube, names_15)
+pipe_methods.multiExtractSpec(skyCube, names_15_shifted)
 #Now try the subtraction method 
 #pipe_methods.subFrames('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits', skyFile)
 #pipe_methods.subFrames('KMOS_SPEC_OBS258_0001_Corrected.fits', skyFile)
