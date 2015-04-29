@@ -2841,7 +2841,7 @@ class pipelineOps(object):
 					f.write('\n%s\tSCIENCE' % objFile)
 					f.write('\n%s\tSCIENCE' % skyFile)
 				#Now just execute the esorex recipe for this new file 
-				os.system('esorex kmo_sci_red --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof')
+				os.system('esorex kmo_sci_red --sky_tweak=TRUE --pix_scale=0.2 --edge_nan=TRUE sci_reduc_temp.sof')
 
 				#We have all the science products now execute the above method for each 
 				#of the pairs. Should think of a better way to create the combNames file
@@ -3717,6 +3717,8 @@ class pipelineOps(object):
 
 
 	def plotSpecs(self, objSpec, skySpec, n):
+		import matplotlib.gridspec as gridspec
+		from matplotlib.ticker import MaxNLocator
 
 		"""
 		Def: 
@@ -3782,13 +3784,19 @@ class pipelineOps(object):
 
 		#Plot the results 
 		#Now make the plots for both nights, want the same x-axis for all three layers
-		f, (ax1, ax2) = plt.subplots(2, sharex=True, figsize=(18.0, 10.0))
+		f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(18.0, 10.0))
 		ax1.plot(new_obj_wave, new_obj_spec, color='b')
-		ax1.set_title('Object Spectrum', fontsize=24)
+		ax1.set_title('Object and Sky Comparison', fontsize=24)
+		ax1.set_ylim(0, max(new_obj_spec))
+		ax1.tick_params(axis='y', which='major', labelsize=15)
 		ax2.plot(new_sky_wave, new_sky_spec, color='g')
 		ax2.set_xlabel(r'Wavelength ($\AA$)', fontsize=24)
 		ax2.tick_params(axis='both', which='major', labelsize=15)
-		f.subplots_adjust(wspace=0)
+		ax2.set_ylim(0, max(new_sky_spec))
+		nbins = len(ax1.get_xticklabels())
+		ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
+		ax2.set_xlim(1.15,1.20)
+		f.subplots_adjust(hspace=0.001)
 		plt.show()
 		f.savefig('spec_compare.png')
 	

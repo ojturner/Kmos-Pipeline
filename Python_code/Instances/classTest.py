@@ -64,13 +64,16 @@ newFile3 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_
 namesOfFile = np.genfromtxt(sci_names_14_noTel, dtype='str')
 namesOfFile_1 = np.genfromtxt(sci_names_14_noTel_1, dtype='str')
 
-objSpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/frameCheck/Good_sci_combined_n55_19__skytweak_spectrum.fits'
+objCube = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_combined_n55_19__skytweak.fits'
+objSpec2 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_combined_n55_19__skytweak_spectrum.fits'
+objSpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/frameCheck_skytweak_15_shifted/Good_sci_combined_n55_19__skytweak_spectrum.fits'
 skySpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/30-3-15Sky_Only/cube_science_spectrum.fits'
 
 
-#pipe_methods.saveSpec(skyCube)
-#pipe_methods.plotSpecs(objSpec, skySpec, 2)
-pipe_methods.frameCheck(skyCube, names_14_shifted)
+#pipe_methods.saveSpec(objCube)
+pipe_methods.plotSpecs(objSpec, skySpec, 1)
+
+#pipe_methods.frameCheck(skyCube, names_15)
 #Now try the subtraction method 
 #pipe_methods.subFrames('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits', skyFile)
 #pipe_methods.subFrames('KMOS_SPEC_OBS258_0001_Corrected.fits', skyFile)
