@@ -2876,7 +2876,7 @@ class pipelineOps(object):
 				#Conditional binning - HARDWIRED VALUES 
 				#Could look at percentiles of FWHM distribution? 
 				if (arc_fwhm < 0.6):
-					print 'Placing object in best bin'
+					print 'Placing object in best bin' #wagwanplaya
 					a_fwhm_names.append(objFile)
 				elif (arc_fwhm > 0.6 and arc_fwhm < 1.0):
 					print 'Placing object in good bin'
