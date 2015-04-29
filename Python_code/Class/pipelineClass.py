@@ -2737,50 +2737,38 @@ class pipelineOps(object):
 			#Now execute the recipe 
 			os.system('esorex kmo_combine --edge_nan=TRUE sci_combine.sof')
 			
-
-
-
 	def frameCheck(self, skyCube, frameNames):
+		"""
+		Def:
+		Loop round a list of frameNames of a given type and apply the science 
+		reduction to each pair. Return the vectors which contain the sky tweak 
+		performance for each pair and for each IFU in each pair, and the vector 
+		containing the fwhm of the tracked star. The tracked star is defined in 
+		the multiExtract method. Also bin objects based on their fwhm and return 
+		a dictionary containing the different bins. 
+		Input: skyCube - a given reconstructed skyCube. Note this assumed that the 
+		sky values will not vary significantly in wavelength from frame to frame. 
+		Need to check this. 
+			   frameNames - file containing a list of object and sky frames 
+				in the standard format, with column 1 the file name and column 2 the 
+				file type 
+		Output: IFUValVec - mean for each IFU of skytweak performance 
+				frameValVec - mean for each frame of skytweak performance 
+				fwhmValVec - tracked star fwhm for each frame 
+				fwhmDict - keys of 'Best', 'Good', 'Okay', 'Bad' corresponding
+				to the fwhm of the tracked star, and values being the names of 
+				the files which fall into each of these bins 
+		Uses: self.compareSky
+			  self.gaussFit 
+			  cubeOps  
 
 		"""
-		Def: 
-		Executes the kmo_sci_red recipe with skytweak 
-		for each of the individual object sky pairs and then 
-		applies compareSky to the science products. Plots a graph 
-		for the identification of bad science frames. Also fits a gaussian 
-		function to the collapsed data for each IFU, for each object sky pair.  
-
-		Input: 	reconstructed object cube from the current set
-				skyCube - any reconstructed sky cube 
-				frameNames - list of object/sky pairs with 
-				the names in the first column and type in second 
-
-		Outpt: Plot of frame performance against ID
-		"""
-		#remove the temporary sof file if it exists
-		if os.path.isfile('sci_reduc_temp.sof'):
-			os.system('rm sci_reduc_temp.sof')
-		if os.path.isfile('tracked.txt'):
-			os.system('rm tracked.txt')
-		#Read in the data from the frameNames
+		#First read in the names and the types from frameNames
 		data = np.genfromtxt(frameNames, dtype='str')
 		#Save the names and types as lists 
 		names = data[0:,0]
-		print names
 		types = data[0:,1]
-		#Loop round all names and apply the computeOffsetSegments method
-		counter = 0
-		frameValVec = []
-		IFUValVec = []
-		namesVec = []
-		fwhmValVec = []
-		fwhmMeanVec = []
-		#Set up the different bins 
-		a_fwhm_names = []
-		b_fwhm_names = []
-		c_fwhm_names = []
-		d_fwhm_names = []
-		#Set the combined science names 
+		#Set the sci_comb names defined in the cubeclass  
 		if types[1] == 'O':
 			combNames = cubeOps(names[1]).combNames
 			rec_combNames = cubeOps(names[1]).rec_combNames
@@ -2793,6 +2781,8 @@ class pipelineOps(object):
 		else:
 			print 'Having difficulty setting sci_comb names'
 
+		#Define the tracked star ID
+		#Writing out a temporary file containing the tracked star name
 		##########################################################################
 		###########################HARDWIRED######################################
 		##########################################################################
@@ -2803,16 +2793,20 @@ class pipelineOps(object):
 		for entry in combNames:
 			if entry.find(track_name) != -1:
 				tracked_star = entry
+		#Initialise loop counter and variables 
+		counter = 0
+		frameValVec = []
+		IFUValVec = []
+		namesVec = []
+		fwhmValVec = []
+		#Set up the different bins for fwhm of tracked star
+		a_fwhm_names = []
+		b_fwhm_names = []
+		c_fwhm_names = []
+		d_fwhm_names = []
 
-		#Remove tracked.txt if it already exists
-		if os.path.isfile('tracked.txt'):
-			os.system('rm tracked.txt')
-		with open('tracked.txt', 'a') as f:
-			#Hard-Wired in right now - would need to change for different data set 
-			#And different object names. How can the brightest star be detected 
-			#automatically? Is there a S/N parameter in the header?
-			f.write(tracked_star)
-
+		#Loop around each name, assign sky pair and populate 
+		#the sky tweak performance and fwhm variables 
 		for i in range(1, len(names)):
 			if types[i] == 'O':
 				counter += 1
@@ -2858,7 +2852,6 @@ class pipelineOps(object):
 				print 'Checking PSF of tracked star'
 				fwhm, psfProfile, offList = self.gaussFit('tracked.txt')
 				fwhmValVec.append(fwhm)
-				fwhmMeanVec.append(fwhm)
 				#remove the temporary .sof file and go back to the start of the loop
 				os.system('rm sci_reduc_temp.sof') 	
 				
@@ -2886,28 +2879,45 @@ class pipelineOps(object):
 					c_fwhm_names.append(objFile)
 				else:
 					print 'Placing object in bad bin'
-					d_fwhm_names.append(objFile)
+					d_fwhm_names.append(objFile)		
 
-
-		##############################################################################
-		#There are the IFU sky tweak performance plots 
 		#Should now have populated the frameValVec, IFUValVec and incremented counter
 		IFUValVec = np.array(IFUValVec)
 		fwhmValVec = np.array(fwhmValVec)
-		#Convert the FWHM to arcseconds instead of pixels
-		fwhmMeanVec = pixel_scale * np.array(fwhmMeanVec)
-		ID = np.arange(0.0, counter, 1.0)
-		#Cosntruct ID array of length 24
-		IFUID = np.arange(1.0, 25, 1.0)
 		offList = np.array(offList)
+		#Convert the FWHM to arcseconds instead of pixels
+		fwhmValVec = pixel_scale * np.array(fwhmValVec)
+		ID = np.arange(0.0, counter, 1.0)
+
+		#Make the dictionary of fwhm values 
+		fwhmDict = {'Best':a_fwhm_names,'Good':b_fwhm_names,'Okay':c_fwhm_names,'Bad':d_fwhm_names}
+		#Return all of these values 
+		return ID, offList, namesVec, IFUValVec, frameValVec, fwhmValVec, fwhmDict
+
+	def meanIFUPlot(self, offList, namesVec, IFUValVec):
+		"""
+		Def:
+		Takes the output from frameCheck and plots a line graph 
+		of skytweak performance against IFUID for each input frame. 
+		Each of the IFUs which are not operational are plotted as 
+		np.nan
+		Input - ID: Vector from 1 - len(number of frames)
+				offList: List of the IFUs which are not operational
+				namesVec: The names of the input object files 
+				IFUValVec: Vector of means for each IFU
+		Output - Plot of performance against IFU, recognising the 
+				IFUs which are not illuminated
+		"""
+		#Construct ID array of length 24
+		IFUID = np.arange(1.0, 25, 1.0)
+		
 		#Insert np.nan at the locations where the IFU is off
 		#Initialise the counter for the frame naming
 		val = 0
-		combinedNames = np.loadtxt(combNames, dtype='str')
 		colors_plot = cycle(cm.rainbow(np.linspace(0, 1, len(IFUValVec))))
 		colors_scatter = cycle(cm.rainbow(np.linspace(0, 1, len(IFUValVec))))
 		#Collape all the information at the IFU level onto a single plot
-		fig, ax = plt.subplots(1, 1, figsize=(20.0, 20.0))
+		fig, ax = plt.subplots(1, 1, figsize=(14.0, 14.0))
 		for entry in IFUValVec:
 			#Extend the value array to match the IFUID array
 			for value in offList:
@@ -2924,10 +2934,22 @@ class pipelineOps(object):
 		plt.legend(prop={'size':10})
 		fig.savefig('IFU_by_Frame.png')
 		plt.show()
-		plt.close('all')		
+		plt.close('all')
 
+	def indIFUPlot(self, offList, ID, IFUValVec):
+		"""
+		Def: Uses the output of frameCheck to 
+		Plot for each individual IFU the performance of skytweak 
+		against frame ID. More detail as to how well skytweak is 
+		performing. 
+		Input - Offlist: List of IFU numbers which aren't illuminated
+			  - ID: np.arange between 0 and total number of operational IFUs 
+			  - IFUValVec: 2D array of median sky tweak performance values 
+		Output - subplot array showing how well the sky has been subtracted 
+		in each individual IFU
+		"""
 		#Make a plot for each IFU in a subplot array
-		fig, axArray = plt.subplots(3, 8, figsize=(25.0, 20.0))
+		fig, axArray = plt.subplots(3, 8, figsize=(20.0, 15.0))
 		IFUCount = 0
 		dataCount = 0
 		#Have the data now - populate the subplots 
@@ -2949,12 +2971,20 @@ class pipelineOps(object):
 		#Subplots populated, save the overall figure 
 		fig.savefig('IFU_subplots.png')
 		plt.show()
-		plt.close('all')		
+		plt.close('all')
 
+	def meanFramePlot(self, ID, frameValVec):
 
+		"""
+		Def:
+		Uses the output from frameCheck to make a simple 
+		plot of the mean sky tweak performance against frame 
+		Input - ID: np.arange between 0 and count of number of frames 
+			  - frameValVec: 1D array of mean sky tweak performance
+		"""
 		#Make the overall mean plot of performance for the frames  
 		#Create a figure and plot the results  
-		fig, ax = plt.subplots(1, 1, figsize=(12.0,12.0))
+		fig, ax = plt.subplots(1, 1, figsize=(14.0,14.0))
 		ax.plot(ID, frameValVec)
 		ax.scatter(ID, frameValVec)
 		ax.set_title('Sky Tweak Performance vs. Frame ID')
@@ -2964,62 +2994,20 @@ class pipelineOps(object):
 		fig.savefig('frame_performance.png')
 		plt.show()
 		plt.close('all')
-		##################################################################
 
-		##################################################################
-		#These are the psf investigation plots 
-		##################################################################
-		#Collape all the information at the IFU level onto a single plot
+	def meanFWHMPlot(self, ID, fwhmValVec):
 
-#		val = 0
-#		fig, ax = plt.subplots(1, 1, figsize=(20.0, 20.0))
-#		for entry in fwhmValVec:
-#			#Extend the value array to match the IFUID array
-#			for value in offList:
-#				entry = np.insert(entry, value, np.nan)#
-
-#			ax.plot(IFUID, entry, label=namesVec[val])
-#			val += 1
-#		ax.set_title('FWHM vs. IFU ID')
-#		ax.set_xlabel('IFU ID')
-#		ax.set_xticks((np.arange(min(IFUID), max(IFUID)+1, 1.0)))
-#		ax.grid(b=True, which='both', linestyle='--')
-#		plt.legend(prop={'size':10})
-#		fig.savefig('fwhm_by_Frame_14.png')
-#		plt.show()
-#		plt.close('all')		#
-
-#		#Make a plot for each IFU in a subplot array
-#		fig, axArray = plt.subplots(3, 8, figsize=(25.0, 20.0))
-#		IFUCount = 0
-#		dataCount = 0
-#		#Have the data now - populate the subplots 
-#		for col in range(3):
-#			for row in range(8):
-#				#Only plot if IFU is functional 
-#				if IFUCount not in offList:
-#					frameVec = fwhmValVec[:, dataCount]
-#					axArray[col][row].plot(ID, frameVec)
-#					axArray[col][row].set_title('IFU %s' % (IFUCount + 1))
-#					axArray[col][row].set_xlabel('Frame ID')
-#					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
-#					axArray[col][row].grid(b=True, which='both', linestyle='--')
-#					dataCount += 1
-#				#Increment the IFUCount
-#				IFUCount += 1
-#		#Subplots populated, save the overall figure 
-#		fig.savefig('fwhm_subplots_14.png')
-#		plt.show()
-#		plt.close('all')		
-
-		#Only interested in monitoring the FWHM across a single 
-		#IFU. Only plot the evolution of this.
-		#Make the overall mean plot of performance for the frames  
-		#Create a figure and plot the results  
-		fig, ax = plt.subplots(1, 1, figsize=(12.0,12.0))
-		ax.plot(ID, fwhmMeanVec)
-		ax.scatter(ID, fwhmMeanVec)
-		ax.set_title('average fwhm vs. Frame ID')
+		"""
+		Def:
+		Uses the output from frameCheck to make a simple 
+		plot of the tracked star FWHM against frame ID 
+		Input - ID: np.arange between 0 and count of number of frames 
+			  - fwhmValVec: 1D array of tracked star fwhm in each frame
+		"""
+		fig, ax = plt.subplots(1, 1, figsize=(14.0,14.0))
+		ax.plot(ID, fwhmValVec)
+		ax.scatter(ID, fwhmValVec)
+		ax.set_title('Average fwhm vs. Frame ID')
 		ax.set_xlabel('Frame ID')
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
@@ -3027,20 +3015,26 @@ class pipelineOps(object):
 		plt.show()
 		plt.close('all')
 
-###########################################################################################
-###########################################################################################
-#PLOTS CREATED - NOW TO ANALYSE THE BINS OF DIFFERENT FWHM
-###########################################################################################
-###########################################################################################
-#Use the combFrames method. Only thing to worry about is that at this stage 
-#all of the combined final products will have the same name - so should do analysis 
-#in the loop for each set of combined science images. Or for each FWHM bin append the psf bin 
-#to each of the created products, e.g. okay_combined_sci_n55_19.fits
+	def extractSpec(self, fwhmDict, combNames, rec_combNames):
+		"""
+		Def:
+		Takes the grouped tracked star fwhm dictionary, combines 
+		the objects in each bin using the ESO pipeline and then 
+		extracts the optimal spectrum from each IFU in each bin 
+		with appended dictionary name, i.e. 'Good_sci_combined*'
+		"""
+		#Writing out a temporary file containing the tracked star name
+		##########################################################################
+		###########################HARDWIRED######################################
+		##########################################################################
+		#Can probably in the future get the name of the IFU tracking a standard 
+		#Star straight from the fits header. Will hardwire it in a-priori now 
+		track_name = 'n55_19'
+		#Loop round the list of combNames until the track_name appears 
+		for entry in combNames:
+			if entry.find(track_name) != -1:
+				tracked_star = entry
 
-		#retrieve the dictionary combining the science names and IFU numbers 
-		combDict = cubeOps(tracked_star).combDict
-		#Remove the current sci_combined*.fits prior to this analysis
-		os.system('rm sci_combined*.fits')
 		#First check the directory for the rec_combNames and delete if they exist 
 		for entry in rec_combNames:
 			if os.path.isfile(entry):
@@ -3050,646 +3044,266 @@ class pipelineOps(object):
 			if entry.find(track_name) != -1:
 				rec_tracked_star = entry
 
-		fwhm_dict = {}
+		#retrieve the dictionary combining the science names and IFU numbers 
+		combDict = cubeOps(tracked_star).combDict
+		#Remove the current sci_combined*.fits prior to this analysis
+		os.system('rm sci_combined*.fits')
+
+		#Initialise dictionary for final fwhm values
+		fwhm_values = {}
+		#Loop around each of the keys in the FWHM dictionary
+		for group in fwhmDict.keys():
+
+			print 'Extracting Spectra for the %s group' % group
+
+			if fwhmDict[group]:
+				
+				#The case with only 1 entry in the group (complex) 
+				if len(fwhmDict[group]) == 1:
+					print 'Only 1 %s PSF frame: Selecting %s PSF Cubes' % (group, group)
+
+					#Construct the reconstructed file name 
+					#If the entry doesn't contain a backslash, the entry 
+					#is the object name and can prepend directly 
+					if fwhmDict[group][0].find("/") == -1:
+						rec_frame = 'sci_reconstructed_' + fwhmDict[group][0]
+					#Otherwise the directory structure is included and have to 
+					#search for the backslash and omit up to the last character 
+					else:
+						objName = fwhmDict[group][0][len(fwhmDict[group][0]) - fwhmDict[group][0][::-1].find("/"):]
+						rec_frame = 'sci_reconstructed_' + objName
+					#Now have the correct name of the reconstructed file 
+					#Need to select the correct extension for the tracked_star
+					ext = combDict[track_name]	
+					#Open the reconstructed frame and assign the data for the correct IFU:
+					Table = fits.open(rec_frame)
+					primHeader = Table[0].header 	
+					dataHeader = Table[ext].header
+					cube_data = Table[ext].data
+
+					#Fix the issue with the fits header
+					temp = sys.stdout
+					sys.stdout = open('log.txt', 'w')
+					print (primHeader)
+					print (dataHeader)						
+					sys.stdout.close()
+					sys.stdout = temp
+					os.system('rm log.txt')
+
+					#Write out to a new fits file
+			  		objhdu = fits.PrimaryHDU(header=primHeader)
+					objhdu.writeto(tracked_star, clobber=True)
+					fits.append(tracked_star, data=cube_data, header=dataHeader)
+
+					#Now on the same footing as below 
+					tracked_cube = cubeOps(tracked_star)
+					#Extract the PSFProfile from the stacked, tracked star
+					params, psfProfile, FWHM, offList = tracked_cube.psfMask()
+					#Add best stacked FWHM to the dictionary just to check afterwards 
+					fwhm_values[group] = FWHM * float(tracked_cube.pix_scale)
+					#Set the rec_combNames as an iterable for specifying the file name
+					iterCombNames_one = cycle(combNames)
+					iterCombNames_two = cycle(combNames)
+					#Now get all the operational IFUs and do the same
+					for name in combDict.keys():
+						ext = combDict[name]
+						#Open the reconstructed frame:
+						Table = fits.open(rec_frame)
+						primHeader = Table[0].header 	
+						dataHeader = Table[ext].header
+						cube_data = Table[ext].data
+
+						temp = sys.stdout
+						sys.stdout = open('log.txt', 'w')
+						print (primHeader)
+						print (dataHeader)						
+						sys.stdout.close()
+						sys.stdout = temp
+						os.system('rm log.txt')
+
+
+						#Write out to a new fits file
+				  		objhdu = fits.PrimaryHDU(header=primHeader)
+						objhdu.writeto(next(iterCombNames_one), clobber=True)
+						fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
+					new_name_vec = []
+					#Append best to all the rec_combNames 
+					for entry in combNames:
+						group_name = group + '_' + entry
+						new_name_vec.append(group_name)
+						os.system('mv %s %s' % (entry, group_name))
+
+
+				#The Case where there is more than one entry in the group (normal)
+				elif len(fwhmDict[group]) > 1:
+					print 'Combining Best PSF Cubes'
+					self.combFrames(fwhmDict[group])
+					#The output from this is the combined_sci file names contained in rec_combNames
+					#These are all stacked data cubes in bins of seeing 
+					tracked_cube = cubeOps(rec_tracked_star)
+					#Extract the PSFProfile from the stacked, tracked star
+					params, psfProfile, FWHM, offList = tracked_cube.psfMask()
+					#Add best stacked FWHM to the dictionary just to check afterwards 
+					fwhm_values[group] = FWHM * float(tracked_cube.pix_scale)
+
+					new_name_vec = []
+					#Append best to all the rec_combNames 
+					for entry in zip(rec_combNames, combNames):
+						current_name = entry[0]
+						group_name = group + '_' + entry[1]
+						new_name_vec.append(group_name)
+						os.system('mv %s %s' % (current_name, group_name))
+
+				#Should now have the working directory filled with objects 
+				#That have the same name, regardless of whether they passed through 
+				#the single object in a bin route or the multi-route, with these names 
+				#stored in the new_name_vec array 
+
+				print 'Fitting Gaussian to each of the stacked %s objects' % group
+				#Record the centre of the tracked star 
+				tracked_centre = [params[2], params[1]]
+				tracked_profile = copy(psfProfile)
+				tracked_fwhm = copy(FWHM)
+				#First Fit a gaussian to each of the objects to determine the center! 
+				for name in new_name_vec:
+					cube = cubeOps(name)
+					#Find the central value of the object flux by 
+					#fitting a gaussian to the image
+					params, objProfile, FWHM, offList = cube.psfMask()
+					obj_centre = [params[2], params[1]]
+
+					print 'The standard star centre is: %s' % tracked_centre
+					print 'The Object centre is: %s' % obj_centre
+					#Find the difference between the tracked centre and obj centre
+					x_shift = obj_centre[0] - tracked_centre[0]
+					y_shift = obj_centre[1] - tracked_centre[1]
+					x_shift = int(np.round(x_shift))
+					y_shift = int(np.round(y_shift))
+					print 'Shifting Profile by: %s %s' % (x_shift, y_shift)
+					#Use numpy.roll to shift the psfMask to the location of the object 
+					new_mask = np.roll(tracked_profile, y_shift, axis=0)
+					#For the x_shift need to loop round the elements of the new_mask 
+					final_new_mask = []
+					for arr in new_mask:
+						final_new_mask.append(np.roll(arr, x_shift))
+					final_new_mask = np.array(final_new_mask)
+
+					#Check to see that the gaussian and shifted profile align
+					colFig, colAx = plt.subplots(1,1, figsize=(14.0,14.0))
+					colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
+					colFig.colorbar(colCax)
+					#plt.show()
+					#Extract each optimal spectrum 
+					optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
+					#Save the optimal spectrum for each object 
+					#Need to create a new fits table for this 
+					tbhdu = fits.new_table(fits.ColDefs(\
+						[fits.Column(name='Wavelength', format='E', array=cube.wave_array),\
+					     fits.Column(name='Flux', format='E', array=optimal_spec)]))
+					prihdu = fits.PrimaryHDU(header=cube.primHeader)
+					thdulist = fits.HDUList([prihdu, tbhdu])
+					thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
+					#This should save the optimal spectrum for each object
+
+		print fwhm_values
+
+	def multiExtractSpec(self, skyCube, frameNames):
+
+		"""
+		Def: 
+		Executes the kmo_sci_red recipe with skytweak 
+		for each of the individual object sky pairs and then 
+		applies compareSky to the science products. Plots a graph 
+		for the identification of bad science frames. Also fits a gaussian 
+		function to the collapsed data for each IFU, for each object sky pair.  
+
+		Input: 	reconstructed object cube from the current set
+				skyCube - any reconstructed sky cube 
+				frameNames - list of object/sky pairs with 
+				the names in the first column and type in second 
+
+		Outpt: Plot of frame performance against ID
+		"""
+		#Need the sci_reduc.sof file in the directory 
+		if ((not (os.path.isfile('sci_reduc.sof')))):
+			raise ValueError("Missing reduction .sof file")
+
+		#remove the temporary sof file if it exists
+		if os.path.isfile('sci_reduc_temp.sof'):
+			os.system('rm sci_reduc_temp.sof')
+		if os.path.isfile('tracked.txt'):
+			os.system('rm tracked.txt')
+		#Read in the data from the frameNames
+		data = np.genfromtxt(frameNames, dtype='str')
+		#Save the names and types as lists 
+		names = data[0:,0]
+		types = data[0:,1]
+		#Set the sci_comb names defined in the cubeclass  
+		if types[1] == 'O':
+			combNames = cubeOps(names[1]).combNames
+			rec_combNames = cubeOps(names[1]).rec_combNames
+		elif types[2] == 'O':
+			combNames = cubeOps(names[2]).combNames
+			rec_combNames = cubeOps(names[2]).rec_combNames
+		elif types[3] == 'O':
+			combNames = cubeOps(names[3]).combNames
+			rec_combNames = cubeOps(names[3]).rec_combNames
+		else:
+			print 'Having difficulty setting sci_comb names'
+
+		#Star straight from the fits header. Will hardwire it in a-priori now 
+		track_name = 'n55_19'
+		#Loop round the list of combNames until the track_name appears 
+		for entry in combNames:
+			if entry.find(track_name) != -1:
+				tracked_star = entry
+
+		#Remove tracked.txt if it already exists
+		if os.path.isfile('tracked.txt'):
+			os.system('rm tracked.txt')
+		with open('tracked.txt', 'a') as f:
+			#Hard-Wired in right now - would need to change for different data set 
+			#And different object names. How can the brightest star be detected 
+			#automatically? Is there a S/N parameter in the header?
+			f.write(tracked_star)
+
+		ID, offList, namesVec, IFUValVec, frameValVec, fwhmValVec, fwhmDict = self.frameCheck(skyCube, frameNames)
+		########################################################################################################
+		#PLOTTING
+		########################################################################################################
+		#There are the IFU sky tweak performance plots 
+		#The mean sky tweak performance across each IFU
+		print 'Plotting frame performance against IFU number'
+		self.meanIFUPlot(offList, namesVec, IFUValVec)
+		#The performance of skytweak in each IFU
+		print 'Plotting Individual IFU performance with frame'
+		self.indIFUPlot(offList, ID, IFUValVec)
+		#Mean skytweak as a function of frame
+		print 'Plotting mean sky subtraction performance'
+		self.meanFramePlot(ID, frameValVec)
+
+		#FWHM PLOT - monitoring seeing across the frames
+		print 'Plotting evolution of tracked star FWHM' 
+		self.meanFWHMPlot(ID, fwhmValVec)
+
+###########################################################################################
+###########################################################################################
+#PLOTS CREATED - NOW TO ANALYSE THE BINS OF DIFFERENT FWHM
+###########################################################################################
+###########################################################################################
+#Takes into account the name of each fwhm bin and appends to the names of the final 
+#combined products, e.g. 'best_sci_combined_n55_19__skytweak.fits'
+
+
 		#Now combine the different PSF bins 
 		#Start with best - check to see if this bin is empty or not 
-		print 'These are the best names: %s ' % a_fwhm_names
-		print 'These are the Good names: %s ' % b_fwhm_names
-		print 'These are the Okay names: %s ' % c_fwhm_names
-		print 'These are the Bad names: %s ' % d_fwhm_names
-##########################################################
-#BEST PSF BIN
-##########################################################
-		if a_fwhm_names:
-			#Different action if 1 entry or more than one entry
-			#If only a single frame then there is no combining to be done 
-			#Use the reconstructed frame extensions to assign the cubes 
-			if len(a_fwhm_names) == 1:
-				print 'Only 1 Best PSF frame: Selecting Best PSF Cubes'
-
-				#Construct the reconstructed file name 
-				#If the entry doesn't contain a backslash, the entry 
-				#is the object name and can prepend directly 
-				if a_fwhm_names[0].find("/") == -1:
-					rec_frame = 'sci_reconstructed_' + a_fwhm_names[0]
-				#Otherwise the directory structure is included and have to 
-				#search for the backslash and omit up to the last character 
-				else:
-					objName = a_fwhm_names[0][len(a_fwhm_names[0]) - a_fwhm_names[0][::-1].find("/"):]
-					rec_frame = 'sci_reconstructed_' + objName
-				#Now have the correct name of the reconstructed file 
-				#Need to select the correct extension for the tracked_star
-				ext = combDict[track_name]	
-				#Open the reconstructed frame and assign the data for the correct IFU:
-				Table = fits.open(rec_frame)
-				primHeader = Table[0].header 	
-				dataHeader = Table[ext].header
-				cube_data = Table[ext].data
-
-				#Fix the issue with the fits header
-				temp = sys.stdout
-				sys.stdout = open('log.txt', 'w')
-				print (primHeader)
-				print (dataHeader)						
-				sys.stdout.close()
-				sys.stdout = temp
-				os.system('rm log.txt')
-
-				#Write out to a new fits file
-		  		objhdu = fits.PrimaryHDU(header=primHeader)
-				objhdu.writeto(tracked_star, clobber=True)
-				fits.append(tracked_star, data=cube_data, header=dataHeader)
-				#Now on the same footing as below 
-				tracked_cube = cubeOps(tracked_star)
-				#Extract the PSFProfile from the stacked, tracked star
-				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
-				#Add best stacked FWHM to the dictionary just to check afterwards 
-				fwhm_dict['Best'] = FWHM * float(tracked_cube.pix_scale)
-				#Set the rec_combNames as an iterable for specifying the file name
-				iterCombNames_one = cycle(combNames)
-				iterCombNames_two = cycle(combNames)
-				#Now get all the operational IFUs and do the same
-				for name in combDict.keys():
-					ext = combDict[name]
-					#Open the reconstructed frame:
-					Table = fits.open(rec_frame)
-					primHeader = Table[0].header 	
-					dataHeader = Table[ext].header
-					cube_data = Table[ext].data
-
-					temp = sys.stdout
-					sys.stdout = open('log.txt', 'w')
-					print (primHeader)
-					print (dataHeader)						
-					sys.stdout.close()
-					sys.stdout = temp
-					os.system('rm log.txt')
-
-
-					#Write out to a new fits file
-			  		objhdu = fits.PrimaryHDU(header=primHeader)
-					objhdu.writeto(next(iterCombNames_one), clobber=True)
-					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
-				new_name_vec = []
-				#Append best to all the rec_combNames 
-				for entry in combNames:
-					best_name = 'Best_' + entry
-					new_name_vec.append(best_name)
-					os.system('mv %s %s' % (entry, best_name))
-
-				#Now do more analysis with the PSF mask like extracting the spectra 
-				#But haven't quite figured out how to do this yet
-
-
-
-			elif len(a_fwhm_names) > 1:
-				print 'Combining Best PSF Cubes'
-				self.combFrames(a_fwhm_names)
-				#The output from this is the combined_sci file names contained in rec_combNames
-				#These are all stacked data cubes in bins of seeing 
-				tracked_cube = cubeOps(rec_tracked_star)
-				#Extract the PSFProfile from the stacked, tracked star
-				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
-				#Add best stacked FWHM to the dictionary just to check afterwards 
-				fwhm_dict['Best'] = FWHM * float(tracked_cube.pix_scale)
-
-				new_name_vec = []
-				#Append best to all the rec_combNames 
-				for entry in zip(rec_combNames, combNames):
-					current_name = entry[0]
-					best_name = 'Best_' + entry[1]
-					new_name_vec.append(best_name)
-					os.system('mv %s %s' % (current_name, best_name))
-
-				#Now do more analysis with the PSF mask like extracting the spectra 
-				#But haven't quite figured out how to do this yet
-
-			#Should now have the working directory filled with objects 
-			#That have the same name, regardless of whether they passed through 
-			#the single object in a bin route or the multi-route, with these names 
-			#stored in the new_name_vec array 
-
-			print 'Fitting Gaussian to each of the stacked objects'
-			#Record the centre of the tracked star 
-			tracked_centre = [params[2], params[1]]
-			tracked_profile = copy(psfProfile)
-			tracked_fwhm = copy(FWHM)
-			#First Fit a gaussian to each of the objects to determine the center! 
-			for name in new_name_vec:
-				cube = cubeOps(name)
-				#Find the central value of the object flux by 
-				#fitting a gaussian to the image
-				params, objProfile, FWHM, offList = cube.psfMask()
-				obj_centre = [params[2], params[1]]
-
-				print 'The standard star centre is: %s' % tracked_centre
-				print 'The Object centre is: %s' % obj_centre
-				#Find the difference between the tracked centre and obj centre
-				x_shift = obj_centre[0] - tracked_centre[0]
-				y_shift = obj_centre[1] - tracked_centre[1]
-				x_shift = int(np.round(x_shift))
-				y_shift = int(np.round(y_shift))
-				print 'Shifting Profile by: %s %s' % (x_shift, y_shift)
-				#Use numpy.roll to shift the psfMask to the correct location 
-				new_mask = np.roll(tracked_profile, y_shift, axis=0)
-				#For the x_shift need to loop round the elements of the new_mask 
-				final_new_mask = []
-				for arr in new_mask:
-					final_new_mask.append(np.roll(arr, x_shift))
-				final_new_mask = np.array(final_new_mask)
-
-				#Check to see that the gaussian and shifted profile align
-				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
-				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
-				colFig.colorbar(colCax)
-				#plt.show()
-				#Extract each optimal spectrum 
-				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
-				#Save the optimal spectrum for each object 
-				#Need to create a new fits table for this 
-				tbhdu = fits.new_table(fits.ColDefs(\
-					[fits.Column(name='Wavelength', format='E', array=cube.wave_array),\
-				     fits.Column(name='Flux', format='E', array=optimal_spec)]))
-				prihdu = fits.PrimaryHDU(header=cube.primHeader)
-				thdulist = fits.HDUList([prihdu, tbhdu])
-				thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
-				#This should save the optimal spectrum for each object
-
-
-
-##################################################
-#GOOD PSF FRAMES
-##################################################
-
-		if b_fwhm_names:
-			#Different action if 1 entry or more than one entry
-			#If only a single frame then there is no combining to be done 
-			#Use the reconstructed frame extensions to assign the cubes 
-			if len(b_fwhm_names) == 1:
-				print 'Only 1 Good PSF frame: Selecting Good PSF Cubes'
-
-				#Construct the reconstructed file name 
-				#If the entry doesn't contain a backslash, the entry 
-				#is the object name and can prepend directly 
-				if b_fwhm_names[0].find("/") == -1:
-					rec_frame = 'sci_reconstructed_' + b_fwhm_names[0]
-				#Otherwise the directory structure is included and have to 
-				#search for the backslash and omit up to the last character 
-				else:
-					objName = b_fwhm_names[0][len(b_fwhm_names[0]) - b_fwhm_names[0][::-1].find("/"):]
-					rec_frame = 'sci_reconstructed_' + objName
-				#Now have the correct name of the reconstructed file 
-				#Need to select the correct extension for the tracked_star
-				ext = combDict[track_name]	
-				#Open the reconstructed frame and assign the data for the correct IFU:
-				Table = fits.open(rec_frame)
-				primHeader = Table[0].header 	
-				dataHeader = Table[ext].header
-				cube_data = Table[ext].data
-
-				#Fix the issue with the fits header
-				temp = sys.stdout
-				sys.stdout = open('log.txt', 'w')
-				print (primHeader)
-				print (dataHeader)						
-				sys.stdout.close()
-				sys.stdout = temp
-				os.system('rm log.txt')
-
-				#Write out to a new fits file
-		  		objhdu = fits.PrimaryHDU(header=primHeader)
-				objhdu.writeto(tracked_star, clobber=True)
-				fits.append(tracked_star, data=cube_data, header=dataHeader)
-				#Now on the same footing as below 
-				tracked_cube = cubeOps(tracked_star)
-				#Extract the PSFProfile from the stacked, tracked star
-				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
-				#Add Good stacked FWHM to the dictionary just to check afterwards 
-				fwhm_dict['Good'] = FWHM * float(tracked_cube.pix_scale)
-				print 'This is the combined Dictionary: %s' % combDict
-				print 'These are the combined names: %s' % combNames
-				#Set the rec_combNames as an iterable for specifying the file name
-				iterCombNames_one = cycle(combNames)
-				iterCombNames_two = cycle(combNames)
-				#Now get all the operational IFUs and do the same
-				for name in combDict.keys():
-					ext = combDict[name]
-					#Open the reconstructed frame:
-					Table = fits.open(rec_frame)
-					primHeader = Table[0].header 	
-					dataHeader = Table[ext].header
-					cube_data = Table[ext].data
-
-					temp = sys.stdout
-					sys.stdout = open('log.txt', 'w')
-					print (primHeader)
-					print (dataHeader)						
-					sys.stdout.close()
-					sys.stdout = temp
-					os.system('rm log.txt')
-
-
-					#Write out to a new fits file
-			  		objhdu = fits.PrimaryHDU(header=primHeader)
-					objhdu.writeto(next(iterCombNames_one), clobber=True)
-					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
-				new_name_vec = []
-				#Append Good to all the rec_combNames 
-				for entry in combNames:
-					Good_name = 'Good_' + entry
-					new_name_vec.append(Good_name)
-					os.system('mv %s %s' % (entry, Good_name))
-
-				#Now do more analysis with the PSF mask like extracting the spectra 
-				#But haven't quite figured out how to do this yet
-
-
-
-			elif len(b_fwhm_names) > 1:
-				print 'Combining Good PSF Cubes'
-				self.combFrames(b_fwhm_names)
-				#The output from this is the combined_sci file names contained in rec_combNames
-				#These are all stacked data cubes in bins of seeing 
-				tracked_cube = cubeOps(rec_tracked_star)
-				#Extract the PSFProfile from the stacked, tracked star
-				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
-				#Add Good stacked FWHM to the dictionary just to check afterwards 
-				fwhm_dict['Good'] = FWHM * float(tracked_cube.pix_scale)
-
-				#Check to see that rec_combNames and combNames align
-				print zip(rec_combNames, combNames)		
-				new_name_vec = []		
-				#Append Good to all the rec_combNames 
-				for entry in zip(rec_combNames, combNames):
-					current_name = entry[0]
-					Good_name = 'Good_' + entry[1]
-					new_name_vec.append(Good_name)
-					os.system('mv %s %s' % (current_name, Good_name))
-
-				#Now do more analysis with the PSF mask like extracting the spectra 
-				#But haven't quite figured out how to do this yet
-
-			print 'Fitting Gaussian to each of the stacked objects'
-			#Record the centre of the tracked star 
-			tracked_centre = [params[2], params[1]]
-			tracked_profile = copy(psfProfile)
-			tracked_fwhm = copy(FWHM)
-			#First Fit a gaussian to each of the objects to determine the center! 
-			for name in new_name_vec:
-				cube = cubeOps(name)
-				#Find the central value of the object flux by 
-				#fitting a gaussian to the image
-				params, objProfile, FWHM, offList = cube.psfMask()
-				obj_centre = [params[2], params[1]]
-
-				print 'The standard star centre is: %s' % tracked_centre
-				print 'The Object centre is: %s' % obj_centre
-				#Find the difference between the tracked centre and obj centre
-				x_shift = obj_centre[0] - tracked_centre[0]
-				y_shift = obj_centre[1] - tracked_centre[1]
-				x_shift = int(np.round(x_shift))
-				y_shift = int(np.round(y_shift))
-				print 'Shifting Profile by: %s %s' % (x_shift, y_shift)
-				#Use numpy.roll to shift the psfMask to the correct location 
-				new_mask = np.roll(tracked_profile, y_shift, axis=0)
-				#For the x_shift need to loop round the elements of the new_mask 
-				final_new_mask = []
-				for arr in new_mask:
-					final_new_mask.append(np.roll(arr, x_shift))
-				final_new_mask = np.array(final_new_mask)
-
-				#Check to see that the gaussian and shifted profile align
-				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
-				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
-				colFig.colorbar(colCax)
-				#plt.show()
-				#Extract each optimal spectrum 
-				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
-				#Save the optimal spectrum for each object 
-				#Need to create a new fits table for this 
-				tbhdu = fits.new_table(fits.ColDefs(\
-					[fits.Column(name='Wavelength', format='E', array=cube.wave_array),\
-				     fits.Column(name='Flux', format='E', array=optimal_spec)]))
-				prihdu = fits.PrimaryHDU(header=cube.primHeader)
-				thdulist = fits.HDUList([prihdu, tbhdu])
-				thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
-				#This should save the optimal spectrum for each object
-
-####################################
-#OKAY PSF BIN
-####################################
-		if c_fwhm_names:
-			#Different action if 1 entry or more than one entry
-			#If only a single frame then there is no combining to be done 
-			#Use the reconstructed frame extensions to assign the cubes 
-			if len(c_fwhm_names) == 1:
-				print 'Only 1 Okay PSF frame: Selecting Okay PSF Cubes'
-
-				#Construct the reconstructed file name 
-				#If the entry doesn't contain a backslash, the entry 
-				#is the object name and can prepend directly 
-				if c_fwhm_names[0].find("/") == -1:
-					rec_frame = 'sci_reconstructed_' + c_fwhm_names[0]
-				#Otherwise the directory structure is included and have to 
-				#search for the backslash and omit up to the last character 
-				else:
-					objName = c_fwhm_names[0][len(c_fwhm_names[0]) - c_fwhm_names[0][::-1].find("/"):]
-					rec_frame = 'sci_reconstructed_' + objName
-				#Now have the correct name of the reconstructed file 
-				#Need to select the correct extension for the tracked_star
-				ext = combDict[track_name]	
-				print 'The extension of the tracked star is: %s' % ext
-				#Open the reconstructed frame and assign the data for the correct IFU:
-				Table = fits.open(rec_frame)
-				primHeader = Table[0].header 	
-				dataHeader = Table[ext].header
-				cube_data = Table[ext].data
-
-				#Fix the issue with the fits header
-				temp = sys.stdout
-				sys.stdout = open('log.txt', 'w')
-				print (primHeader)
-				print (dataHeader)						
-				sys.stdout.close()
-				sys.stdout = temp
-				os.system('rm log.txt')
-
-				print 'The Save Name for the tracked star is: %s' % tracked_star
-				#Write out to a new fits file
-		  		objhdu = fits.PrimaryHDU(header=primHeader)
-				objhdu.writeto(tracked_star, clobber=True)
-				fits.append(tracked_star, data=cube_data, header=dataHeader)
-				print 'Analysing tracked star: %s' % tracked_star
-				#Now on the same footing as below 
-				tracked_cube = cubeOps(tracked_star)
-				#Extract the PSFProfile from the stacked, tracked star
-				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
-				#Add Okay stacked FWHM to the dictionary just to check afterwards 
-				fwhm_dict['Okay'] = FWHM * float(tracked_cube.pix_scale)
-				print 'This is the combined Dictionary: %s' % combDict
-				#Set the combNames as an iterable for specifying the file name
-				iterCombNames_one = cycle(combNames)
-				iterCombNames_two = cycle(combNames)
-				#Now get all the operational IFUs and do the same
-				for name in combDict.keys():
-					print 'The name extracted from the reconstructed file is: %s' % name
-					ext = combDict[name]
-					#Open the reconstructed frame:
-					Table = fits.open(rec_frame)
-					primHeader = Table[0].header 	
-					dataHeader = Table[ext].header
-					cube_data = Table[ext].data
-
-					temp = sys.stdout
-					sys.stdout = open('log.txt', 'w')
-					print (primHeader)
-					print (dataHeader)						
-					sys.stdout.close()
-					sys.stdout = temp
-					os.system('rm log.txt')
-
-					#print 'The names to be iterated are %s: ' % combNames
-					#Write out to a new fits file
-			  		objhdu = fits.PrimaryHDU(header=primHeader)
-					objhdu.writeto(next(iterCombNames_one), clobber=True)
-					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
-				new_name_vec = []
-				#Append Okay to all the rec_combNames 
-				for entry in combNames:
-					Okay_name = 'Okay_' + entry
-					new_name_vec.append(Okay_name)
-					os.system('mv %s %s' % (entry, Okay_name))
-
-				#Now do more analysis with the PSF mask like extracting the spectra 
-				#But haven't quite figured out how to do this yet
-
-
-
-			elif len(c_fwhm_names) > 1:
-				print 'Combining Okay PSF Cubes'
-				self.combFrames(c_fwhm_names)
-				#The output from this is the combined_sci file names contained in rec_combNames
-				#These are all stacked data cubes in bins of seeing 
-				tracked_cube = cubeOps(rec_tracked_star)
-				#Extract the PSFProfile from the stacked, tracked star
-				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
-				#Add Okay stacked FWHM to the dictionary just to check afterwards 
-				fwhm_dict['Okay'] = FWHM * float(tracked_cube.pix_scale)
-				new_name_vec = []
-				#Append Okay to all the rec_combNames 
-				for entry in zip(rec_combNames, combNames):
-					current_name = entry[0]
-					Okay_name = 'Okay_' + entry[1]
-					new_name_vec.append(Okay_name)
-					os.system('mv %s %s' % (current_name, Okay_name))
-
-				#Now do more analysis with the PSF mask like extracting the spectra 
-				#But haven't quite figured out how to do this yet
-
-			print 'Fitting Gaussian to each of the stacked objects'
-			#Record the centre of the tracked star 
-			tracked_centre = [params[2], params[1]]
-			tracked_profile = copy(psfProfile)
-			tracked_fwhm = copy(FWHM)
-			#First Fit a gaussian to each of the objects to determine the center! 
-			for name in new_name_vec:
-				cube = cubeOps(name)
-				#Find the central value of the object flux by 
-				#fitting a gaussian to the image
-				params, objProfile, FWHM, offList = cube.psfMask()
-				obj_centre = [params[2], params[1]]
-
-				print 'The standard star centre is: %s' % tracked_centre
-				print 'The Object centre is: %s' % obj_centre
-				#Find the difference between the tracked centre and obj centre
-				x_shift = obj_centre[0] - tracked_centre[0]
-				y_shift = obj_centre[1] - tracked_centre[1]
-				x_shift = int(np.round(x_shift))
-				y_shift = int(np.round(y_shift))
-				print 'Shifting Profile by: %s %s' % (x_shift, y_shift)
-				#Use numpy.roll to shift the psfMask to the correct location 
-				new_mask = np.roll(tracked_profile, y_shift, axis=0)
-				#For the x_shift need to loop round the elements of the new_mask 
-				final_new_mask = []
-				for arr in new_mask:
-					final_new_mask.append(np.roll(arr, x_shift))
-				final_new_mask = np.array(final_new_mask)
-
-				#Check to see that the gaussian and shifted profile align
-				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
-				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
-				colFig.colorbar(colCax)
-				#plt.show()
-				#Extract each optimal spectrum 
-				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
-				#Save the optimal spectrum for each object 
-				#Need to create a new fits table for this 
-				tbhdu = fits.new_table(fits.ColDefs(\
-					[fits.Column(name='Wavelength', format='E', array=cube.wave_array),\
-				     fits.Column(name='Flux', format='E', array=optimal_spec)]))
-				prihdu = fits.PrimaryHDU(header=cube.primHeader)
-				thdulist = fits.HDUList([prihdu, tbhdu])
-				thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
-				#This should save the optimal spectrum for each object
-
-
-#######################
-#BAD PSF BIN
-#######################
-
-		if d_fwhm_names:
-			#Different action if 1 entry or more than one entry
-			#If only a single frame then there is no combining to be done 
-			#Use the reconstructed frame extensions to assign the cubes 
-			if len(d_fwhm_names) == 1:
-				print 'Only 1 Bad PSF frame: Selecting Bad PSF Cubes'
-
-				#Construct the reconstructed file name 
-				#If the entry doesn't contain a backslash, the entry 
-				#is the object name and can prepend directly 
-				if d_fwhm_names[0].find("/") == -1:
-					rec_frame = 'sci_reconstructed_' + d_fwhm_names[0]
-				#Otherwise the directory structure is included and have to 
-				#search for the backslash and omit up to the last character 
-				else:
-					objName = d_fwhm_names[0][len(d_fwhm_names[0]) - d_fwhm_names[0][::-1].find("/"):]
-					rec_frame = 'sci_reconstructed_' + objName
-				#Now have the correct name of the reconstructed file 
-				#Need to select the correct extension for the tracked_star
-				ext = combDict[track_name]	
-				#Open the reconstructed frame and assign the data for the correct IFU:
-				Table = fits.open(rec_frame)
-				primHeader = Table[0].header 	
-				dataHeader = Table[ext].header
-				cube_data = Table[ext].data
-
-				#Fix the issue with the fits header
-				temp = sys.stdout
-				sys.stdout = open('log.txt', 'w')
-				print (primHeader)
-				print (dataHeader)						
-				sys.stdout.close()
-				sys.stdout = temp
-				os.system('rm log.txt')
-
-				#Write out to a new fits file
-		  		objhdu = fits.PrimaryHDU(header=primHeader)
-				objhdu.writeto(tracked_star, clobber=True)
-				fits.append(tracked_star, data=cube_data, header=dataHeader)
-				#Now on the same footing as below 
-				tracked_cube = cubeOps(tracked_star)
-				#Extract the PSFProfile from the stacked, tracked star
-				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
-				#Add Bad stacked FWHM to the dictionary just to check afterwards 
-				fwhm_dict['Bad'] = FWHM * float(tracked_cube.pix_scale)
-
-				#Set the rec_combNames as an iterable for specifying the file name
-				iterCombNames_one = cycle(combNames)
-				iterCombNames_two = cycle(combNames)
-				#Now get all the operational IFUs and do the same
-				for name in combDict.keys():
-					ext = combDict[name]
-					#Open the reconstructed frame:
-					Table = fits.open(rec_frame)
-					primHeader = Table[0].header 	
-					dataHeader = Table[ext].header
-					cube_data = Table[ext].data
-
-					temp = sys.stdout
-					sys.stdout = open('log.txt', 'w')
-					print (primHeader)
-					print (dataHeader)						
-					sys.stdout.close()
-					sys.stdout = temp
-					os.system('rm log.txt')
-
-					#Write out to a new fits file
-			  		objhdu = fits.PrimaryHDU(header=primHeader)
-					objhdu.writeto(next(iterCombNames_one), clobber=True)
-					fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
-				new_name_vec = []
-				#Append Bad to all the rec_combNames 
-				for entry in combNames:
-					Bad_name = 'Bad_' + entry
-					new_name_vec.append(Bad_name)
-					os.system('mv %s %s' % (entry, Bad_name))
-
-				#Now do more analysis with the PSF mask like extracting the spectra 
-				#But haven't quite figured out how to do this yet
-
-
-
-			elif len(d_fwhm_names) > 1:
-				print 'Combining Bad PSF Cubes'
-				self.combFrames(d_fwhm_names)
-				#The output from this is the combined_sci file names contained in rec_combNames
-				#These are all stacked data cubes in bins of seeing 
-				tracked_cube = cubeOps(rec_tracked_star)
-				#Extract the PSFProfile from the stacked, tracked star
-				params, psfProfile, FWHM, offList = tracked_cube.psfMask()
-				#Add Bad stacked FWHM to the dictionary just to check afterwards 
-				fwhm_dict['Bad'] = FWHM * float(tracked_cube.pix_scale)
-				new_name_vec = []
-				#Append Bad to all the rec_combNames 
-				for entry in zip(rec_combNames, combNames):
-					current_name = entry[0]
-					Bad_name = 'Bad_' + entry[1]
-					new_name_vec.append(Bad_name)
-					os.system('mv %s %s' % (current_name, Bad_name))
-
-				#Now do more analysis with the PSF mask like extracting the spectra 
-				#But haven't quite figured out how to do this yet
-
-			print 'Fitting Gaussian to each of the stacked objects'
-			#Record the centre of the tracked star 
-			tracked_centre = [params[2], params[1]]
-			tracked_profile = copy(psfProfile)
-			tracked_fwhm = copy(FWHM)
-			#First Fit a gaussian to each of the objects to determine the center! 
-			for name in new_name_vec:
-				cube = cubeOps(name)
-				#Find the central value of the object flux by 
-				#fitting a gaussian to the image
-				params, objProfile, FWHM, offList = cube.psfMask()
-				obj_centre = [params[2], params[1]]
-
-				print 'The standard star centre is: %s' % tracked_centre
-				print 'The Object centre is: %s' % obj_centre
-				#Find the difference between the tracked centre and obj centre
-				x_shift = obj_centre[0] - tracked_centre[0]
-				y_shift = obj_centre[1] - tracked_centre[1]
-				x_shift = int(np.round(x_shift))
-				y_shift = int(np.round(y_shift))
-				print 'Shifting Profile by: %s %s' % (x_shift, y_shift)
-				#Use numpy.roll to shift the psfMask to the correct location 
-				new_mask = np.roll(tracked_profile, y_shift, axis=0)
-				#For the x_shift need to loop round the elements of the new_mask 
-				final_new_mask = []
-				for arr in new_mask:
-					final_new_mask.append(np.roll(arr, x_shift))
-				final_new_mask = np.array(final_new_mask)
-
-				#Check to see that the gaussian and shifted profile align
-				colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
-				colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
-				colFig.colorbar(colCax)
-				#plt.show()
-				#Extract each optimal spectrum 
-				optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
-				#Save the optimal spectrum for each object 
-				#Need to create a new fits table for this 
-				tbhdu = fits.new_table(fits.ColDefs(\
-					[fits.Column(name='Wavelength', format='E', array=cube.wave_array),\
-				     fits.Column(name='Flux', format='E', array=optimal_spec)]))
-				prihdu = fits.PrimaryHDU(header=cube.primHeader)
-				thdulist = fits.HDUList([prihdu, tbhdu])
-				thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
-				#This should save the optimal spectrum for each object
-
-
-		#print the fwhm dictionary to confirm that this is indeed a sequence 
-		#of increasing fwhm 
-		print fwhm_dict
+		print 'These are the best names: %s ' % fwhmDict['Best']
+		print 'These are the Good names: %s ' % fwhmDict['Good']
+		print 'These are the Okay names: %s ' % fwhmDict['Okay']
+		print 'These are the Bad names: %s ' % fwhmDict['Bad']
+
+		#Extract the spectra in each of the fwhm bins and save
+		self.extractSpec(fwhmDict, combNames, rec_combNames)
 
 	def saveSpec(self, cubeName):
 		"""
