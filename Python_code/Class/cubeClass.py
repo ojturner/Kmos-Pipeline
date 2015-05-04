@@ -384,17 +384,17 @@ class cubeOps(object):
 		y = params[1]
 
 		#Set the upper and lower limits for optimal spectrum extraction
-		x_upper = int(x + (2*width))
+		x_upper = int(x + (1.5*width))
 		if x_upper > len(self.data[0]):
 			x_upper = len(self.data[0])
-		x_lower = int(x - (2*width))
+		x_lower = int(x - (1.5*width))
 		if x_lower < 0:
 			x_lower = 0	
 
-		y_upper = int(y + (2*width))
+		y_upper = int(y + (1.5*width))
 		if y_upper > len(self.data[0]):
 			y_upper = len(self.data[0])
-		y_lower = int(y - (2*width))
+		y_lower = int(y - (1.5*width))
 		if y_lower < 0:
 			y_lower = 0
 

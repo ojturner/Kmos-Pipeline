@@ -23,16 +23,21 @@ badPMap15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S
 lcalMap14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/lcal_YJYJYJ.fits'
 lcalMap15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/Calibration_Files/lcal_YJYJYJ.fits'
 
-skyCube = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/30-3-15Sky_Only/cube_science.fits'
+hskyCube = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/cube_science.fits'
+kskyCube = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/Science/cube_science.fits'
+
 
 #Create an instance of the class
 pipe_methods = pipelineOps()
-sky_cube = cubeOps(skyCube)
+sky_cube = cubeOps(kskyCube)
 
 
 #pipe_methods.computeOffsetSegments(objFile, skyFile, badPMap, lcalMap)
 #The following are examples of using the functions within the class
 #pipe_methods.computeOffsetTopFour('KMOS_SPEC_OBS258_0001_m_2_raw.fits', objFile)
+k_names = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/Calibrations/corrected_object_names.txt'
+h_names = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Calibrations/corrected_object_names.txt'
+
 
 #Permanent Names
 raw_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Names.txt'
@@ -73,7 +78,7 @@ skySpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/30-
 #pipe_methods.saveSpec(objCube)
 #pipe_methods.plotSpecs(objSpec, skySpec, 1)
 
-pipe_methods.multiExtractSpec(skyCube, names_15_shifted)
+pipe_methods.multiExtractSpec(skyCube=hskyCube, frameNames=h_names)
 #Now try the subtraction method 
 #pipe_methods.subFrames('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits', skyFile)
 #pipe_methods.subFrames('KMOS_SPEC_OBS258_0001_Corrected.fits', skyFile)

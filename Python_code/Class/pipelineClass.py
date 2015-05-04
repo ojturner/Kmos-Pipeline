@@ -2624,23 +2624,14 @@ class pipelineOps(object):
 		work out the median difference between the bright sky lines  
 		and the corresponding object pixels 
 
-		Input: skyCube - Any reconstructed skyCube only 
+		Input: skyCube - Any reconstructed skyCube only filename 
 			   combNames - List of the sci_combined names 
 
 		Ouptut: medianVal - median difference between the sky and object values 
 
 		"""
 
-		#Create instance from the skycube 
-		sky_cube = cubeOps(skyCube)
-
-		#Extract the sky flux
-		flux = sky_cube.centralSpec()
-		#Check for where the flux exceeds a certain number of counts 
-		indices = np.where(flux > 500)
-		#Find the sky values at these pixels
-		values = flux[indices] 
-
+ 
 		#The combNames should be generated from within the Next routine
 		namesOfFiles = np.genfromtxt(combNames, dtype='str')
 		#Initialise an empty dictionary 
@@ -2650,12 +2641,23 @@ class pipelineOps(object):
 
 		for fileName in namesOfFiles:
 			tempCube = cubeOps(fileName)
-			tempFlux = tempCube.specPlot(3)
-			tempValues = tempFlux[indices]
+			IFUNR = tempCube.IFUNR
+			sky_name = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/combine_cube_science_arm' + str(IFUNR) + '_sky.fits'
+			#Create instance from the skycube 
+			sky_cube = cubeOps(sky_name)
+			#Extract the sky flux
+			flux = sky_cube.centralSpec()
+			#Check for where the flux exceeds a certain number of counts 
+			indices = np.where(flux > 500)
+			#Find the sky values at these pixels
+			values = flux[indices]
+			spectrum = tempCube.optimalSpec()
+			tempValues = spectrum[indices]
 			#Either use the values themselves or the difference
 			medVals[tempCube.IFUNR] = np.median(tempValues)
 		medVector = np.mean(medVals.values())
-		print medVector
+		print 'This is the median values Dictionary: %s' % medVals
+		#print medVector
 		return np.array(medVals.values())
 
 	def gaussFit(self, combNames):
@@ -2781,6 +2783,7 @@ class pipelineOps(object):
 		else:
 			print 'Having difficulty setting sci_comb names'
 
+		print 'This is the order of the combined names: %s' % combNames
 		#Define the tracked star ID
 		#Writing out a temporary file containing the tracked star name
 		##########################################################################
@@ -2842,7 +2845,6 @@ class pipelineOps(object):
 				print 'Checking IFU sky tweak performance'
 				#This is the array of IFU values for each frame 
 				medVals = self.compareSky(skyCube, combNames)
-				print combNames
 				#Append the full vector for a more detailed plot 
 				IFUValVec.append(medVals)
 				#Append the mean value for the average plot
@@ -2933,7 +2935,7 @@ class pipelineOps(object):
 		ax.grid(b=True, which='both', linestyle='--')
 		plt.legend(prop={'size':10})
 		fig.savefig('IFU_by_Frame.png')
-		plt.show()
+		#plt.show()
 		plt.close('all')
 
 	def indIFUPlot(self, offList, ID, IFUValVec):
@@ -2964,13 +2966,53 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					axArray[col][row].set_ylim(0, 70)
+					axArray[col][row].set_ylim(0, 30)
 					dataCount += 1
 				#Increment the IFUCount number
 				IFUCount += 1
 		#Subplots populated, save the overall figure 
 		fig.savefig('IFU_subplots.png')
-		plt.show()
+		#plt.show()
+		plt.close('all')
+
+	def multiIndIFUPlot(self, offList, ID, IFUValVec1, IFUValVec2):
+		"""
+		Def: Uses the output of frameCheck to 
+		Plot for each individual IFU the performance of skytweak 
+		against frame ID. More detail as to how well skytweak is 
+		performing. 
+		Input - Offlist: List of IFU numbers which aren't illuminated
+			  - ID: np.arange between 0 and total number of operational IFUs 
+			  - IFUValVec: 2D array of median sky tweak performance values 
+		Output - subplot array showing how well the sky has been subtracted 
+		in each individual IFU
+		"""
+		#Make a plot for each IFU in a subplot array
+		fig, axArray = plt.subplots(3, 8, figsize=(20.0, 15.0))
+		IFUCount = 0
+		dataCount = 0
+		#Have the data now - populate the subplots 
+		for col in range(3):
+			for row in range(8):
+				#Only plot if the IFU is functioning 
+				if IFUCount not in offList:
+					frameVec1 = IFUValVec1[:, dataCount]
+					frameVec2 = IFUValVec2[:, dataCount]
+					axArray[col][row].plot(ID, frameVec1, color='blue')
+					axArray[col][row].scatter(ID, frameVec1, color='blue')
+					axArray[col][row].plot(ID, frameVec2, color='red')
+					axArray[col][row].scatter(ID, frameVec2, color='red')
+					axArray[col][row].set_title('IFU %s' % (IFUCount + 1))
+					axArray[col][row].set_xlabel('Frame ID')
+					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+					axArray[col][row].grid(b=True, which='both', linestyle='--')
+					axArray[col][row].set_ylim(0, 30)
+					dataCount += 1
+				#Increment the IFUCount number
+				IFUCount += 1
+		#Subplots populated, save the overall figure 
+		fig.savefig('IFU_subplots_double.png')
+		#plt.show()
 		plt.close('all')
 
 	def meanFramePlot(self, ID, frameValVec):
@@ -2992,7 +3034,31 @@ class pipelineOps(object):
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
 		fig.savefig('frame_performance.png')
-		plt.show()
+		#plt.show()
+		plt.close('all')
+
+	def multiMeanFramePlot(self, ID, frameValVec1, frameValVec2):
+
+		"""
+		Def:
+		Uses the output from frameCheck to make a simple 
+		plot of the mean sky tweak performance against frame 
+		Input - ID: np.arange between 0 and count of number of frames 
+			  - frameValVec: 1D array of mean sky tweak performance
+		"""
+		#Make the overall mean plot of performance for the frames  
+		#Create a figure and plot the results  
+		fig, ax = plt.subplots(1, 1, figsize=(14.0,14.0))
+		ax.plot(ID, frameValVec1, color='blue')
+		ax.scatter(ID, frameValVec1, color='blue')
+		ax.plot(ID, frameValVec2, color='red')
+		ax.scatter(ID, frameValVec2, color='red')
+		ax.set_title('Sky Tweak Performance vs. Frame ID')
+		ax.set_xlabel('Frame ID')
+		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+		ax.grid(b=True, which='both', linestyle='--')
+		fig.savefig('frame_performance_double.png')
+		#plt.show()
 		plt.close('all')
 
 	def meanFWHMPlot(self, ID, fwhmValVec):
@@ -3012,8 +3078,30 @@ class pipelineOps(object):
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
 		fig.savefig('frame_fwhm.png')
-		plt.show()
+		#plt.show()
 		plt.close('all')
+
+	def multiMeanFWHMPlot(self, ID, fwhmValVec1, fwhmValVec2):
+
+		"""
+		Def:
+		Uses the output from frameCheck to make a simple 
+		plot of the tracked star FWHM against frame ID 
+		Input - ID: np.arange between 0 and count of number of frames 
+			  - fwhmValVec: 1D array of tracked star fwhm in each frame
+		"""
+		fig, ax = plt.subplots(1, 1, figsize=(14.0,14.0))
+		ax.plot(ID, fwhmValVec1, color='blue')
+		ax.scatter(ID, fwhmValVec1, color='blue')
+		ax.plot(ID, fwhmValVec2, color='red')
+		ax.scatter(ID, fwhmValVec2, color='red')
+		ax.set_title('Average fwhm vs. Frame ID')
+		ax.set_xlabel('Frame ID')
+		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+		ax.grid(b=True, which='both', linestyle='--')
+		fig.savefig('frame_fwhm_double.png')
+		#plt.show()
+		plt.close('all')		
 
 	def extractSpec(self, fwhmDict, combNames, rec_combNames):
 		"""
@@ -3029,7 +3117,7 @@ class pipelineOps(object):
 		##########################################################################
 		#Can probably in the future get the name of the IFU tracking a standard 
 		#Star straight from the fits header. Will hardwire it in a-priori now 
-		track_name = 'n55_19'
+		track_name = 'P107'
 		#Loop round the list of combNames until the track_name appears 
 		for entry in combNames:
 			if entry.find(track_name) != -1:
@@ -3207,7 +3295,7 @@ class pipelineOps(object):
 
 		print fwhm_values
 
-	def multiExtractSpec(self, skyCube, frameNames):
+	def multiExtractSpec(self, skyCube, frameNames, **kwargs):
 
 		"""
 		Def: 
@@ -3224,6 +3312,7 @@ class pipelineOps(object):
 
 		Outpt: Plot of frame performance against ID
 		"""
+
 		#Need the sci_reduc.sof file in the directory 
 		if ((not (os.path.isfile('sci_reduc.sof')))):
 			raise ValueError("Missing reduction .sof file")
@@ -3252,7 +3341,7 @@ class pipelineOps(object):
 			print 'Having difficulty setting sci_comb names'
 
 		#Star straight from the fits header. Will hardwire it in a-priori now 
-		track_name = 'n55_19'
+		track_name = 'P107'
 		#Loop round the list of combNames until the track_name appears 
 		for entry in combNames:
 			if entry.find(track_name) != -1:
@@ -3285,6 +3374,21 @@ class pipelineOps(object):
 		#FWHM PLOT - monitoring seeing across the frames
 		print 'Plotting evolution of tracked star FWHM' 
 		self.meanFWHMPlot(ID, fwhmValVec)
+
+		#If supplying an additional list of files, construct the double plots 
+		if kwargs:
+			print 'Additional keyword arguments supplied - Checking additional frames and double plotting'
+			additional_frameNames = kwargs.values()[0]
+			ID1, offList1, namesVec1, IFUValVec1, frameValVec1, fwhmValVec1, fwhmDict1 = self.frameCheck(skyCube, additional_frameNames)
+			#Now have two sets of all the parameters and can make the double plots using the multiplot methods 
+			print 'Plotting multi mean IFU performance'
+			self.multiMeanFramePlot(ID, frameValVec, frameValVec1)
+			print 'Plotting multi IFU subplots'
+			self.multiIndIFUPlot(offList, ID, IFUValVec, IFUValVec1)
+			print 'Plotting multi FWHM plot'
+			self.multiMeanFWHMPlot(ID, fwhmValVec, fwhmValVec1)
+
+
 
 ###########################################################################################
 ###########################################################################################
