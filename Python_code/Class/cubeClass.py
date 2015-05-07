@@ -371,6 +371,7 @@ class cubeOps(object):
 		"""
 		#Fit a gaussian to the fully combined science cube
 		#to determine the optimal extraction profile
+		print '[INFO]: Fitting the optimal spectrum for object: %s' % self.IFUName
 		params, psfMask, fwhm, offList = self.psfMask()
 
 		#Multiply the cube data by the psfMask
@@ -421,7 +422,7 @@ class cubeOps(object):
 		Input: Profile - a specified 2D normalised profile for extraction
 				fwhm - the fwhm of the tracked star
 		"""
-
+		print '[INFO]: Fitting the optimal spectrum for object: %s' % self.IFUName
 		#Multiply the cube data by the psfMask
 		modCube = profile * self.data
 
@@ -489,7 +490,7 @@ class cubeOps(object):
 	    data[np.isnan(data)] = 0
 	    data[data < 0] = 0
 	    total = np.nansum(data)
-	    print 'The sum over the data is: %s' % total
+	    #print 'The sum over the data is: %s' % total
 	    X, Y = indices(data.shape)
 	    #print 'The Indices are: %s, %s' % (X, Y)
 	    x = np.nansum((X*data))/total
@@ -500,6 +501,7 @@ class cubeOps(object):
 	    row = data[int(x), :]
 	    width_y = sqrt(abs((arange(row.size)-x)**2*row).sum()/row.sum())
 	    height = data.max()
+	    print '[INFO]: The Initial Guess the G.Params;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x' % (height, x, y, width_x, width_y)
 	    return height, x, y, width_x, width_y
 
 	def fitgaussian(self, data):
@@ -509,7 +511,7 @@ class cubeOps(object):
 	    errorfunction = lambda p: ravel(self.gaussian(*p)(*indices(data.shape)) -
 	                                 data)
 	    p, success = optimize.leastsq(errorfunction, params)
-	    print p
+	    print '[INFO]: The Gaussian fitting parameters are;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x' % (p[0], p[1], p[2], p[3], p[4])
 	    return p
 
 	def psfMask(self):
@@ -522,9 +524,17 @@ class cubeOps(object):
 
 		#Step 1 - perform least squares minimisation to find the parameters  
 		params = self.fitgaussian(self.imData)
-		sigma = params[3]
+		#Check to find sigma 
+		if (np.isnan(params[3]) and np.isnan(params[4])):
+			sigma = 1.0
+		elif (np.isnan(params[3]) and not np.isnan(params[4])):
+			sigma = params[4]
+		elif (not np.isnan(params[3]) and np.isnan(params[4])):
+			sigma = params[3]
+		else:
+			sigma = 0.5*(params[3] + params[4])
 		FWHM = 2.3548 * sigma
-		print 'The FWHM is: %s' % FWHM
+		print '[INFO]: The FWHM of object %s is: %s' % (self.IFUName, FWHM)
 		#Step 2 - Return a gaussian function with the fit parameters 
 		fit = self.gaussian(*params)
 		#Step 3 - Evaluate the gaussian over the pixel range 

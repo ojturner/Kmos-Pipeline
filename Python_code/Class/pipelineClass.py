@@ -2743,7 +2743,7 @@ class pipelineOps(object):
 			#Only one file in the list of files 
 			print namesOfFiles
 			cubeName = str(namesOfFiles)
-			print 'Gaussian fitting science frame: %s' % namesOfFiles
+			print 'Gaussian fitting sky frame: %s' % namesOfFiles
 			tempCube = cubeOps(cubeName)
 			params, psfProfile, fwhm, offList = tempCube.psfMask()
 			return fwhm, psfProfile, offList
@@ -2923,16 +2923,16 @@ class pipelineOps(object):
 				#Conditional binning - HARDWIRED VALUES 
 				#Could look at percentiles of FWHM distribution? 
 				if (arc_fwhm > 0.0 and arc_fwhm < 0.6):
-					print 'Placing object in best bin' #wagwanplaya
+					print '[INFO]: Placing object in best bin' #wagwanplaya
 					a_fwhm_names.append(objFile)
 				elif (arc_fwhm > 0.6 and arc_fwhm < 1.0):
-					print 'Placing object in good bin'
+					print '[INFO]: Placing object in good bin'
 					b_fwhm_names.append(objFile)
 				elif (arc_fwhm > 1.0 and arc_fwhm < 1.5):
-					print 'Placing object in okay bin'
+					print '[INFO]: Placing object in okay bin'
 					c_fwhm_names.append(objFile)
 				else:
-					print 'Placing object in bad bin'
+					print '[INFO]: Placing object in bad bin'
 					d_fwhm_names.append(objFile)		
 
 		#Should now have populated the frameValVec, IFUValVec and incremented counter
@@ -3203,13 +3203,13 @@ class pipelineOps(object):
 		#Loop around each of the keys in the FWHM dictionary
 		for group in fwhmDict.keys():
 
-			print 'Extracting Spectra for the %s group' % group
+			print '[INFO]: Extracting Spectra for the %s group' % group
 
 			if fwhmDict[group]:
 				
 				#The case with only 1 entry in the group (complex) 
 				if len(fwhmDict[group]) == 1:
-					print 'Only 1 %s PSF frame: Selecting %s PSF Cubes' % (group, group)
+					print '[INFO]: Only 1 %s PSF frame: Selecting %s PSF Cubes' % (group, group)
 
 					#Construct the reconstructed file name 
 					#If the entry doesn't contain a backslash, the entry 
@@ -3285,7 +3285,7 @@ class pipelineOps(object):
 
 				#The Case where there is more than one entry in the group (normal)
 				elif len(fwhmDict[group]) > 1:
-					print 'Combining Best PSF Cubes'
+					print 'Combining %s PSF Cubes' % group
 					self.combFrames(fwhmDict[group])
 					#The output from this is the combined_sci file names contained in rec_combNames
 					#These are all stacked data cubes in bins of seeing 
@@ -3325,14 +3325,14 @@ class pipelineOps(object):
 					params, objProfile, FWHM, offList = cube.psfMask()
 					obj_centre = [params[2], params[1]]
 
-					print 'The standard star centre is: %s' % tracked_centre
-					print 'The Object centre is: %s' % obj_centre
+					print '[INFO]: The standard star centre is: %s' % tracked_centre
+					print '[INFO]: The Object centre is: %s' % obj_centre
 					#Find the difference between the tracked centre and obj centre
 					x_shift = obj_centre[0] - tracked_centre[0]
 					y_shift = obj_centre[1] - tracked_centre[1]
 					x_shift = int(np.round(x_shift))
 					y_shift = int(np.round(y_shift))
-					print 'Shifting Profile by: %s %s' % (x_shift, y_shift)
+					print '[INFO]: Shifting Profile by: %s %s' % (x_shift, y_shift)
 					#Use numpy.roll to shift the psfMask to the location of the object 
 					new_mask = np.roll(tracked_profile, y_shift, axis=0)
 					#For the x_shift need to loop round the elements of the new_mask 
@@ -3364,7 +3364,7 @@ class pipelineOps(object):
 				#Move all of the newly created group objects into this directory
 				os.system('mv %s %s' % (sci_dir + '/' + group + '*', new_dir_name)) 
 
-		print fwhm_values
+		print '[INFO]: %s' % fwhm_values
 
 	def multiExtractSpec(self, sci_dir, frameNames, tracked_name, **kwargs):
 
@@ -3433,30 +3433,30 @@ class pipelineOps(object):
 		########################################################################################################
 		#There are the IFU sky tweak performance plots 
 		#The mean sky tweak performance across each IFU
-		print 'Plotting frame performance against IFU number'
+		print '[INFO]: Plotting frame performance against IFU number'
 		self.meanIFUPlot(offList, namesVec, IFUValVec)
 		#The performance of skytweak in each IFU
-		print 'Plotting Individual IFU performance with frame'
+		print '[INFO]: Plotting Individual IFU performance with frame'
 		self.indIFUPlot(offList, ID, IFUValVec)
 		#Mean skytweak as a function of frame
-		print 'Plotting mean sky subtraction performance'
+		print '[INFO]: Plotting mean sky subtraction performance'
 		self.meanFramePlot(ID, frameValVec)
 
 		#FWHM PLOT - monitoring seeing across the frames
-		print 'Plotting evolution of tracked star FWHM' 
+		print '[INFO]: Plotting evolution of tracked star FWHM' 
 		self.meanFWHMPlot(ID, fwhmValVec)
 
 		#If supplying an additional list of files, construct the double plots 
 		if kwargs:
-			print 'Additional keyword arguments supplied - Checking additional frames and double plotting'
+			print '[INFO]: Additional keyword arguments supplied - Checking additional frames and double plotting'
 			additional_frameNames = kwargs.values()[0]
 			ID1, offList1, namesVec1, IFUValVec1, frameValVec1, fwhmValVec1, fwhmDict1 = self.frameCheck(sci_dir, additional_frameNames, tracked_name)
 			#Now have two sets of all the parameters and can make the double plots using the multiplot methods 
-			print 'Plotting multi mean IFU performance'
+			print '[INFO]: Plotting multi mean IFU performance'
 			self.multiMeanFramePlot(ID, frameValVec, frameValVec1)
-			print 'Plotting multi IFU subplots'
+			print '[INFO]: Plotting multi IFU subplots'
 			self.multiIndIFUPlot(offList, ID, IFUValVec, IFUValVec1)
-			print 'Plotting multi FWHM plot'
+			print '[INFO]: Plotting multi FWHM plot'
 			self.multiMeanFWHMPlot(ID, fwhmValVec, fwhmValVec1)
 
 
@@ -3472,10 +3472,10 @@ class pipelineOps(object):
 
 		#Now combine the different PSF bins 
 		#Start with best - check to see if this bin is empty or not 
-		print 'These are the best names: %s ' % fwhmDict['Best']
-		print 'These are the Good names: %s ' % fwhmDict['Good']
-		print 'These are the Okay names: %s ' % fwhmDict['Okay']
-		print 'These are the Bad names: %s ' % fwhmDict['Bad']
+		print '[INFO]: These are the best names: %s ' % fwhmDict['Best']
+		print '[INFO]: These are the Good names: %s ' % fwhmDict['Good']
+		print '[INFO]: These are the Okay names: %s ' % fwhmDict['Okay']
+		print '[INFO]: These are the Bad names: %s ' % fwhmDict['Bad']
 
 		#Extract the spectra in each of the fwhm bins and save
 		self.extractSpec(sci_dir, fwhmDict, combNames, rec_combNames, tracked_name)
