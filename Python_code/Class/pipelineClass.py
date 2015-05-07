@@ -500,6 +500,7 @@ class pipelineOps(object):
 		print header_three
 		sys.stdout.close()
 		sys.stdout = temp
+		os.system('rm log.txt')
 
 		table_s = fits.open(skyFile)
 		bad_pixel_table = fits.open(badPMap)
@@ -2141,6 +2142,58 @@ class pipelineOps(object):
 				#Which will loop through all and save the corrected object file 
 				#as objectFile_Corrected.fits. These are then fed through the pipeline. 
 
+	def shiftPlot(self, coords_file):
+		"""
+		Def:
+		Plotting function, takes the output from applyShiftAllExtensionsMin and 
+		plots the x and y shift vectors against the detector ID 
+
+		Input: coords_file - directly from shiftAllExtensionsMin
+		Output: shift_plot.png 
+		"""
+		#Load the coordinates
+		coords = np.loadtxt(coords_file)
+
+		#The coordinates are 2D arrays. Need to set up the vectors 
+		d_x = []
+		d_y = []
+
+		#x_vector
+		for entry in coords:
+			for i in (0, 2, 4):
+				d_x.append(entry[i])
+				i + 1 
+
+		#y_vector
+		for entry in coords:
+			for i in (1, 3, 5):
+				d_y.append(entry[i])
+				i + 1
+
+		#Set the frame ID vectors 
+		f_ID = np.arange(0, len(d_x), 1)
+
+		#Now make the plots for both nights, want the same x-axis for all three layers
+		f, (ax2, ax3) = plt.subplots(2, sharex=True, figsize=(18.0, 10.0))
+		ax2.plot(f_ID, d_x, color='g')
+		ax2.set_title('x shift (pixels) vs. ID', fontsize=24)
+		ax2.grid(b=True, which='both', linestyle='--')
+		ax2.tick_params(axis='both', which='major', labelsize=15)
+		ax3.plot(f_ID, d_y, color='r')
+		ax3.set_title('y shift (pixels) vs. ID', fontsize=24)
+		ax3.set_xlabel('Detector ID', fontsize=20)
+		ax3.set_xticks((np.arange(min(f_ID), max(f_ID)+1, 1.0)))
+		ax3.tick_params(axis='both', which='major', labelsize=15)
+		ax3.grid(b=True, which='both', linestyle='--')
+
+
+		# Fine-tune figure; make subplots close to each other and hide x ticks for
+		# all but bottom plot.
+		#f.subplots_adjust(hspace=0)
+		plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)	
+		plt.savefig('shift_plot.png')
+		plt.close('all')
+
 ##########################################################################################################################
 ##########################################################################################################################
 #                          ALTERNATE SET OF FUNCTIONS USING MINIMISATION INSTEAD OF GRIDSEARCH                           #
@@ -2237,7 +2290,7 @@ class pipelineOps(object):
 
   		infileName = 'maskedObj.fits[1]'
 
-  		print 'Shifting: %s %s' % (xArray[0], xArray[1])
+  		print '[INFO]: Shifting: %s %s' % (xArray[0], xArray[1])
 
   		pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
   			xshift=xArray[0], yshift=xArray[1], interp_type=interp_type)
@@ -2376,7 +2429,7 @@ class pipelineOps(object):
   			print 'Before shifting, the correlation is: %s ' % \
   			(1.0 / self.crossCorrFirst(tempObjName, 'tempSky.fits', yMinCorr, yMaxCorr, xMinCorr, xMaxCorr))
 
-			print 'This is shift: %s' % i
+			print '[INFO]: This is shift: %s' % i
 			shiftArray.append(self.minimiseRho(tempObjName, 'tempSky.fits', 'tempbadp.fits', interp_type))
 
 
@@ -2520,15 +2573,14 @@ class pipelineOps(object):
 
 		#Use the shifted image segment function 
 		for i in range(1, 4):
-			print 'Shifting Extension: %s' % i
+			print '[INFO]: Shifting Extension: %s' % i
 			reconstructedData, shiftArray = self.shiftImageSegmentsMin(i, infile, skyfile, badpmap,\
   	 vertSegments, horSegments, interp_type)
 			reconstructedDataArray.append(reconstructedData)
 			ShiftArrayList.append(shiftArray)
 		
-
 		#Name the shifted data file 
-  		shiftedName = infile[:-5] + '_' + str(vertSegments) + str(horSegments) + '_' + interp_type + '_Shifted.fits' 
+  		shiftedName = infile[:-5] + '_' + str(vertSegments) + str(horSegments) + '_Shifted.fits' 
   		print 'Saving %s' % shiftedName
 
   		objhdu = fits.PrimaryHDU(header=objPrimHeader)
@@ -2559,13 +2611,13 @@ class pipelineOps(object):
 				else:
 					skyFile = names[i + 1]
 
-				print 'Shifting file: %s : %s' % (i, objFile)	
+				print '[INFO]: Shifting file: %s : %s' % (i, objFile)	
 				#Now use the method defined within this class 
 				shiftList.append(self.shiftAllExtensionsMin(objFile, skyFile, badpmap,\
   	 					vertSegments, horSegments, interp_type))
 				#Which will loop through all and save the corrected object file 
 				#as objectFile_Corrected.fits. These are then fed through the pipeline.
-		saveName = fileList + '_Coords.txt' 
+		saveName = 'Shift_Coords.txt' 
 		print shiftList
 		g = []
 		for entry in shiftList:
@@ -2597,7 +2649,7 @@ class pipelineOps(object):
 		data = np.genfromtxt(fileList, dtype='str')
 		#Save the names and types as lists 
 		names = data[0:,0]
-		print names
+		#print names
 		types = data[0:,1]
 		#Loop round all names and apply the computeOffsetSegments method
 		for i in range(1, len(names)):
@@ -2610,14 +2662,14 @@ class pipelineOps(object):
 				else:
 					skyFile = names[i + 1]
 
-				print 'Subbing file: %s : ' %  objFile	
+				print '[INFO]: Subbing file: %s : ' %  objFile	
 				#Now use the method defined within this class 
 				self.subFrames(objFile, skyFile)
 				#Which will loop through all and save the corrected object file 
 				#as objectFile_Corrected.fits. These are then fed through the pipeline.
 
 
-	def compareSky(self, skyCube, combNames):
+	def compareSky(self, sci_dir, combNames):
 		"""
 		Def: 
 		From an input sky cube and set of sci_combined file names, 
@@ -2640,9 +2692,9 @@ class pipelineOps(object):
 		#and store the median 
 
 		for fileName in namesOfFiles:
-			tempCube = cubeOps(fileName)
+			tempCube = cubeOps(sci_dir + '/' + fileName)
 			IFUNR = tempCube.IFUNR
-			sky_name = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/combine_cube_science_arm' + str(IFUNR) + '_sky.fits'
+			sky_name = sci_dir + '/combine_cube_science_arm' + str(IFUNR) + '_sky.fits'
 			#Create instance from the skycube 
 			sky_cube = cubeOps(sky_name)
 			#Extract the sky flux
@@ -2700,7 +2752,7 @@ class pipelineOps(object):
 		#Return the arrays	
 		
 
-	def combFrames(self, frame_array):
+	def combFrames(self, sci_dir, frame_array):
 		"""
 		Def:
 
@@ -2714,32 +2766,32 @@ class pipelineOps(object):
 
 		"""
 		#Remove .sof file if this exists
-		if os.path.isfile('sci_combine.sof'):
-			os.system('rm sci_combine.sof')
+		if os.path.isfile('%s/sci_combine.sof' % sci_dir):
+			os.system('rm %s/sci_combine.sof' % sci_dir)
 		if len(frame_array) == 0:
 			print 'Empty Array'
 		else:
 
 			#Create new list of arrays with prepended names 
 			new_names = []
-			with open('sci_combine.sof', 'a') as f:
+			with open( sci_dir + '/sci_combine.sof', 'a') as f:
 				for entry in frame_array:
 
 					#If the entry doesn't contain a backslash, the entry 
 					#is the object name and can prepend directly 
 					if entry.find("/") == -1:
-						name = 'sci_reconstructed_' + entry
+						name = sci_dir + 'sci_reconstructed_' + entry
 						f.write('%s\n' % name)
 					#Otherwise the directory structure is included and have to 
 					#search for the backslash and omit up to the last one 
 					else:
 						objName = entry[len(entry) - entry[::-1].find("/"):]
-						name = 'sci_reconstructed_' + objName
+						name = sci_dir + 'sci_reconstructed_' + objName
 						f.write('%s\n' % name)
 			#Now execute the recipe 
-			os.system('esorex kmo_combine --edge_nan=TRUE sci_combine.sof')
+			os.system('esorex --output-dir=%s kmo_combine --edge_nan=TRUE sci_combine.sof' % sci_dir)
 			
-	def frameCheck(self, skyCube, frameNames):
+	def frameCheck(self, sci_dir, frameNames, tracked_name):
 		"""
 		Def:
 		Loop round a list of frameNames of a given type and apply the science 
@@ -2791,7 +2843,7 @@ class pipelineOps(object):
 		##########################################################################
 		#Can probably in the future get the name of the IFU tracking a standard 
 		#Star straight from the fits header. Will hardwire it in a-priori now 
-		track_name = 'n55_19'
+		track_name = tracked_name
 		#Loop round the list of combNames until the track_name appears 
 		for entry in combNames:
 			if entry.find(track_name) != -1:
@@ -2821,7 +2873,7 @@ class pipelineOps(object):
 				else:
 					skyFile = names[i + 1]
 
-				print 'reducing file: %s : ' %  objFile
+				print '[INFO]: reducing file: %s : ' %  objFile
 				namesVec.append(objFile)
 				#Create the new .sof file at each stage for just the object sky pair
 				#the .sof file must be in the directory, and must have all the other 
@@ -2838,13 +2890,13 @@ class pipelineOps(object):
 					f.write('\n%s\tSCIENCE' % objFile)
 					f.write('\n%s\tSCIENCE' % skyFile)
 				#Now just execute the esorex recipe for this new file 
-				os.system('esorex kmo_sci_red --sky_tweak=TRUE --pix_scale=0.2 --edge_nan=TRUE sci_reduc_temp.sof')
+				os.system('esorex --output-dir=%s kmo_sci_red --sky_tweak=TRUE --pix_scale=0.2 --edge_nan=TRUE sci_reduc_temp.sof' % sci_dir)
 
 				#We have all the science products now execute the above method for each 
 				#of the pairs. Should think of a better way to create the combNames file
 				print 'Checking IFU sky tweak performance'
 				#This is the array of IFU values for each frame 
-				medVals = self.compareSky(skyCube, combNames)
+				medVals = self.compareSky(sci_dir, combNames)
 				#Append the full vector for a more detailed plot 
 				IFUValVec.append(medVals)
 				#Append the mean value for the average plot
@@ -2864,13 +2916,13 @@ class pipelineOps(object):
 				#########################################################
 				#Change FWHM to arcsecond scale, by using the pixel scale
 				#recover the pixel scale by creating a cubeClass instance
-				pixel_scale = float(cubeOps(tracked_star).pix_scale)
+				pixel_scale = float(cubeOps(sci_dir + '/' + tracked_star).pix_scale)
 				arc_fwhm =  fwhm * pixel_scale
 
 
 				#Conditional binning - HARDWIRED VALUES 
 				#Could look at percentiles of FWHM distribution? 
-				if (arc_fwhm < 0.6):
+				if (arc_fwhm > 0.0 and arc_fwhm < 0.6):
 					print 'Placing object in best bin' #wagwanplaya
 					a_fwhm_names.append(objFile)
 				elif (arc_fwhm > 0.6 and arc_fwhm < 1.0):
@@ -2893,6 +2945,15 @@ class pipelineOps(object):
 
 		#Make the dictionary of fwhm values 
 		fwhmDict = {'Best':a_fwhm_names,'Good':b_fwhm_names,'Okay':c_fwhm_names,'Bad':d_fwhm_names}
+
+		#Shift all plots to a plots folder within the science directory
+		plot_dir_name = sci_dir + '/Plots'
+		if os.path.isdir(plot_dir_name):
+			os.system('rm -rf %s' % plot_dir_name)
+		os.system('mkdir %s' % plot_dir_name)
+		#Move all of the newly created Shifted files into this directory 
+		os.system('mv %s %s' % (sci_dir + '/*.png', plot_dir_name))
+
 		#Return all of these values 
 		return ID, offList, namesVec, IFUValVec, frameValVec, fwhmValVec, fwhmDict
 
@@ -3103,7 +3164,7 @@ class pipelineOps(object):
 		#plt.show()
 		plt.close('all')		
 
-	def extractSpec(self, fwhmDict, combNames, rec_combNames):
+	def extractSpec(self, sci_dir, fwhmDict, combNames, rec_combNames, tracked_name):
 		"""
 		Def:
 		Takes the grouped tracked star fwhm dictionary, combines 
@@ -3117,25 +3178,25 @@ class pipelineOps(object):
 		##########################################################################
 		#Can probably in the future get the name of the IFU tracking a standard 
 		#Star straight from the fits header. Will hardwire it in a-priori now 
-		track_name = 'P107'
+		track_name = tracked_name
 		#Loop round the list of combNames until the track_name appears 
 		for entry in combNames:
 			if entry.find(track_name) != -1:
-				tracked_star = entry
+				tracked_star = sci_dir + '/' + entry
 
 		#First check the directory for the rec_combNames and delete if they exist 
 		for entry in rec_combNames:
-			if os.path.isfile(entry):
-				os.system('rm %s' % entry)
+			if os.path.isfile('%s/%s' % (sci_dir, entry)):
+				os.system('rm %s/%s' % (sci_dir, entry))
 
 			#Set the rec_combName of the standard star in the same way as above 
 			if entry.find(track_name) != -1:
-				rec_tracked_star = entry
+				rec_tracked_star = sci_dir + '/' + entry
 
 		#retrieve the dictionary combining the science names and IFU numbers 
 		combDict = cubeOps(tracked_star).combDict
 		#Remove the current sci_combined*.fits prior to this analysis
-		os.system('rm sci_combined*.fits')
+		os.system('rm %s/sci_combined*.fits' % sci_dir)
 
 		#Initialise dictionary for final fwhm values
 		fwhm_values = {}
@@ -3154,12 +3215,12 @@ class pipelineOps(object):
 					#If the entry doesn't contain a backslash, the entry 
 					#is the object name and can prepend directly 
 					if fwhmDict[group][0].find("/") == -1:
-						rec_frame = 'sci_reconstructed_' + fwhmDict[group][0]
+						rec_frame = sci_dir + '/sci_reconstructed_' + fwhmDict[group][0]
 					#Otherwise the directory structure is included and have to 
 					#search for the backslash and omit up to the last character 
 					else:
 						objName = fwhmDict[group][0][len(fwhmDict[group][0]) - fwhmDict[group][0][::-1].find("/"):]
-						rec_frame = 'sci_reconstructed_' + objName
+						rec_frame = sci_dir + '/sci_reconstructed_' + objName
 					#Now have the correct name of the reconstructed file 
 					#Need to select the correct extension for the tracked_star
 					ext = combDict[track_name]	
@@ -3178,6 +3239,7 @@ class pipelineOps(object):
 					sys.stdout = temp
 					os.system('rm log.txt')
 
+					
 					#Write out to a new fits file
 			  		objhdu = fits.PrimaryHDU(header=primHeader)
 					objhdu.writeto(tracked_star, clobber=True)
@@ -3209,17 +3271,16 @@ class pipelineOps(object):
 						sys.stdout = temp
 						os.system('rm log.txt')
 
-
 						#Write out to a new fits file
 				  		objhdu = fits.PrimaryHDU(header=primHeader)
-						objhdu.writeto(next(iterCombNames_one), clobber=True)
-						fits.append(next(iterCombNames_two), data=cube_data, header=dataHeader)
+						objhdu.writeto(sci_dir + '/' + next(iterCombNames_one), clobber=True)
+						fits.append(sci_dir + '/' + next(iterCombNames_two), data=cube_data, header=dataHeader)
 					new_name_vec = []
 					#Append best to all the rec_combNames 
 					for entry in combNames:
-						group_name = group + '_' + entry
+						group_name = sci_dir + '/' + group + '_' + entry
 						new_name_vec.append(group_name)
-						os.system('mv %s %s' % (entry, group_name))
+						os.system('mv %s %s' % (sci_dir + '/' + entry, group_name))
 
 
 				#The Case where there is more than one entry in the group (normal)
@@ -3237,8 +3298,8 @@ class pipelineOps(object):
 					new_name_vec = []
 					#Append best to all the rec_combNames 
 					for entry in zip(rec_combNames, combNames):
-						current_name = entry[0]
-						group_name = group + '_' + entry[1]
+						current_name = sci_dir + '/' + entry[0]
+						group_name = sci_dir + '/' + group + '_' + entry[1]
 						new_name_vec.append(group_name)
 						os.system('mv %s %s' % (current_name, group_name))
 
@@ -3252,8 +3313,12 @@ class pipelineOps(object):
 				tracked_centre = [params[2], params[1]]
 				tracked_profile = copy(psfProfile)
 				tracked_fwhm = copy(FWHM)
+				#From here onwards should definitely be fine with the new sci_dir convention
 				#First Fit a gaussian to each of the objects to determine the center! 
+				spectra_names = []
 				for name in new_name_vec:
+					spec_name = name[:-5] + '_spectrum.fits'
+					spectra_names.append(spec_name)
 					cube = cubeOps(name)
 					#Find the central value of the object flux by 
 					#fitting a gaussian to the image
@@ -3290,12 +3355,18 @@ class pipelineOps(object):
 					     fits.Column(name='Flux', format='E', array=optimal_spec)]))
 					prihdu = fits.PrimaryHDU(header=cube.primHeader)
 					thdulist = fits.HDUList([prihdu, tbhdu])
-					thdulist.writeto(name[:-5] + '_spectrum.fits', clobber=True)
-					#This should save the optimal spectrum for each object
+					thdulist.writeto(spec_name, clobber=True)
+				#Create a new sub-directory in the Science directory to house the spectra for this group 
+				new_dir_name = sci_dir + '/' + group
+				if os.path.isdir(new_dir_name):
+					os.system('rm -rf %s' % new_dir_name)
+				os.system('mkdir %s' % new_dir_name)
+				#Move all of the newly created group objects into this directory
+				os.system('mv %s %s' % (sci_dir + '/' + group + '*', new_dir_name)) 
 
 		print fwhm_values
 
-	def multiExtractSpec(self, skyCube, frameNames, **kwargs):
+	def multiExtractSpec(self, sci_dir, frameNames, tracked_name, **kwargs):
 
 		"""
 		Def: 
@@ -3341,11 +3412,11 @@ class pipelineOps(object):
 			print 'Having difficulty setting sci_comb names'
 
 		#Star straight from the fits header. Will hardwire it in a-priori now 
-		track_name = 'P107'
+		track_name = tracked_name
 		#Loop round the list of combNames until the track_name appears 
 		for entry in combNames:
 			if entry.find(track_name) != -1:
-				tracked_star = entry
+				tracked_star = sci_dir + '/' + entry
 
 		#Remove tracked.txt if it already exists
 		if os.path.isfile('tracked.txt'):
@@ -3356,7 +3427,7 @@ class pipelineOps(object):
 			#automatically? Is there a S/N parameter in the header?
 			f.write(tracked_star)
 
-		ID, offList, namesVec, IFUValVec, frameValVec, fwhmValVec, fwhmDict = self.frameCheck(skyCube, frameNames)
+		ID, offList, namesVec, IFUValVec, frameValVec, fwhmValVec, fwhmDict = self.frameCheck(sci_dir, frameNames, tracked_name)
 		########################################################################################################
 		#PLOTTING
 		########################################################################################################
@@ -3379,7 +3450,7 @@ class pipelineOps(object):
 		if kwargs:
 			print 'Additional keyword arguments supplied - Checking additional frames and double plotting'
 			additional_frameNames = kwargs.values()[0]
-			ID1, offList1, namesVec1, IFUValVec1, frameValVec1, fwhmValVec1, fwhmDict1 = self.frameCheck(skyCube, additional_frameNames)
+			ID1, offList1, namesVec1, IFUValVec1, frameValVec1, fwhmValVec1, fwhmDict1 = self.frameCheck(sci_dir, additional_frameNames, tracked_name)
 			#Now have two sets of all the parameters and can make the double plots using the multiplot methods 
 			print 'Plotting multi mean IFU performance'
 			self.multiMeanFramePlot(ID, frameValVec, frameValVec1)
@@ -3407,7 +3478,7 @@ class pipelineOps(object):
 		print 'These are the Bad names: %s ' % fwhmDict['Bad']
 
 		#Extract the spectra in each of the fwhm bins and save
-		self.extractSpec(fwhmDict, combNames, rec_combNames)
+		self.extractSpec(sci_dir, fwhmDict, combNames, rec_combNames, tracked_name)
 
 	def saveSpec(self, cubeName):
 		"""
@@ -3510,11 +3581,13 @@ class pipelineOps(object):
 		ax2.plot(new_sky_wave, new_sky_spec, color='g')
 		ax2.set_xlabel(r'Wavelength ($\AA$)', fontsize=24)
 		ax2.tick_params(axis='both', which='major', labelsize=15)
-		ax2.set_ylim(0, max(new_sky_spec))
+		#ax2.set_ylim(0, max(new_sky_spec))
 		nbins = len(ax1.get_xticklabels())
 		ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-		ax2.set_xlim(1.15,1.20)
+		#ax2.set_xlim(min(new_obj_wave),max(new_obj_wave))
+		ax2.set_xlim(1.6,1.65)
 		f.subplots_adjust(hspace=0.001)
+		f.tight_layout()
 		plt.show()
 		f.savefig('spec_compare.png')
 	

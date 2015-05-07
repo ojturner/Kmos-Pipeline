@@ -71,14 +71,16 @@ namesOfFile_1 = np.genfromtxt(sci_names_14_noTel_1, dtype='str')
 
 objCube = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_combined_n55_19__skytweak.fits'
 objSpec2 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_combined_n55_19__skytweak_spectrum.fits'
-objSpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/frameCheck_skytweak_15_shifted/Good_sci_combined_n55_19__skytweak_spectrum.fits'
-skySpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/30-3-15Sky_Only/cube_science_spectrum.fits'
+objSpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/Best_sci_combined_P108__skytweak_spectrum.fits'
+skySpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/cubesky_spectrum.fits'
 
+hobjframe = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
+hskyframe = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-#pipe_methods.saveSpec(objCube)
+#pipe_methods.saveSpec(hskyCube)
 #pipe_methods.plotSpecs(objSpec, skySpec, 1)
 
-pipe_methods.multiExtractSpec(skyCube=hskyCube, frameNames=h_names)
+#pipe_methods.multiExtractSpec(skyCube=hskyCube, frameNames=h_names)
 #Now try the subtraction method 
 #pipe_methods.subFrames('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits', skyFile)
 #pipe_methods.subFrames('KMOS_SPEC_OBS258_0001_Corrected.fits', skyFile)
@@ -114,7 +116,7 @@ pipe_methods.multiExtractSpec(skyCube=hskyCube, frameNames=h_names)
 #  	 vertSegments=1, horSegments=1, interp_type='spline3', \
 #  	 stepsize=0.01, xmin=-0.1, xmax=0.1, ymin=-0.1, ymax=0.1)
 
-#pipe_methods.applySubtraction(raw_14)
+#pipe_methods.applySubtraction(h_names)
 #pipe_methods.extensionMedians(newFile1)
 #pipe_methods.extensionMedians(newFile2)
 #pipe_methods.extensionMedians(newFile3)
@@ -129,7 +131,7 @@ pipe_methods.multiExtractSpec(skyCube=hskyCube, frameNames=h_names)
 #pipe_methods.minimiseRho(objFile, skyFile, badPMap, interp_type='spline3')
 
 #pipe_methods.shiftAllExtensionsMin(objFile, skyFile, badPMap, vertSegments=2, horSegments=2, interp_type='spline3')
-#pipe_methods.subFrames(newFile1, skyFile)
+#pipe_methods.subFrames(hobjframe, hskyframe)
 
 #data, coords = pipe_methods.shiftImageSegmentsMin(ext=1, infile=objFile, skyfile=skyFile, badpmap=badPMap14,\
 #  	 vertSegments=1, horSegments=1, interp_type='spline3')
