@@ -2780,16 +2780,16 @@ class pipelineOps(object):
 					#If the entry doesn't contain a backslash, the entry 
 					#is the object name and can prepend directly 
 					if entry.find("/") == -1:
-						name = sci_dir + 'sci_reconstructed_' + entry
+						name = sci_dir + '/' + 'sci_reconstructed_' + entry
 						f.write('%s\n' % name)
 					#Otherwise the directory structure is included and have to 
 					#search for the backslash and omit up to the last one 
 					else:
 						objName = entry[len(entry) - entry[::-1].find("/"):]
-						name = sci_dir + 'sci_reconstructed_' + objName
+						name = sci_dir + '/' + 'sci_reconstructed_' + objName
 						f.write('%s\n' % name)
 			#Now execute the recipe 
-			os.system('esorex --output-dir=%s kmo_combine --edge_nan=TRUE sci_combine.sof' % sci_dir)
+			os.system('esorex --output-dir=%s kmo_combine --edge_nan=TRUE %s/sci_combine.sof' % (sci_dir, sci_dir))
 			
 	def frameCheck(self, sci_dir, frameNames, tracked_name):
 		"""
@@ -3027,7 +3027,7 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					axArray[col][row].set_ylim(0, 30)
+					#axArray[col][row].set_ylim(0, 30)
 					dataCount += 1
 				#Increment the IFUCount number
 				IFUCount += 1
@@ -3067,7 +3067,7 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					axArray[col][row].set_ylim(0, 30)
+					#axArray[col][row].set_ylim(0, 30)
 					dataCount += 1
 				#Increment the IFUCount number
 				IFUCount += 1
@@ -3286,7 +3286,7 @@ class pipelineOps(object):
 				#The Case where there is more than one entry in the group (normal)
 				elif len(fwhmDict[group]) > 1:
 					print 'Combining %s PSF Cubes' % group
-					self.combFrames(fwhmDict[group])
+					self.combFrames(sci_dir, fwhmDict[group])
 					#The output from this is the combined_sci file names contained in rec_combNames
 					#These are all stacked data cubes in bins of seeing 
 					tracked_cube = cubeOps(rec_tracked_star)

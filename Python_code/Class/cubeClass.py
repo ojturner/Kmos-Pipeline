@@ -422,7 +422,10 @@ class cubeOps(object):
 		Input: Profile - a specified 2D normalised profile for extraction
 				fwhm - the fwhm of the tracked star
 		"""
-		print '[INFO]: Fitting the optimal spectrum for object: %s' % self.IFUName
+		try:
+			print '[INFO]: Fitting the optimal spectrum for object: %s' % self.IFUName
+		except AttributeError:
+			print '[INFO]: Fitting the optimal spectrum'
 		#Multiply the cube data by the psfMask
 		modCube = profile * self.data
 
@@ -501,17 +504,17 @@ class cubeOps(object):
 	    row = data[int(x), :]
 	    width_y = sqrt(abs((arange(row.size)-x)**2*row).sum()/row.sum())
 	    height = data.max()
-	    print '[INFO]: The Initial Guess the G.Params;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x' % (height, x, y, width_x, width_y)
+	    print '[INFO]: The Initial Guess at the G.Params;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (height, x, y, width_x, width_y)
 	    return height, x, y, width_x, width_y
 
 	def fitgaussian(self, data):
 	    """Returns (height, x, y, width_x, width_y)
 	    the gaussian parameters of a 2D distribution found by a fit"""
 	    params = self.moments(data)
-	    errorfunction = lambda p: ravel(self.gaussian(*p)(*indices(data.shape)) -
-	                                 data)
+	    print '[INFO]: The Data has shape: %s %s' % (data.shape[0], data.shape[1])
+	    errorfunction = lambda p: ravel(self.gaussian(*p)(*indices(data.shape)) - data)
 	    p, success = optimize.leastsq(errorfunction, params)
-	    print '[INFO]: The Gaussian fitting parameters are;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x' % (p[0], p[1], p[2], p[3], p[4])
+	    print '[INFO]: The Gaussian fitting parameters are;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (p[0], p[1], p[2], p[3], p[4])
 	    return p
 
 	def psfMask(self):
@@ -534,7 +537,10 @@ class cubeOps(object):
 		else:
 			sigma = 0.5*(params[3] + params[4])
 		FWHM = 2.3548 * sigma
-		print '[INFO]: The FWHM of object %s is: %s' % (self.IFUName, FWHM)
+		try: 
+			print '[INFO]: The FWHM of object %s is: %s' % (self.IFUName, FWHM)
+		except AttributeError:
+			print '[INFO]: The FWHM is: %s' % FWHM
 		#Step 2 - Return a gaussian function with the fit parameters 
 		fit = self.gaussian(*params)
 		#Step 3 - Evaluate the gaussian over the pixel range 
