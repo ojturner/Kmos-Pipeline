@@ -57,7 +57,7 @@ class cubeOps(object):
 			self.start_L = self.dataHeader["CRVAL3"]
 			self.dL = self.dataHeader["CDELT3"]
 		except KeyError:
-			print 'This is a raw image'
+			print '[INFO]: This is a raw image'
 		#Extract the IFU number from the data 
 		#Cube may not have this keyword, try statement
 		#Not sure if this is good practice - conditional attribute.
@@ -67,13 +67,19 @@ class cubeOps(object):
 			#print key
 			self.IFUName = self.dataHeader[key]
 		except KeyError:
-			print 'This is not a combined Frame, setting arm name...'
+			print '[INFO]: This is not a combined Frame, setting arm name...'
 			try:
-				self.IFUNR = self.dataHeader["HIERARCH ESO OCS ARM1 NAME"]
+				ext_name = self.dataHeader['EXTNAME']
+				num_string = ''
+				for s in ext_name:
+					if s.isdigit():
+						num_string += s
+				num_string = int(num_string)
+				self.IFUNR = copy(num_string)
 				self.IFUName = self.primHeader["HIERARCH ESO OCS ARM" + str(self.IFUNR) + " NAME"]
-				print 'You have specified a reconstructed type'
+				print '[INFO]: You have specified a reconstructed type'
 			except KeyError:
-				print("Warning: not a datacube")
+				print "[Warning]: not a datacube"
 
 		#Set the RA and DEC positions of all the arms. These are in 
 		#sexagesimal format - convert to degrees for the plot 
@@ -102,7 +108,7 @@ class cubeOps(object):
 				self.decDict[DictName] = self.decToDeg(self.primHeader[decName])
 
 			except KeyError:
-				print 'IFU %s Not in Use' % DictName
+				print '[INFO]: IFU %s Not in Use' % DictName
 				self.offList.append(i)
 
 		#Construct the list of combined science names separately
@@ -130,14 +136,14 @@ class cubeOps(object):
 		try:
 			self.pix_scale = self.primHeader['HIERARCH ESO PRO REC1 PARAM7 VALUE']
 		except KeyError:
-			print 'Could not set pixel scale - not a datacube'
+			print '[INFO]: Could not set pixel scale - not a datacube'
 			self.pix_scale = 0
 
 		#Create the wavelength array if this is a combined data type
 		try:
 			self.wave_array = self.start_L + np.arange(0, 2048*(self.dL), self.dL)
 		except:
-			print 'cannot set wavelength array'
+			print '[INFO]: cannot set wavelength array'
 		#Can define all kinds of statistics from the data common to the methods
 		#Find the brightest median pixel in the array 
 		self.med_array = np.nanmedian(self.data, axis=0)
@@ -284,7 +290,7 @@ class cubeOps(object):
 
 		"""
 		#If choosing to construct the 1D spectrum from a single pixel:
-		print 'The Brightest Pixel is at: (%s, %s)' % (self.ind1, self.ind2)
+		print '[INFO]: The Brightest Pixel is at: (%s, %s)' % (self.ind1, self.ind2)
 		print self.IFUName
 		print self.IFUNR
 		if gridSize == 1:
@@ -434,8 +440,8 @@ class cubeOps(object):
 		#Recover the central value
 		x = copy(centre_x)
 		y = copy(centre_y)
-		print 'The central values of the Gaussian are: %s %s' % (x, y)
-		print 'And the width is: %s' % width
+		print '[INFO]: The central values of the Gaussian are: %s %s' % (x, y)
+		print '[INFO]: And the width is: %s' % width
 
 		#Set the upper and lower limits for optimal spectrum extraction
 		x_upper = int(np.round((x + (1.5*width))))
@@ -484,28 +490,35 @@ class cubeOps(object):
 	                -(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
 
 	def moments(self, data):
-	    """Returns (height, center_x, center_y, width_x, width_y)
-	    the gaussian parameters of a 2D distribution by calculating its
-	    moments """
-	    #First set all np.nan values in data to 0 
-	    #And all the negative values to 0 
-	    #These shouldn't influence the moment calculation
-	    data[np.isnan(data)] = 0
-	    data[data < 0] = 0
-	    total = np.nansum(data)
+		"""Returns (height, center_x, center_y, width_x, width_y)
+		the gaussian parameters of a 2D distribution by calculating its
+		moments """
+		#First set all np.nan values in data to 0 
+		#And all the negative values to 0 
+		#These shouldn't influence the moment calculation
+		data[np.isnan(data)] = 0
+		data[data < 0] = 0
+		total = np.nansum(data)
 	    #print 'The sum over the data is: %s' % total
-	    X, Y = indices(data.shape)
+		X, Y = indices(data.shape)
 	    #print 'The Indices are: %s, %s' % (X, Y)
-	    x = np.nansum((X*data))/total
-	    y = np.nansum((Y*data))/total
+		x = np.nansum((X*data))/total
+		y = np.nansum((Y*data))/total
 	    #print x, y
-	    col = data[:, int(y)]
-	    width_x = sqrt(abs((arange(col.size)-y)**2*col).sum()/col.sum())
-	    row = data[int(x), :]
-	    width_y = sqrt(abs((arange(row.size)-x)**2*row).sum()/row.sum())
-	    height = data.max()
-	    print '[INFO]: The Initial Guess at the G.Params;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (height, x, y, width_x, width_y)
-	    return height, x, y, width_x, width_y
+		col = data[:, int(y)]
+		if col.sum() == 0:
+			width_x = sqrt(abs((arange(col.size)-y)**2*1.0).sum()/1.0)
+		else:
+			width_x = sqrt(abs((arange(col.size)-y)**2*col).sum()/col.sum())
+		row = data[int(x), :]
+
+		if row.sum() == 0:
+			width_y = sqrt(abs((arange(row.size)-x)**2*1.0).sum()/1.0)
+		else:
+			width_y = sqrt(abs((arange(row.size)-x)**2*row).sum()/row.sum())
+		height = data.max()
+		print '[INFO]: The Initial Guess at the G.Params;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (height, x, y, width_x, width_y)
+		return height, x, y, width_x, width_y
 
 	def fitgaussian(self, data):
 	    """Returns (height, x, y, width_x, width_y)

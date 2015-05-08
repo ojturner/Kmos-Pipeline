@@ -2789,7 +2789,7 @@ class pipelineOps(object):
 						name = sci_dir + '/' + 'sci_reconstructed_' + objName
 						f.write('%s\n' % name)
 			#Now execute the recipe 
-			os.system('esorex --output-dir=%s kmo_combine --edge_nan=TRUE %s/sci_combine.sof' % (sci_dir, sci_dir))
+			os.system('esorex --output-dir=%s kmo_combine --method="header" --edge_nan=TRUE %s/sci_combine.sof' % (sci_dir, sci_dir))
 			
 	def frameCheck(self, sci_dir, frameNames, tracked_name):
 		"""
