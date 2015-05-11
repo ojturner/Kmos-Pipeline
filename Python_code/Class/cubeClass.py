@@ -550,11 +550,11 @@ class cubeOps(object):
 		params = self.fitgaussian(self.imData)
 		#Check to find sigma 
 		if (np.isnan(params[3]) and np.isnan(params[4])):
-			sigma = 1.0
+			sigma = 3.0
 		elif (np.isnan(params[3]) and not np.isnan(params[4])):
-			sigma = params[4]
+			sigma = 3.0
 		elif (not np.isnan(params[3]) and np.isnan(params[4])):
-			sigma = params[3]
+			sigma = 3.0
 		else:
 			sigma = 0.5*(params[3] + params[4])
 		FWHM = 2.3548 * sigma

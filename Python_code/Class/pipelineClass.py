@@ -2925,7 +2925,6 @@ class pipelineOps(object):
 		b_fwhm_names = []
 		c_fwhm_names = []
 		d_fwhm_names = []
-
 		#Loop around each name, assign sky pair and populate 
 		#the sky tweak performance and fwhm variables 
 		for i in range(1, len(names)):
@@ -2963,10 +2962,13 @@ class pipelineOps(object):
 				print 'Checking IFU sky tweak performance'
 				#This is the array of IFU values for each frame 
 				medVals = self.compareSky(sci_dir, combNames)
+				#print the value of this vector 
+				print 'The sky statistic values as a function of IFU are: %s' % medVals
+				print 'The median value of this array is: %s' % np.nanmedian(medVals)
 				#Append the full vector for a more detailed plot 
 				IFUValVec.append(medVals)
 				#Append the mean value for the average plot
-				frameValVec.append(np.mean(medVals))
+				frameValVec.append(np.nanmedian(medVals))
 
 				#Move onto FWHM analysis of chosen tracked star 	
 				print 'Checking PSF of tracked star'
@@ -2987,21 +2989,26 @@ class pipelineOps(object):
 
 
 				#Conditional binning - HARDWIRED VALUES 
-				#Could look at percentiles of FWHM distribution? 
-				if (arc_fwhm > 0.0 and arc_fwhm < 0.6):
-					print '[INFO]: Placing object in best bin' #wagwanplaya
-					a_fwhm_names.append(objFile)
-				elif (arc_fwhm > 0.6 and arc_fwhm < 1.0):
-					print '[INFO]: Placing object in good bin'
-					b_fwhm_names.append(objFile)
-				elif (arc_fwhm > 1.0 and arc_fwhm < 1.5):
-					print '[INFO]: Placing object in okay bin'
-					c_fwhm_names.append(objFile)
-				else:
-					print '[INFO]: Placing object in bad bin'
-					d_fwhm_names.append(objFile)		
+				#Could look at percentiles of FWHM distribution?
+				#Only put the objects in the bins if the sky subtraction 
+				#performance statistic is less than 1.5 
+				if (np.nanmedian(medVals) > 0 and np.nanmedian(medVals) < 1.5):
+
+					if (arc_fwhm > 0.0 and arc_fwhm < 0.6):
+						print '[INFO]: Placing object in best bin' #wagwanplaya
+						a_fwhm_names.append(objFile)
+					elif (arc_fwhm > 0.6 and arc_fwhm < 1.0):
+						print '[INFO]: Placing object in good bin'
+						b_fwhm_names.append(objFile)
+					elif (arc_fwhm > 1.0 and arc_fwhm < 1.5):
+						print '[INFO]: Placing object in okay bin'
+						c_fwhm_names.append(objFile)
+					else:
+						print '[INFO]: Placing object in bad bin'
+						d_fwhm_names.append(objFile)		
 
 		#Should now have populated the frameValVec, IFUValVec and incremented counter
+		#Only for the objects that have passed the skytweak performance test 
 		IFUValVec = np.array(IFUValVec)
 		fwhmValVec = np.array(fwhmValVec)
 		offList = np.array(offList)
@@ -3093,7 +3100,8 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					axArray[col][row].set_ylim(0, 2)
+					axArray[col][row].set_ylim(0, 2.5)
+					axArray[col][row].set_xlim(0, len(ID))
 					dataCount += 1
 				#Increment the IFUCount number
 				IFUCount += 1
@@ -3133,7 +3141,8 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					axArray[col][row].set_ylim(0, 2)
+					axArray[col][row].set_ylim(0, 2.5)
+					axArray[col][row].set_xlim(0, len(ID))
 					dataCount += 1
 				#Increment the IFUCount number
 				IFUCount += 1
@@ -3159,6 +3168,7 @@ class pipelineOps(object):
 		ax.set_title('Sky Tweak Performance vs. Frame ID')
 		ax.set_xlabel('Frame ID')
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+		ax.set_xlim(0, len(ID))
 		ax.grid(b=True, which='both', linestyle='--')
 		fig.savefig('frame_performance.png')
 		#plt.show()
@@ -3182,6 +3192,7 @@ class pipelineOps(object):
 		ax.scatter(ID, frameValVec2, color='red')
 		ax.set_title('Sky Tweak Performance vs. Frame ID')
 		ax.set_xlabel('Frame ID')
+		ax.set_xlim(0, len(ID))
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
 		fig.savefig('frame_performance_double.png')
@@ -3202,6 +3213,7 @@ class pipelineOps(object):
 		ax.scatter(ID, fwhmValVec)
 		ax.set_title('Average fwhm vs. Frame ID')
 		ax.set_xlabel('Frame ID')
+		ax.set_xlim(0, len(ID))
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
 		fig.savefig('frame_fwhm.png')
@@ -3222,6 +3234,7 @@ class pipelineOps(object):
 		ax.scatter(ID, fwhmValVec1, color='blue')
 		ax.plot(ID, fwhmValVec2, color='red')
 		ax.scatter(ID, fwhmValVec2, color='red')
+		ax.set_xlim(0, len(ID))
 		ax.set_title('Average fwhm vs. Frame ID')
 		ax.set_xlabel('Frame ID')
 		ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
@@ -3422,6 +3435,13 @@ class pipelineOps(object):
 					prihdu = fits.PrimaryHDU(header=cube.primHeader)
 					thdulist = fits.HDUList([prihdu, tbhdu])
 					thdulist.writeto(spec_name, clobber=True)
+					plot_sky_name = sci_dir + '/combine_cube_science_arm' + str(cube.IFUNR) + '_sky.fits'
+					print 'The skycube name for the plotting routine is: %s' % plot_sky_name
+					self.plotSpecs(spec_name, plot_sky_name, 1)
+#					try:
+#						self.plotSpecs(spec_name, plot_sky_name, 1)
+#					except:
+#						print 'Could not plot the 1D spectrum'
 				#Create a new sub-directory in the Science directory to house the spectra for this group 
 				new_dir_name = sci_dir + '/' + group
 				if os.path.isdir(new_dir_name):
@@ -3571,7 +3591,7 @@ class pipelineOps(object):
 
 
 
-	def plotSpecs(self, objSpec, skySpec, n):
+	def plotSpecs(self, objSpec, skyCube, n):
 		import matplotlib.gridspec as gridspec
 		from matplotlib.ticker import MaxNLocator
 
@@ -3597,8 +3617,9 @@ class pipelineOps(object):
 		obj_spec = objTable[1].data['FLUX']
 		obj_wave = objTable[1].data['WAVELENGTH']
 
-		#skyTable 
-		skyTable = fits.open(skySpec)
+		#skyCube
+		self.saveSpec(skyCube) 
+		skyTable = fits.open(skyCube[:-5] + '_spectrum.fits')
 		sky_spec = skyTable[1].data['FLUX']
 		sky_wave = skyTable[1].data['WAVELENGTH']
 
@@ -3650,12 +3671,12 @@ class pipelineOps(object):
 		#ax2.set_ylim(0, max(new_sky_spec))
 		nbins = len(ax1.get_xticklabels())
 		ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-		#ax2.set_xlim(min(new_obj_wave),max(new_obj_wave))
-		ax2.set_xlim(1.1,1.25)
+		ax2.set_xlim(min(new_obj_wave) + 0.1, max(new_obj_wave) - 0.1)
+		#ax2.set_xlim(1.1,1.25)
 		f.subplots_adjust(hspace=0.001)
 		f.tight_layout()
 		plt.show()
-		f.savefig('spec_compare.png')
+		f.savefig(objSpec[:-5] + '.png')
 	
 
 
