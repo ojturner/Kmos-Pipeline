@@ -23,8 +23,8 @@ badPMap15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S
 lcalMap14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/lcal_YJYJYJ.fits'
 lcalMap15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/Calibration_Files/lcal_YJYJYJ.fits'
 
-hskyCube = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/cube_science.fits'
-kskyCube = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/Science/cube_science.fits'
+hskyCube = '/Users/owenturner/DATA/688/H/Science/cube_science.fits'
+kskyCube = '/Users/owenturner/DATA/688/K/Science/cube_science.fits'
 
 
 #Create an instance of the class
@@ -77,7 +77,8 @@ skySpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/
 hobjframe = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
 hskyframe = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-#pipe_methods.saveSpec(hskyCube)
+pipe_methods.compareSky(sci_dir='/Users/owenturner/DATA/688/H/Science/Good', combNames='co_names.txt')
+#pipe_methods.frameCheck(sci_dir='/Users/owenturner/DATA/688/H/test/', frameNames='/Users/owenturner/DATA/NGC55/YJ/Calibrations/corrected_object_names.txt', 'n55_19')
 #pipe_methods.plotSpecs(objSpec, skySpec, 1)
 
 #pipe_methods.multiExtractSpec(skyCube=hskyCube, frameNames=h_names)

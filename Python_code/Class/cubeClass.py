@@ -67,19 +67,27 @@ class cubeOps(object):
 			#print key
 			self.IFUName = self.dataHeader[key]
 		except KeyError:
-			print '[INFO]: This is not a combined Frame, setting arm name...'
 			try:
-				ext_name = self.dataHeader['EXTNAME']
-				num_string = ''
-				for s in ext_name:
-					if s.isdigit():
-						num_string += s
-				num_string = int(num_string)
-				self.IFUNR = copy(num_string)
-				self.IFUName = self.primHeader["HIERARCH ESO OCS ARM" + str(self.IFUNR) + " NAME"]
-				print '[INFO]: You have specified a reconstructed type'
-			except KeyError:
-				print "[Warning]: not a datacube"
+				self.noise_header = self.Table[2].header
+				self.IFUNR = self.noise_header["HIERARCH ESO PRO IFUNR"]
+				key = 'HIERARCH ESO OCS ARM' + str(self.IFUNR) + ' NAME'
+				#print key
+				self.IFUName = self.noise_header[key]
+			except:
+
+				print '[INFO]: This is not a combined Frame, setting arm name...'
+				try:
+					ext_name = self.dataHeader['EXTNAME']
+					num_string = ''
+					for s in ext_name:
+						if s.isdigit():
+							num_string += s
+					num_string = int(num_string)
+					self.IFUNR = copy(num_string)
+					self.IFUName = self.primHeader["HIERARCH ESO OCS ARM" + str(self.IFUNR) + " NAME"]
+					print '[INFO]: You have specified a reconstructed type'
+				except KeyError:
+					print "[Warning]: not a datacube"
 
 		#Set the RA and DEC positions of all the arms. These are in 
 		#sexagesimal format - convert to degrees for the plot 
@@ -584,6 +592,7 @@ class cubeOps(object):
 #create class instance 
 #cube.specPlot2D(orientation='vertical')
 ##############################################################################
+
 
 #data = np.genfromtxt('15names.txt', dtype='str')
 #Save the names and types as lists 

@@ -2668,6 +2668,24 @@ class pipelineOps(object):
 				#Which will loop through all and save the corrected object file 
 				#as objectFile_Corrected.fits. These are then fed through the pipeline.
 
+	def quickSpecPlot(self, flux, wavelength):
+		"""
+		Def:
+		Helper function to quickly plot a spectrum given a 
+		flux and a wavelength 
+		Input: Flux, wavlength 1D arrays 
+		Output: Plot of 1D spectrum 
+
+		"""
+		fig, ax = plt.subplots(1,1, figsize=(18, 10))
+		ax.plot(wavelength, flux)
+		ax.set_title('Object and Sky Comparison', fontsize=24)
+		ax.set_xlabel(r'Wavelength$\AA$')
+		ax.set_ylabel('Flux')
+		ax.set_ylim(0, max(flux))
+		ax.tick_params(axis='y', which='major', labelsize=15)
+		plt.show()
+
 
 	def compareSky(self, sci_dir, combNames):
 		"""
@@ -2692,23 +2710,71 @@ class pipelineOps(object):
 		#and store the median 
 
 		for fileName in namesOfFiles:
+			#print fileName
 			tempCube = cubeOps(sci_dir + '/' + fileName)
 			IFUNR = tempCube.IFUNR
+			#print IFUNR
 			sky_name = sci_dir + '/combine_cube_science_arm' + str(IFUNR) + '_sky.fits'
 			#Create instance from the skycube 
 			sky_cube = cubeOps(sky_name)
 			#Extract the sky flux
 			flux = sky_cube.centralSpec()
+			#Temporarily plot sky flux 
+			#self.quickSpecPlot(flux, sky_cube.wave_array)
 			#Check for where the flux exceeds a certain number of counts 
-			indices = np.where(flux > 500)
+			indices = np.where(flux > 500)[0]
+			#print 'initially the indices have value: %s' % indices 
+			#Grow the indices to include values either side of each > 500 index 
+			add_array = []
+			for i in range(len(indices)):
+				value = indices[i]
+				plus_value = value + 1
+				sub_value = value - 1
+				if plus_value > len(sky_cube.wave_array):
+					plus_value = len(sky_cube.wave_array)
+				if sub_value < 0:
+					sub_value = 0
+				#insert these into the indices array 
+				add_array.append(plus_value)
+				add_array.append(sub_value)
+			indices = list(indices)	
+			for item in add_array:
+				indices.append(item)
+			#print 'THE NEW INDEX VALUE ARE: %s' % indices
+			#Now take the set of unique values from indices
+			new_indices = np.sort(list(set(indices)))
+			#print 'The unique indices are: %s' % new_indices 		
 			#Find the sky values at these pixels
-			values = flux[indices]
+			values = flux[new_indices]
+			#Take the absolute value of the fluxes to account for P-Cygni profiles 
+			values = abs(values)
+			#Extract the object 1D spectrum 
 			spectrum = tempCube.optimalSpec()
-			tempValues = spectrum[indices]
-			#Either use the values themselves or the difference
-			medVals[tempCube.IFUNR] = np.median(tempValues)
-		medVector = np.mean(medVals.values())
-		print 'This is the median values Dictionary: %s' % medVals
+			#Find the object flux at the same pixels
+			tempValues = spectrum[new_indices]
+			#Take the absolute value to account for P-Cygni profiles 
+			tempValues = abs(tempValues)
+			#we want to normalise this by the mean object flux 
+			#at the wavelength values NOT contaminated by skylines
+			#print 'The 1D spectrum values at the uniqe indices are: %s' % tempValues 
+			#Find the list of unique indices without the sky_line indices
+			total_indices = np.arange(0, len(tempCube.wave_array), 1)
+			contm_indices = list(set(total_indices) - set(new_indices))
+			#Take the mean value of these as the mean object flux 
+			object_continuum = abs(np.median(spectrum[contm_indices]))
+			#print 'The object continuum value is: %s' % object_continuum
+			#normalise the tempValues by this 
+			norm_values = tempValues / object_continuum		
+			#print 'The normalised flux values are: %s ' % norm_values
+			#Find the median of these norm_values as the sky subtraction performance indicator 
+			medVals[tempCube.IFUNR] = np.nanmedian(norm_values)
+			#print 'The sky performance statistic for this object is: %s' % medVals[tempCube.IFUNR]
+
+
+
+		medVector = np.median(medVals.values())
+		print 'The sky performance statistic for this frame is: %s' % medVector
+		#print 'This is the median values Dictionary: %s' % medVals
 		#print medVector
 		return np.array(medVals.values())
 
@@ -3027,7 +3093,7 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					#axArray[col][row].set_ylim(0, 30)
+					axArray[col][row].set_ylim(0, 2)
 					dataCount += 1
 				#Increment the IFUCount number
 				IFUCount += 1
@@ -3067,7 +3133,7 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					#axArray[col][row].set_ylim(0, 30)
+					axArray[col][row].set_ylim(0, 2)
 					dataCount += 1
 				#Increment the IFUCount number
 				IFUCount += 1
@@ -3493,7 +3559,7 @@ class pipelineOps(object):
 		cube = cubeOps(cubeName)
 		#extract the properties 
 		wave_arr = cube.wave_array
-		spec = cube.optimalSpec()
+		spec = cube.centralSpec()
 		#Save to fits file
 		tbhdu = fits.new_table(fits.ColDefs(\
 			[fits.Column(name='Wavelength', format='E', array=wave_arr),\
@@ -3585,7 +3651,7 @@ class pipelineOps(object):
 		nbins = len(ax1.get_xticklabels())
 		ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
 		#ax2.set_xlim(min(new_obj_wave),max(new_obj_wave))
-		ax2.set_xlim(1.6,1.65)
+		ax2.set_xlim(1.1,1.25)
 		f.subplots_adjust(hspace=0.001)
 		f.tight_layout()
 		plt.show()
