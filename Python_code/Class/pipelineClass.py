@@ -2706,6 +2706,7 @@ class pipelineOps(object):
 		namesOfFiles = np.genfromtxt(combNames, dtype='str')
 		#Initialise an empty dictionary 
 		medVals = {}
+		cubeNames = {}
 		#Loop round each of the cubes in combNames, create a cube 
 		#and store the median 
 
@@ -2762,21 +2763,50 @@ class pipelineOps(object):
 			contm_indices = list(set(total_indices) - set(new_indices))
 			#Take the mean value of these as the mean object flux 
 			object_continuum = abs(np.median(spectrum[contm_indices]))
+			#Fit a polynomial to the continuum and subtract 
+			#Create the polynomial model from lmFit (from lmfit import PolynomialModel)
+			mod = PolynomialModel(4)
+			#Have an initial guess at the model parameters 
+			pars = mod.guess(spectrum[contm_indices], x=tempCube.wave_array[contm_indices])
+			#Use the parameters for the full model fit 
+			out  = mod.fit(spectrum[contm_indices], pars, x=tempCube.wave_array[contm_indices])
+			#The output of the model is the fitted continuum
+			continuum = out.best_fit
+			full_continuum = out.eval(x=tempCube.wave_array)
+			#print 'The length of the continuum is: %s' % len(continuum)
+			#print 'The model evaluated outside of the range has length: %s' % len(full_continuum)
+			fig, ax = plt.subplots(1, 1, figsize=(18, 10))
+			ax.plot(tempCube.wave_array[contm_indices], continuum)
+			ax.plot(tempCube.wave_array[contm_indices], spectrum[contm_indices])
+			#plt.show()
+			#Now subtract the object continuum from the full spectrum and repeat analysis
+			new_spectrum = spectrum - full_continuum
+			divided_spectrum = spectrum / full_continuum
+			#print 'New Statistic for this object: %s' % np.median(new_spectrum[new_indices])
+			fig, ax = plt.subplots(1, 1, figsize=(18, 10))
+			ax.plot(tempCube.wave_array, abs(new_spectrum))
+			#plt.show()
 			#print 'The object continuum value is: %s' % object_continuum
 			#normalise the tempValues by this 
-			norm_values = tempValues / object_continuum		
+			#norm_values = tempValues / object_continuum		
 			#print 'The normalised flux values are: %s ' % norm_values
 			#Find the median of these norm_values as the sky subtraction performance indicator 
-			medVals[tempCube.IFUNR] = np.nanmedian(norm_values)
+			pos_spec = abs(divided_spectrum)
+			pos_spec = np.nanmedian(np.array(pos_spec[np.where(pos_spec > 1.0)]))
+			#print 'This is the positive spectrum: %s' % pos_spec
+			#print 'This is the IFUNR: %s %s' % (tempCube.IFUNR, tempCube.IFUNR.shape)
+			medVals[int(tempCube.IFUNR)] = pos_spec
+			cubeNames[int(tempCube.IFUNR)] = tempCube.IFUName
 			#print 'The sky performance statistic for this object is: %s' % medVals[tempCube.IFUNR]
 
 
-
+		print 'The resultant dictionary is: %s' % (medVals)
+		print 'The names of the files are: %s' % cubeNames
 		medVector = np.median(medVals.values())
 		print 'The sky performance statistic for this frame is: %s' % medVector
 		#print 'This is the median values Dictionary: %s' % medVals
 		#print medVector
-		return np.array(medVals.values())
+		return np.array(medVals.values()), list(cubeNames.values()), np.array(medVals.keys())
 
 	def gaussFit(self, combNames):
 
@@ -2925,6 +2955,9 @@ class pipelineOps(object):
 		b_fwhm_names = []
 		c_fwhm_names = []
 		d_fwhm_names = []
+		#Remove the combine input file if it exists
+		if os.path.isfile('combine_input.txt'):
+			os.system('rm combine_input.txt')#
 		#Loop around each name, assign sky pair and populate 
 		#the sky tweak performance and fwhm variables 
 		for i in range(1, len(names)):
@@ -2955,13 +2988,13 @@ class pipelineOps(object):
 					f.write('\n%s\tSCIENCE' % objFile)
 					f.write('\n%s\tSCIENCE' % skyFile)
 				#Now just execute the esorex recipe for this new file 
-				os.system('esorex --output-dir=%s kmo_sci_red --sky_tweak=TRUE --pix_scale=0.2 --edge_nan=TRUE sci_reduc_temp.sof' % sci_dir)
+				os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.2 --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % sci_dir)
 
 				#We have all the science products now execute the above method for each 
 				#of the pairs. Should think of a better way to create the combNames file
 				print 'Checking IFU sky tweak performance'
 				#This is the array of IFU values for each frame 
-				medVals = self.compareSky(sci_dir, combNames)
+				medVals, cube_name_list, IFU_number_array = self.compareSky(sci_dir, combNames)
 				#print the value of this vector 
 				print 'The sky statistic values as a function of IFU are: %s' % medVals
 				print 'The median value of this array is: %s' % np.nanmedian(medVals)
@@ -2987,6 +3020,22 @@ class pipelineOps(object):
 				pixel_scale = float(cubeOps(sci_dir + '/' + tracked_star).pix_scale)
 				arc_fwhm =  fwhm * pixel_scale
 
+				#Define the reconstructed objFile name 
+				#If the entry doesn't contain a backslash, the entry 
+				#is the object name and can prepend directly 
+				if objFile.find("/") == -1:
+					rec_objFile = sci_dir + '/' + 'sci_reconstructed_' + objFile
+				#Otherwise the directory structure is included and have to 
+				#search for the backslash and omit up to the last one 
+				else:
+					objName = objFile[len(objFile) - objFile[::-1].find("/"):]
+					rec_objFile = sci_dir + '/' + 'sci_reconstructed_' + objName
+				#Make the output file for combining - have all the information now 
+				#For each object 
+
+				with open('combine_input.txt', 'a') as f:
+					for i in range(len(cube_name_list)):
+						f.write('%s\t%s\t%s\t%s\t%s\t%s\n' % (rec_objFile, skyFile, IFU_number_array[i], cube_name_list[i], medVals[i], arc_fwhm))
 
 				#Conditional binning - HARDWIRED VALUES 
 				#Could look at percentiles of FWHM distribution?
@@ -3100,7 +3149,7 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					axArray[col][row].set_ylim(0, 2.5)
+					axArray[col][row].set_ylim(1.0, 2.0)
 					axArray[col][row].set_xlim(0, len(ID))
 					dataCount += 1
 				#Increment the IFUCount number
@@ -3452,6 +3501,165 @@ class pipelineOps(object):
 
 		print '[INFO]: %s' % fwhm_values
 
+############################################################################################################
+############################################################################################################
+#SECTION FOR COMBINING OBJECTS BASED ON THE combine_input.txt FILE OUTPUT FROM frameCheck 
+############################################################################################################
+############################################################################################################
+
+	def reduce_list_seeing(self, combine_file, seeing_lower, seeing_upper):
+
+		"""
+		Def: 
+		Helper method for reducing the combine_input.txt list of files 
+		down to the chosen seeing limits. Takes the list and returns a 
+		shorter list containing only objects appearing within the defined 
+		seeing limits. 
+		Input: combine_file - one of the outputs from frameCheck
+				seeing_lower - lower limit for the seeing 
+				seeing_upper - upper limit for the seeing 
+		Output: new_Table - shortened version of the list containing 
+								the names and properties of objects to combine
+		"""
+
+		#Read in the combine_file, which contains 4 columns  
+		Table = np.loadtxt(combine_file, dtype='str')
+		#zip these together into a combined object, which can be looped
+		zipped_entries = zip(Table[:,0], Table[:,1], Table[:,2], Table[:,3], Table[:,4], Table[:,5])
+		#Loop over each of the entries and decide if it is in this seeing range 
+		#The seeing is the last entry of the table 
+		new_Table = []
+		for row in zipped_entries:
+			#print 'This is the actual seeing: %s %s' % (row[4], type(row[4]))
+			if float(row[5]) > seeing_lower and float(row[5]) < seeing_upper:
+				#print 'Made it'
+				new_Table.append(row)
+		#Return the newly generated and reduced table 
+		return new_Table
+
+	def reduce_list_name(self, combine_list, ifu_name):
+
+		"""
+		Def: 
+		Helper method for reducing the output from reduce_list_seeing 
+		down to the chosen object name. Takes the list and returns a 
+		shorter list containing only objects appearing within the name defined
+		within a loop. 
+		Input: combine_list - output from reduce_list_seeing
+				 ifu_name - IFU name of the object to be combined
+		Output: new_Table - shortened version of the list containing 
+								the names and properties of objects to combine
+		"""
+
+		new_Table = []
+		#loop round the entries in the combine_list 
+		for row in combine_list:
+			#The column containing the names is index number 2
+			if row[3] == ifu_name:
+				new_Table.append(row)
+
+		return new_Table		
+
+	def reduce_list_sky(self, combine_list, performance_limit):
+
+		"""
+		Def: 
+		Helper method for reducing the output from reduce_list_name 
+		down to only those which pass the sky subtraction test. Takes the list and returns a 
+		shorter list containing only objects with fourth index < performance_limit
+		Input: combine_list - output from reduce_list_seeing
+				 performance_limit - The sky subtraction statistic value
+		Output: new_Table - shortened version of the list containing 
+								the names and properties of objects to combine
+		"""
+
+		new_Table = []
+		#loop round the entries in the combine_list 
+		for row in combine_list:
+			print row[4]
+			#The column containing the names is index number 2
+			if float(row[4]) < performance_limit:
+				new_Table.append(row)
+
+		return new_Table
+
+	def combine_by_name(self, sci_dir, combine_file, seeing_lower, seeing_upper, performance_limit):
+
+		"""
+		Def: 
+		Main method for combining the frames into the science cubes. Right now will not do anything 
+		special with the produced output files, will just leave all of those in the science directory.
+		Selects all of the frames which pass the sky subtraction test and are within a particular seeing 
+		range for each of the objects. More powerful way of combining 
+		Input: sci_dir - science directory defined in the environment variables 
+				combine_file - output file from frameCheck 
+				seeing_lower - lower limit for the seeing 
+				seeing_upper - upper limit for the seeing 
+				performance_limit - sky performance pass limit 
+		output: sci_combined cubes for all of the objects imaged in the frames, provided at least a single frame 
+		passes the tests 
+		"""
+		#First step is to get a unique list of the object names from the combine_file table 
+		#So that these can be looped over to generate the .sof file in each case 
+		Table = np.loadtxt(combine_file, dtype='str')
+		#The names are the third column 
+		ifu_names = Table[:,3]
+		#Create a unique list by taking a set 
+		ifu_names = list(set(ifu_names))
+		#For each name execute the three helper reduce methods 
+		for name in ifu_names:
+			print '[INFO] Combining Object: %s ' % name
+			new_Table = self.reduce_list_seeing(combine_file, seeing_lower, seeing_upper)
+			name_Table = self.reduce_list_name(new_Table, name)
+			combine_Table = self.reduce_list_sky(name_Table, performance_limit)
+			#This combine_Table contains as first column the reconstructed names to combine for that object 
+			#Want to write these out to a combine.sof file - checking to see whether it exists already
+			combine_name = name + '_combine.sof' 
+			if os.path.isfile(combine_name):
+				os.system('rm %s' % combine_name)
+			#Conditional execution of the recipes depending on how much frames 
+			#Easiest if more than a single object 
+			if len(combine_Table) > 1:
+				with open(combine_name, 'a') as f:
+					for row in combine_Table:
+						f.write('%s\n' % row[0])
+				#Now execute the combine recipe for this name given the sof file has been created 
+				os.system('esorex --output-dir=%s kmo_combine --name=%s --method="header" --edge_nan=TRUE %s' % (sci_dir, name, combine_name))
+			#If there is only a single object in this seeing bin, isolate the core part of the name 
+			#and execute the kmo_sci_red recipe after appending the object name to the sci_reduc.sof file  
+			#Since this is being executed in the calibrations directory the sci_reduc.sof file is already there
+			elif len(combine_Table) == 1: 
+				raw_dir = os.environ['KMOS_RAW']
+				objName = combine_Table[0][len(combine_Table[0]) - combine_Table[0][::-1].find("/"):]
+				real_name = raw_dir + '/' + objName[len(objName) - objName[::-1].find('_'):]
+				#The sci_reduc.sof file is in the directory - write out to this 
+				#Create a copy of the sci_reduc.sof in a new temporary file
+				if os.path.isfile('sci_reduc_temp.sof'):
+					os.system('rm sci_reduc_temp.sof')
+				with open('sci_reduc.sof') as f:
+				    with open('sci_reduc_temp.sof', 'w') as f1:
+				        for line in f:
+				                f1.write(line)
+
+				#Append the current object and skyfile names to the newly created .sof file
+				with open('sci_reduc_temp.sof', 'a') as f:
+					f.write('\n%s\tSCIENCE' % real_name)
+					f.write('\n%s\tSCIENCE' % combine_Table[1])
+				#Now just execute the esorex recipe for this new file 
+				os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.2 --name=%s --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % (sci_dir, name))				
+			#Final case - if the list is empty, do nothing 
+			else:
+				print 'Nothing to combine for object %s' % name
+
+
+
+
+############################################################################################################
+############################################################################################################
+#ENF OF SECTION FOR COMBINING OBJECTS BASED ON THE combine_input.txt FILE OUTPUT FROM frameCheck 
+############################################################################################################
+############################################################################################################
+
 	def multiExtractSpec(self, sci_dir, frameNames, tracked_name, **kwargs):
 
 		"""
@@ -3675,7 +3883,7 @@ class pipelineOps(object):
 		#ax2.set_xlim(1.1,1.25)
 		f.subplots_adjust(hspace=0.001)
 		f.tight_layout()
-		plt.show()
+		#plt.show()
 		f.savefig(objSpec[:-5] + '.png')
 	
 
