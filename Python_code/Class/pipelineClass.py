@@ -17,9 +17,11 @@ from scipy import stats
 from scipy.optimize import minimize
 from scipy.optimize import basinhopping
 from astropy.io import fits
+import matplotlib.gridspec as gridspec
+from matplotlib.ticker import MaxNLocator
 
 #add the class file to the PYTHONPATH
-sys.path.append('/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_code/Class')
+sys.path.append('/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Class')
 from cubeClass import cubeOps
 
 
@@ -193,7 +195,7 @@ class pipelineOps(object):
 			   y += 64
 
 			#Now wanto to read in the lcal and the bad pixel map, 
-			#To get a list of the pixel indices which should be averaged
+			#To get a list of the pixel emission_indices which should be averaged
 			#First need to slice this in the same way as the other file 
 			#Then simply find the bad pixel and the lcal positions, hide 
 			#these as nan and compute the median in each 64 pixel column 
@@ -1175,14 +1177,14 @@ class pipelineOps(object):
 
  		#NOTE FOR FUTURE - THIS IS NOT A TOTALLY SECURE WAY OF COMPUTING THE CROSS CORR 
  		#I'VE HAD VERY SUCCESSFUL RUNS OF THE ALGORITHM HARD-CODING IN THESE LIMITS 
- 		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
+ 		#AND FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
  		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
  		
 
-		objData[objData < 250] = np.nan
-		objData[objData > 1500] = np.nan
-		skyData[skyData < 250] = np.nan
-		skyData[skyData > 1500] = np.nan		
+		objData[objData < 500] = np.nan
+		objData[objData > 2500] = np.nan
+		skyData[skyData < 500] = np.nan
+		skyData[skyData > 2500] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)			
 
@@ -1237,10 +1239,10 @@ class pipelineOps(object):
  		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
  		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
  		
-		objData[objData < 250] = np.nan
-		objData[objData > 1500] = np.nan
-		skyData[skyData < 250] = np.nan
-		skyData[skyData > 1500] = np.nan		
+		objData[objData < 500] = np.nan
+		objData[objData > 2500] = np.nan
+		skyData[skyData < 500] = np.nan
+		skyData[skyData > 2500] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)		
 
@@ -1306,10 +1308,10 @@ class pipelineOps(object):
  		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
  		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
 
-		objData[objData < 250] = np.nan
-		objData[objData > 1500] = np.nan
-		skyData[skyData < 250] = np.nan
-		skyData[skyData > 1500] = np.nan	
+		objData[objData < 500] = np.nan
+		objData[objData > 2500] = np.nan
+		skyData[skyData < 500] = np.nan
+		skyData[skyData > 2500] = np.nan	
 
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)		
@@ -1365,10 +1367,10 @@ class pipelineOps(object):
  		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
  		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
  		
-		objData[objData < 250] = np.nan
-		objData[objData > 1500] = np.nan
-		skyData[skyData < 250] = np.nan
-		skyData[skyData > 1500] = np.nan		
+		objData[objData < 500] = np.nan
+		objData[objData > 2500] = np.nan
+		skyData[skyData < 500] = np.nan
+		skyData[skyData > 2500] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)	
 
@@ -2709,101 +2711,149 @@ class pipelineOps(object):
 		cubeNames = {}
 		#Loop round each of the cubes in combNames, create a cube 
 		#and store the median 
-
+		print '[INFO:] Computing Sky Performance Statistic'
 		for fileName in namesOfFiles:
 			#print fileName
 			tempCube = cubeOps(sci_dir + '/' + fileName)
 			IFUNR = tempCube.IFUNR
 			#print IFUNR
-			sky_name = sci_dir + '/combine_cube_science_arm' + str(IFUNR) + '_sky.fits'
+			sky_name = sci_dir + '/combine_sci_reconstructed_arm' + str(IFUNR) + '_sky.fits'
 			#Create instance from the skycube 
 			sky_cube = cubeOps(sky_name)
 			#Extract the sky flux
-			flux = sky_cube.centralSpec()
+			sky_flux = sky_cube.centralSpec()
+			wavelength = sky_cube.wave_array
+			#print 'This is the sky wavelength range: %s %s' % (min(wavelength), max(wavelength))
+			#There is a sky_flux value at every wavelength value 
+			#Want to restrict the data to just the inner regions of the filter 
+			#This has to be done conditinoally depending on what waveband we're in
+			if np.nanmedian(wavelength) > 1.40 and np.nanmedian(wavelength) < 1.80:
+				#we're in the H-band
+				filter_indices = np.where(np.logical_and(wavelength > 1.45, wavelength < 1.75))[0]
+				sky_flux = sky_flux[filter_indices]
+				wavelength = wavelength[filter_indices]
+			elif np.nanmedian(wavelength) > 2.0 and np.nanmedian(wavelength) < 2.3:
+				#we're in the K-band
+				filter_indices = np.where(np.logical_and(wavelength > 2.0, wavelength < 2.3))[0]
+				sky_flux = sky_flux[filter_indices]	
+				wavelength = wavelength[filter_indices]
+			elif np.nanmedian(wavelength) > 1.00 and np.nanmedian(wavelength) < 1.35:
+			#we're in the =J-band
+				filter_indices = np.where(np.logical_and(wavelength > 1.05, wavelength < 1.35))[0]
+				sky_flux = sky_flux[filter_indices]
+				wavelength = wavelength[filter_indices]
+			#Could be a different wavelength, will just leave the flux and wavelength unchanged right now 
+
 			#Temporarily plot sky flux 
 			#self.quickSpecPlot(flux, sky_cube.wave_array)
 			#Check for where the flux exceeds a certain number of counts 
-			indices = np.where(flux > 500)[0]
-			#print 'initially the indices have value: %s' % indices 
-			#Grow the indices to include values either side of each > 500 index 
+			emission_indices = np.where(sky_flux > 1000)[0]
+			#print 'initially the emission_indices have value: %s' % emission_indices 
+			#Grow the emission_indices to include values either side of each > 500 index 
 			add_array = []
-			for i in range(len(indices)):
-				value = indices[i]
+			for i in range(len(emission_indices)):
+				value = emission_indices[i]
+				#print 'This is the index: %s' % value
 				plus_value = value + 1
 				sub_value = value - 1
-				if plus_value > len(sky_cube.wave_array):
-					plus_value = len(sky_cube.wave_array)
+				if plus_value >= len(sky_flux):
+					plus_value = len(sky_flux) - 1 
 				if sub_value < 0:
 					sub_value = 0
-				#insert these into the indices array 
+				#print 'These are the values to be appended: %s %s' % (plus_value, sub_value)
+				#insert these into the emission_indices array 
 				add_array.append(plus_value)
 				add_array.append(sub_value)
-			indices = list(indices)	
+			emission_indices = list(emission_indices)	
 			for item in add_array:
-				indices.append(item)
-			#print 'THE NEW INDEX VALUE ARE: %s' % indices
-			#Now take the set of unique values from indices
-			new_indices = np.sort(list(set(indices)))
-			#print 'The unique indices are: %s' % new_indices 		
+				emission_indices.append(item)
+			#print 'THE NEW INDEX VALUE ARE: %s' % emission_indices
+			#Now take the set of unique values from emission_indices
+			new_emission_indices = np.sort(list(set(emission_indices)))
+			#print 'The unique emission_indices are: %s' % new_emission_indices 		
 			#Find the sky values at these pixels
-			values = flux[new_indices]
+			sky_emission_lines = sky_flux[new_emission_indices]
 			#Take the absolute value of the fluxes to account for P-Cygni profiles 
-			values = abs(values)
-			#Extract the object 1D spectrum 
-			spectrum = tempCube.optimalSpec()
+			sky_emission_lines = abs(sky_emission_lines)
+			#Extract the object 1D spectrum, this is from the whole cube now. Should help 
+			#eliminate spectrum curvature as much as possible 
+			object_spectrum = tempCube.total_spec[filter_indices]
+			object_wavelength = tempCube.wave_array[filter_indices]
+			#print 'This is the minimum and maximum of the object spectrum: %s %s' % (min(object_wavelength), max(object_wavelength))
 			#Find the object flux at the same pixels
-			tempValues = spectrum[new_indices]
+			tempValues = object_spectrum[new_emission_indices]
 			#Take the absolute value to account for P-Cygni profiles 
 			tempValues = abs(tempValues)
+
+
 			#we want to normalise this by the mean object flux 
 			#at the wavelength values NOT contaminated by skylines
-			#print 'The 1D spectrum values at the uniqe indices are: %s' % tempValues 
-			#Find the list of unique indices without the sky_line indices
-			total_indices = np.arange(0, len(tempCube.wave_array), 1)
-			contm_indices = list(set(total_indices) - set(new_indices))
+			#print 'The 1D object_spectrum values at the uniqe emission_indices are: %s' % tempValues 
+			#Find the list of unique emission_indices without the sky_line emission_indices
+			total_emission_indices = np.arange(0, len(object_wavelength), 1)
+			contm_emission_indices = list(set(total_emission_indices) - set(new_emission_indices))
+			#print 'These are the continuum indices: %s' % contm_emission_indices
 			#Take the mean value of these as the mean object flux 
-			object_continuum = abs(np.median(spectrum[contm_indices]))
+			tempObjContinuum = object_spectrum[contm_emission_indices]
+			tempObjWavelength = object_wavelength[contm_emission_indices]
+			object_continuum = abs(np.median(tempObjContinuum))
+			#Now some of the entries in the object_spectrum could be nan, in which case the 
+			#model fitting won't work. Need to record the indices at which they appear and 
+			#remove the entries from both the object spectrum and wavelength array at which they appear
+			nan_list = []
+			for i in range(len(tempObjContinuum)):
+				if np.isnan(tempObjContinuum[i]):
+					nan_list.append(i)
+			#If there is something in the nan_list delete from wavelength array and object spectrum
+			if nan_list:
+				tempObjContinuum = [i for j, i in enumerate(tempObjContinuum) if j not in nan_list]
+				tempObjWavelength = [i for j, i in enumerate(tempObjWavelength) if j not in nan_list]
+
+
 			#Fit a polynomial to the continuum and subtract 
 			#Create the polynomial model from lmFit (from lmfit import PolynomialModel)
 			mod = PolynomialModel(4)
+			#print 'This is the object spectrum at the cont. indices: %s %s' % (tempObjContinuum, np.nanmedian(tempObjContinuum))
 			#Have an initial guess at the model parameters 
-			pars = mod.guess(spectrum[contm_indices], x=tempCube.wave_array[contm_indices])
+			pars = mod.guess(tempObjContinuum, x=tempObjWavelength)
 			#Use the parameters for the full model fit 
-			out  = mod.fit(spectrum[contm_indices], pars, x=tempCube.wave_array[contm_indices])
+			out  = mod.fit(tempObjContinuum, pars, x=tempObjWavelength)
 			#The output of the model is the fitted continuum
 			continuum = out.best_fit
-			full_continuum = out.eval(x=tempCube.wave_array)
+			#print 'This is the object continuum: %s %s %s' % (continuum, len(continuum), np.nanmedian(continuum)) 
+			#extrapolate the model to the full wavelength range
+			full_continuum = out.eval(x=object_wavelength)
 			#print 'The length of the continuum is: %s' % len(continuum)
 			#print 'The model evaluated outside of the range has length: %s' % len(full_continuum)
 			fig, ax = plt.subplots(1, 1, figsize=(18, 10))
-			ax.plot(tempCube.wave_array[contm_indices], continuum)
-			ax.plot(tempCube.wave_array[contm_indices], spectrum[contm_indices])
+			ax.plot(tempObjWavelength, continuum)
+			ax.plot(tempObjWavelength, tempObjContinuum)
 			#plt.show()
-			#Now subtract the object continuum from the full spectrum and repeat analysis
-			new_spectrum = spectrum - full_continuum
-			divided_spectrum = spectrum / full_continuum
-			#print 'New Statistic for this object: %s' % np.median(new_spectrum[new_indices])
+			#Now subtract the object continuum from the full object_spectrum and repeat analysis
+			new_object_spectrum = object_spectrum - full_continuum
+			divided_object_spectrum = object_spectrum / full_continuum
+			#print 'New Statistic for this object: %s' % np.median(new_object_spectrum[new_emission_indices])
 			fig, ax = plt.subplots(1, 1, figsize=(18, 10))
-			ax.plot(tempCube.wave_array, abs(new_spectrum))
+			ax.plot(tempCube.wave_array[filter_indices], abs(new_object_spectrum))
 			#plt.show()
 			#print 'The object continuum value is: %s' % object_continuum
 			#normalise the tempValues by this 
 			#norm_values = tempValues / object_continuum		
 			#print 'The normalised flux values are: %s ' % norm_values
 			#Find the median of these norm_values as the sky subtraction performance indicator 
-			pos_spec = abs(divided_spectrum)
-			pos_spec = np.nanmedian(np.array(pos_spec[np.where(pos_spec > 1.0)]))
-			#print 'This is the positive spectrum: %s' % pos_spec
+			pos_spec = abs(new_object_spectrum)
+			pos_spec = np.nanmean(np.array(pos_spec[np.where(pos_spec > 2)]))
+			#print 'This is the positive object_spectrum: %s' % pos_spec
 			#print 'This is the IFUNR: %s %s' % (tempCube.IFUNR, tempCube.IFUNR.shape)
 			medVals[int(tempCube.IFUNR)] = pos_spec
 			cubeNames[int(tempCube.IFUNR)] = tempCube.IFUName
 			#print 'The sky performance statistic for this object is: %s' % medVals[tempCube.IFUNR]
 
 
-		print 'The resultant dictionary is: %s' % (medVals)
-		print 'The names of the files are: %s' % cubeNames
-		medVector = np.median(medVals.values())
-		print 'The sky performance statistic for this frame is: %s' % medVector
+		#print 'The resultant dictionary is: %s' % (medVals)
+		#print 'The names of the files are: %s' % cubeNames
+		medVector = np.nanmean(medVals.values())
+		#print 'The sky performance statistic for this frame is: %s' % medVector
 		#print 'This is the median values Dictionary: %s' % medVals
 		#print medVector
 		return np.array(medVals.values()), list(cubeNames.values()), np.array(medVals.keys())
@@ -3041,7 +3091,7 @@ class pipelineOps(object):
 				#Could look at percentiles of FWHM distribution?
 				#Only put the objects in the bins if the sky subtraction 
 				#performance statistic is less than 1.5 
-				if (np.nanmedian(medVals) > 0 and np.nanmedian(medVals) < 1.5):
+				#if (np.nanmedian(medVals) > 0 and np.nanmedian(medVals) < 1.5):
 
 					if (arc_fwhm > 0.0 and arc_fwhm < 0.6):
 						print '[INFO]: Placing object in best bin' #wagwanplaya
@@ -3149,7 +3199,7 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					axArray[col][row].set_ylim(1.0, 2.0)
+					#axArray[col][row].set_ylim(1.0, 2.0)
 					axArray[col][row].set_xlim(0, len(ID))
 					dataCount += 1
 				#Increment the IFUCount number
@@ -3190,7 +3240,7 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					axArray[col][row].set_ylim(0, 2.5)
+					#axArray[col][row].set_ylim(0, 2.5)
 					axArray[col][row].set_xlim(0, len(ID))
 					dataCount += 1
 				#Increment the IFUCount number
@@ -3484,7 +3534,7 @@ class pipelineOps(object):
 					prihdu = fits.PrimaryHDU(header=cube.primHeader)
 					thdulist = fits.HDUList([prihdu, tbhdu])
 					thdulist.writeto(spec_name, clobber=True)
-					plot_sky_name = sci_dir + '/combine_cube_science_arm' + str(cube.IFUNR) + '_sky.fits'
+					plot_sky_name = sci_dir + '/combine_sci_reconstructed_arm' + str(cube.IFUNR) + '_sky.fits'
 					print 'The skycube name for the plotting routine is: %s' % plot_sky_name
 					self.plotSpecs(spec_name, plot_sky_name, 1)
 #					try:
@@ -3608,7 +3658,7 @@ class pipelineOps(object):
 		ifu_names = list(set(ifu_names))
 		#For each name execute the three helper reduce methods 
 		for name in ifu_names:
-			print '[INFO] Combining Object: %s ' % name
+			print '[INFO]: Combining Object: %s ' % name
 			new_Table = self.reduce_list_seeing(combine_file, seeing_lower, seeing_upper)
 			name_Table = self.reduce_list_name(new_Table, name)
 			combine_Table = self.reduce_list_sky(name_Table, performance_limit)
@@ -3629,14 +3679,15 @@ class pipelineOps(object):
 			#and execute the kmo_sci_red recipe after appending the object name to the sci_reduc.sof file  
 			#Since this is being executed in the calibrations directory the sci_reduc.sof file is already there
 			elif len(combine_Table) == 1: 
-				raw_dir = os.environ['KMOS_RAW']
-				objName = combine_Table[0][len(combine_Table[0]) - combine_Table[0][::-1].find("/"):]
-				real_name = raw_dir + '/' + objName[len(objName) - objName[::-1].find('_'):]
+				#raw_dir = os.environ['KMOS_RAW']
+				print 'This is the combined object name and type: %s %s' % (combine_Table[0][0], type(combine_Table[0][0]))
+				objName = combine_Table[0][0][combine_Table[0][0].find('sci_reconstructed_') + 18:]
+				real_name = combine_Table[0][1][: len(combine_Table[0][1]) - combine_Table[0][1][::-1].find('/')] + objName
 				#The sci_reduc.sof file is in the directory - write out to this 
 				#Create a copy of the sci_reduc.sof in a new temporary file
 				if os.path.isfile('sci_reduc_temp.sof'):
 					os.system('rm sci_reduc_temp.sof')
-				with open('sci_reduc.sof') as f:
+				with open(sci_dir + '/sci_reduc.sof') as f:
 				    with open('sci_reduc_temp.sof', 'w') as f1:
 				        for line in f:
 				                f1.write(line)
@@ -3644,9 +3695,10 @@ class pipelineOps(object):
 				#Append the current object and skyfile names to the newly created .sof file
 				with open('sci_reduc_temp.sof', 'a') as f:
 					f.write('\n%s\tSCIENCE' % real_name)
-					f.write('\n%s\tSCIENCE' % combine_Table[1])
+					f.write('\n%s\tSCIENCE' % combine_Table[0][1])
 				#Now just execute the esorex recipe for this new file 
-				os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.2 --name=%s --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % (sci_dir, name))				
+				os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.2 --name=%s --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % (sci_dir, name))	
+				os.system('rm sci_reduc_temp.sof')			
 			#Final case - if the list is empty, do nothing 
 			else:
 				print 'Nothing to combine for object %s' % name
@@ -3772,7 +3824,7 @@ class pipelineOps(object):
 		print '[INFO]: These are the Bad names: %s ' % fwhmDict['Bad']
 
 		#Extract the spectra in each of the fwhm bins and save
-		self.extractSpec(sci_dir, fwhmDict, combNames, rec_combNames, tracked_name)
+		#self.extractSpec(sci_dir, fwhmDict, combNames, rec_combNames, tracked_name)
 
 	def saveSpec(self, cubeName):
 		"""
@@ -3800,8 +3852,7 @@ class pipelineOps(object):
 
 
 	def plotSpecs(self, objSpec, skyCube, n):
-		import matplotlib.gridspec as gridspec
-		from matplotlib.ticker import MaxNLocator
+
 
 		"""
 		Def: 
@@ -3876,14 +3927,14 @@ class pipelineOps(object):
 		ax2.plot(new_sky_wave, new_sky_spec, color='g')
 		ax2.set_xlabel(r'Wavelength ($\AA$)', fontsize=24)
 		ax2.tick_params(axis='both', which='major', labelsize=15)
-		#ax2.set_ylim(0, max(new_sky_spec))
+		#ax2.set_ylim(0, 80)
 		nbins = len(ax1.get_xticklabels())
 		ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
 		ax2.set_xlim(min(new_obj_wave) + 0.1, max(new_obj_wave) - 0.1)
 		#ax2.set_xlim(1.1,1.25)
 		f.subplots_adjust(hspace=0.001)
 		f.tight_layout()
-		#plt.show()
+		plt.show()
 		f.savefig(objSpec[:-5] + '.png')
 	
 
