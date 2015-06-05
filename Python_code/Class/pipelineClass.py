@@ -3038,7 +3038,7 @@ class pipelineOps(object):
 					f.write('\n%s\tSCIENCE' % objFile)
 					f.write('\n%s\tSCIENCE' % skyFile)
 				#Now just execute the esorex recipe for this new file 
-				os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.2 --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % sci_dir)
+				os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.1 --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % sci_dir)
 
 				#We have all the science products now execute the above method for each 
 				#of the pairs. Should think of a better way to create the combNames file
@@ -3166,7 +3166,7 @@ class pipelineOps(object):
 		ax.set_xlim(1,24)
 		ax.set_xticks((np.arange(min(IFUID), max(IFUID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
-		plt.legend(prop={'size':10})
+		#plt.legend(prop={'size':10})
 		fig.savefig('IFU_by_Frame.png')
 		#plt.show()
 		plt.close('all')

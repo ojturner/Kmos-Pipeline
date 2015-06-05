@@ -77,13 +77,13 @@ skySpec = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/cubesky_spectr
 hobjframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
 hskyframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-combine_input = '/disk1/turner/DATA/Gals1/K/obs_09/Calibrations/combine_input.txt'
-sci_dir = '/disk1/turner/DATA/Gals1/K/obs_09/Science'
+combine_input = '/disk1/turner/DATA/Gals1/K/obs_10/Calibrations/combine_input.txt'
+sci_dir = '/disk1/turner/DATA/Gals1/K/obs_10/Science'
 combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals_names.txt'
 obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
 #pipe_methods.frameCheck(sci_dir, obj_names, 'n55_19')
-pipe_methods.combine_by_name(sci_dir, combine_input, 0, 5.0, 30.0)
+pipe_methods.combine_by_name(sci_dir, combine_input, 0, 0.8, 10.0)
 #pipe_methods.compareSky(sci_dir, combNames)
 #new_Table = pipe_methods.reduce_list_seeing(combine_input, 0.5, 1.0)
 #print 'length new_Table is: %s'  % len(new_Table)
