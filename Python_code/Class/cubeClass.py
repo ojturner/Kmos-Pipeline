@@ -45,7 +45,7 @@ class cubeOps(object):
 		#Collapse over the wavelength axis to get an image
 		self.imData = np.nanmedian(self.data, axis=0)
 		try:
-			self.total_spec = np.nanmedian(np.nanmedian(self.data, axis=1), axis=1)
+			self.total_spec = np.nanmedian(np.nanmedian(self.data[:,4:len(self.data[0]),4:len(self.data[1])], axis=1), axis=1)
 		except:
 			print 'Cannot extract the total spectrum'
 		#Create a plot of the image 
@@ -144,6 +144,8 @@ class cubeOps(object):
 		self.raArray = self.raDict.values()
 		self.decArray = self.decDict.values()
 		self.IFUArms = self.raDict.keys()
+		self.xDit = self.primHeader['HIERARCH ESO OCS TARG DITHA']
+		self.yDit = self.primHeader['HIERARCH ESO OCS TARG DITHD']
 
 		#Find the pixel scale if this is a combined cube 
 		try:
@@ -457,17 +459,17 @@ class cubeOps(object):
 		print '[INFO]: And the width is: %s' % width
 
 		#Set the upper and lower limits for optimal spectrum extraction
-		x_upper = int(np.round((x + (1.5*width))))
+		x_upper = int(np.round((x + (2.0*width))))
 		if x_upper > len(self.data[0]):
 			x_upper = len(self.data[0])
-		x_lower = int(np.round((x - (1.5*width))))
+		x_lower = int(np.round((x - (2.0*width))))
 		if x_lower < 0:
 			x_lower = 0	
 
-		y_upper = int(np.round((y + (1.5*width))))
+		y_upper = int(np.round((y + (2.0*width))))
 		if y_upper > len(self.data[0]):
 			y_upper = len(self.data[0])
-		y_lower = int(np.round((y - (1.5*width))))
+		y_lower = int(np.round((y - (2.0*width))))
 		if y_lower < 0:
 			y_lower = 0
 
@@ -486,7 +488,7 @@ class cubeOps(object):
 		colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
 		colCax = colAx.imshow(imModCube, interpolation='bicubic')
 		colFig.colorbar(colCax)
-		#plt.show()
+		plt.show()
 		plt.close('all')
 		#Sum over each spatial dimension to get the spectrum 
 		first_sum = np.nansum(modCube, axis=1)
@@ -620,19 +622,19 @@ class cubeOps(object):
 #			sigma = 3.0
 #		else:
 #			sigma = 0.5*(params[3] + params[4])
-		sigma = 0.5*(mod_fit.best_values['width_x'] + mod_fit.best_values['width_y'])
+		#Set the params variable as the best fit attribute 
+		params = mod_fit.best_values
+		sigma = 0.5*(params['width_x'] + params['width_y'])
 		FWHM = 2.3548 * sigma
 		try: 
 			print '[INFO]: The FWHM of object %s is: %s' % (self.IFUName, FWHM)
 		except AttributeError:
 			print '[INFO]: The FWHM is: %s' % FWHM
 
-		#Create an array of the best fitting parameters 
-		params = [mod_fit.best_values['height'], mod_fit.best_values['center_x'], mod_fit.best_values['center_y'], \
-		mod_fit.best_values['width_x'], mod_fit.best_values['width_y'], mod_fit.best_values['pedastal']]
+
 		#Create an instance of the gaussian for integrating 
-		fit = self.gaussianLam(mod_fit.best_values['pedastal'], mod_fit.best_values['height'],\
-		 mod_fit.best_values['center_x'], mod_fit.best_values['center_y'], mod_fit.best_values['width_x'], mod_fit.best_values['width_y'])
+		fit = self.gaussianLam(params['pedastal'], params['height'],\
+		 params['center_x'], params['center_y'], params['width_x'], params['width_y'])
 		#Evaluate the gaussian with the best fit parameters  
 		mod_eval = mod_fit.eval(x1=x1, x2=x2)
 		#Step 3 - reshape back to 2D array 
