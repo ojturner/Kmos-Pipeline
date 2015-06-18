@@ -2644,7 +2644,11 @@ class pipelineOps(object):
 		#First read in the fits file and find which waveband is being used 
 		objTable = fits.open(infile)
    		objHeader = objTable[0].header
+   		objHeader_one = objTable[1].header
+   		objHeader_two = objTable[2].header
+   		objHeader_three = objTable[3].header 
   		objFilter = objHeader['HIERARCH ESO INS FILT1 ID']
+  		new_obj_data = []
   		#Loop over the extension number 
   		for i in range(1, 4):
   			#assign both the object data and object data copies
@@ -2676,7 +2680,60 @@ class pipelineOps(object):
   				#Subtract this from the objCopy
   				objCopy = objCopy - black_flux_2d
   			#Now continue with additional masking as before
-  			#Point is to identify the extra bad pixels on the object copy and then mask on the actual object and save	 
+  			#Point is to identify the extra bad pixels on the object copy and then mask on the actual object and save
+  			#Initialise i_array and j_array for storing the bad pixel coordinates 
+  			i_array = []
+  			j_array = []
+  			#Can't loop over all pixels as this takes too long 
+  			#Also only looking for the very worst pixels to mask
+  			print np.percentile(objCopy, 99.5)
+  			index = np.where(objCopy > (np.percentile(objCopy, 99.5)))
+  			coords = np.array(index)
+  			print len(coords[0])
+#  			#returns a tuple - turn into a numpy array
+#  			for i in range(2048):
+#  				print i
+#  				for j in range(2048):
+#  					print i, j
+#  					if objCopy[i][j] > np.percentile(objCopy, 99) and not (np.nanmedian(objCopy[i] > np.percentile(objCopy, 90))):
+#  						i_array.append(i)
+#  						j_array.append(j)
+
+  			#Now mask these pixels on the actual data 
+  			for i, j in zip(coords[0], coords[1]):
+  				print i, j
+  				#Check that the indices will be in range 
+  				if i >= 4 and i <=2043 and j >= 4 and j <= 2043:
+  					#Take the average of the surrounding pixels - if unusually high don't mask
+  					#Taking a more horizontally extended chunk to check for the presence of sky lines 
+  					pixAv = np.nanmean([objCopy[i - 1][j], objCopy[i - 2][j], objCopy[i - 3][j], objCopy[i - 4][j], \
+  										objCopy[i + 1][j], objCopy[i + 2][j], objCopy[i + 3][j], objCopy[i + 4][j], \
+  										objCopy[i - 2][j + 1], objCopy[i - 2][j - 1], objCopy[i - 1][j + 1], objCopy[i - 1][j - 1], \
+  										objCopy[i + 2][j + 1], objCopy[i + 2][j - 1], objCopy[i + 1][j + 1], objCopy[i + 1][j - 1]])
+  					if pixAv < np.percentile(objCopy, 90):
+  						print 'YES - Masking'
+  						objData[i][j] = np.nan
+	
+  			new_obj_data.append(objData)
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
+		print objHeader
+		print objHeader_one
+		print objHeader_two
+		print objHeader_three
+		sys.stdout.close()
+		sys.stdout = temp
+
+		#Write out to a different fits file, with name user specified
+		nameOfFile = 'test.fits'  
+		hdu = fits.PrimaryHDU(header=objHeader)
+		hdu.writeto(nameOfFile, clobber=True)
+		fits.append(nameOfFile, data=new_obj_data[0], header=objHeader_one)	
+		fits.append(nameOfFile, data=new_obj_data[1], header=objHeader_two)	
+		fits.append(nameOfFile, data=new_obj_data[2], header=objHeader_three)
+
+		os.system('rm log.txt')
+
 
 
   	def blackbody(self, T, scaling, L):
