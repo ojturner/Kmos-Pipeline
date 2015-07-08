@@ -2553,9 +2553,10 @@ class pipelineOps(object):
 		all of these together into a single shifted fits file 
 
 		"""
-
+		#First do the extra masking of the whole infile, this saves as masked_infile.fits 
+		self.maskExtraPixels(infile, badpmap)
 		#Prepare the headers for writing out the fits file
-		objTable = fits.open(infile)
+		objTable = fits.open('masked_infile.fits')
 		objPrimHeader = objTable[0].header
 		objExtHeader1 = objTable[1].header
 		objExtHeader2 = objTable[2].header
@@ -2577,7 +2578,7 @@ class pipelineOps(object):
 		#Use the shifted image segment function 
 		for i in range(1, 4):
 			print '[INFO]: Shifting Extension: %s' % i
-			reconstructedData, shiftArray = self.shiftImageSegmentsMin(i, infile, skyfile, badpmap,\
+			reconstructedData, shiftArray = self.shiftImageSegmentsMin(i, 'masked_infile.fits', skyfile, badpmap,\
   	 vertSegments, horSegments, interp_type)
 			reconstructedDataArray.append(reconstructedData)
 			ShiftArrayList.append(shiftArray)
@@ -2592,11 +2593,17 @@ class pipelineOps(object):
 		fits.append(shiftedName, data=reconstructedDataArray[1], header=objExtHeader2)
 		fits.append(shiftedName, data=reconstructedDataArray[2], header=objExtHeader3)
 
+		os.system('rm masked_infile.fits')
+
 		return ShiftArrayList
 
 
 	def applyShiftAllExtensionsMin(self, fileList, badpmap,\
   	 vertSegments, horSegments, interp_type):
+
+		#Check for existence of masked_infile 
+		if os.path.isfile('masked_infile.fits'):
+			os.system('rm masked_infile.fits')
 		#Read in the data from the fileList
 		data = np.genfromtxt(fileList, dtype='str')
 		#Save the names and types as lists 
@@ -2616,6 +2623,7 @@ class pipelineOps(object):
 
 				print '[INFO]: Shifting file: %s : %s' % (i, objFile)	
 				#Now use the method defined within this class 
+				#Do additional masking before starting the shift 
 				shiftList.append(self.shiftAllExtensionsMin(objFile, skyFile, badpmap,\
   	 					vertSegments, horSegments, interp_type))
 				#Which will loop through all and save the corrected object file 
@@ -2629,7 +2637,7 @@ class pipelineOps(object):
 		np.savetxt(saveName, h, fmt='%10.5f')
 
 	#Write a function for masking the additional bad pixels before feeding to Pyraf 
-	def maskExtraPixels(self, infile):
+	def maskExtraPixels(self, infile, badpixel_dark):
 		"""
 		Def:
 		Take an input raw data file and mask extra bad pixels above a certain flux level. 
@@ -2643,17 +2651,23 @@ class pipelineOps(object):
 		"""
 		#First read in the fits file and find which waveband is being used 
 		objTable = fits.open(infile)
+		darkTable = fits.open(badpixel_dark)
    		objHeader = objTable[0].header
    		objHeader_one = objTable[1].header
    		objHeader_two = objTable[2].header
    		objHeader_three = objTable[3].header 
   		objFilter = objHeader['HIERARCH ESO INS FILT1 ID']
   		new_obj_data = []
+  		new_obj_copy = []
   		#Loop over the extension number 
   		for i in range(1, 4):
   			#assign both the object data and object data copies
   			objData = objTable[i].data
-  			objCopy = copy(objData)
+  			darkData = darkTable[i].data
+  			#Mask the bad pixels we already know about before starting
+			darkData[darkData == 0] = np.nan
+			objCopy = copy(objData)
+			objCopy = objCopy * darkData  			
   			#First subtract thermal spectrum 
   			if objFilter == 'K' or objFilter == 'HK':
   				print 'FOUND K or HK'
@@ -2671,6 +2685,7 @@ class pipelineOps(object):
   					#append the evaluated blackbody to the black_flux array 
   					black_flux.append(self.blackbody(250, 17.8, wave_array[i] * 1E-6))
   				black_flux = np.array(black_flux)
+  				black_flux = black_flux[::-1]
   				#Create 2D detector array of the blackbody spectrum 
   				for i in range(2048):
   					black_flux_2d.append(black_flux)
@@ -2686,8 +2701,8 @@ class pipelineOps(object):
   			j_array = []
   			#Can't loop over all pixels as this takes too long 
   			#Also only looking for the very worst pixels to mask
-  			print np.percentile(objCopy, 99.5)
-  			index = np.where(objCopy > (np.percentile(objCopy, 99.5)))
+  			print 'This is the percentile: %s %s %s' % (np.nanpercentile(objCopy, 99.9), np.nanpercentile(objCopy, 99.99), np.nanpercentile(objCopy, 99.999))
+  			index = np.where(objCopy > (np.nanpercentile(objCopy, 99.9)))
   			coords = np.array(index)
   			print len(coords[0])
 #  			#returns a tuple - turn into a numpy array
@@ -2706,15 +2721,47 @@ class pipelineOps(object):
   				if i >= 4 and i <=2043 and j >= 4 and j <= 2043:
   					#Take the average of the surrounding pixels - if unusually high don't mask
   					#Taking a more horizontally extended chunk to check for the presence of sky lines 
-  					pixAv = np.nanmean([objCopy[i - 1][j], objCopy[i - 2][j], objCopy[i - 3][j], objCopy[i - 4][j], \
-  										objCopy[i + 1][j], objCopy[i + 2][j], objCopy[i + 3][j], objCopy[i + 4][j], \
+  					pixAv = np.nanmean( [objCopy[i - 2][j], objCopy[i - 3][j], objCopy[i - 4][j], \
+  										objCopy[i + 2][j], objCopy[i + 3][j], objCopy[i + 4][j], \
   										objCopy[i - 2][j + 1], objCopy[i - 2][j - 1], objCopy[i - 1][j + 1], objCopy[i - 1][j - 1], \
   										objCopy[i + 2][j + 1], objCopy[i + 2][j - 1], objCopy[i + 1][j + 1], objCopy[i + 1][j - 1]])
-  					if pixAv < np.percentile(objCopy, 90):
-  						print 'YES - Masking'
-  						objData[i][j] = np.nan
+  					print 'PixAv and percentile: %s %s' % (pixAv, np.nanpercentile(objCopy, 95)) 
+  					if pixAv < np.nanpercentile(objCopy, 95):
+  						print 'YES - Adding to mask'
+  						#Append these coordinates to an array and do all the masking at the end
+  						i_array.append(i)
+  						j_array.append(j)
+
+  			#Do the actual masking
+  			for i, j in zip(i_array, j_array):
+  				print 'Masking %s %s' % (i, j)
+				#Mask off a cross around the offending pixel
+				objData[i][j] = np.nan
+				objData[i + 1][j] = np.nan
+				objData[i - 1][j] = np.nan
+				objData[i][j - 1] = np.nan
+				objData[i][j + 1] = np.nan
+
+				#For test also mask off the copy
+				objCopy[i][j] = np.nan
+				objCopy[i + 1][j] = np.nan
+				objCopy[i - 1][j] = np.nan
+				objCopy[i][j - 1] = np.nan
+				objCopy[i][j + 1] = np.nan  						
 	
+			#Also mask all of the most extreme pixels
+			worst_index = np.where(objCopy > 15000)
+			coords = np.array(worst_index)
+			for i, j in zip(coords[0], coords[1]):
+				#Mask off the cross again for the worst pixels
+				objData[i][j] = np.nan
+				objData[i + 1][j] = np.nan
+				objData[i - 1][j] = np.nan
+				objData[i][j - 1] = np.nan
+				objData[i][j + 1] = np.nan
+
   			new_obj_data.append(objData)
+  			new_obj_copy.append(objCopy)
 		temp = sys.stdout
 		sys.stdout = open('log.txt', 'w')
 		print objHeader
@@ -2725,14 +2772,21 @@ class pipelineOps(object):
 		sys.stdout = temp
 
 		#Write out to a different fits file, with name user specified
-		nameOfFile = 'test.fits'  
+		nameOfFile = 'masked_infile.fits'  
 		hdu = fits.PrimaryHDU(header=objHeader)
 		hdu.writeto(nameOfFile, clobber=True)
 		fits.append(nameOfFile, data=new_obj_data[0], header=objHeader_one)	
 		fits.append(nameOfFile, data=new_obj_data[1], header=objHeader_two)	
 		fits.append(nameOfFile, data=new_obj_data[2], header=objHeader_three)
 
-		os.system('rm log.txt')
+#		#Write out to a different fits file, with name user specified
+#		nameOfFile = 'test_Copy.fits'  
+#		hdu = fits.PrimaryHDU(header=objHeader)
+#		hdu.writeto(nameOfFile, clobber=True)
+#		fits.append(nameOfFile, data=new_obj_copy[0], header=objHeader_one)	
+#		fits.append(nameOfFile, data=new_obj_copy[1], header=objHeader_two)	
+#		fits.append(nameOfFile, data=new_obj_copy[2], header=objHeader_three)
+#		os.system('rm log.txt')
 
 
 
@@ -3883,7 +3937,7 @@ class pipelineOps(object):
 					for row in combine_Table:
 						f.write('%s\n' % row[0])
 				#Now execute the combine recipe for this name given the sof file has been created 
-				os.system('esorex --output-dir=%s kmo_combine --name=%s --method="user" --filename=%s --edge_nan=TRUE %s' % (sci_dir, name, shiftFile, combine_name))
+				os.system('esorex --output-dir=%s kmo_combine --name=%s --cpos_rej=2.0 --cneg_rej=2.0 --method="user" --filename=%s --edge_nan=TRUE %s' % (sci_dir, name, shiftFile, combine_name))
 			#If there is only a single object in this seeing bin, isolate the core part of the name 
 			#and execute the kmo_sci_red recipe after appending the object name to the sci_reduc.sof file  
 			#Since this is being executed in the calibrations directory the sci_reduc.sof file is already there
@@ -4186,7 +4240,7 @@ class pipelineOps(object):
 		f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(18.0, 10.0))
 		ax1.plot(new_obj_wave, new_obj_spec, color='b')
 		ax1.set_title('Object and Sky Comparison', fontsize=24)
-		ax1.set_ylim(0, 10)
+		ax1.set_ylim(0, 4)
 		ax1.tick_params(axis='y', which='major', labelsize=15)
 		ax2.plot(new_sky_wave, new_sky_spec, color='g')
 		ax2.set_xlabel(r'Wavelength ($\AA$)', fontsize=24)
@@ -4194,7 +4248,7 @@ class pipelineOps(object):
 		#ax2.set_ylim(0, 80)
 		nbins = len(ax1.get_xticklabels())
 		ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-		ax2.set_xlim(min(new_obj_wave), max(new_obj_wave))
+		ax2.set_xlim(2.1, 2.35)
 		#ax2.set_xlim(1.1,1.25)
 		f.subplots_adjust(hspace=0.001)
 		f.tight_layout()
