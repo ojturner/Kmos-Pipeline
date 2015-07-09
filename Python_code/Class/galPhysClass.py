@@ -54,7 +54,7 @@ class galPhys(object):
 		#####################################
 		#HARDWIRED EMISSION LINES IN MICRONS#
 		#####################################
-		#Define the wavelength values of the relevant emission lines
+		#Define the wavelength values of the relevant emission lines (micrometers)
 		self.OII3727 = 0.3727092
 		self.OII3729 = 0.3729875
 		self.H_beta = 0.4861363
@@ -162,3 +162,112 @@ class galPhys(object):
 		ax1.set_ylabel(r'Flux', fontsize=24)
 		f.tight_layout()
 		plt.show()
+
+	def fitSingleGauss(self, wavelength, flux, center):
+		"""
+		Def:
+		Supply wavelength and flux arrays as well as a guess 
+		at the central wavelength value of the gaussian to perform 
+		a fit and recover the best fit parameters 
+		Input: wavelength - wavelength array 
+				flux - corresponding flux array 
+				center - central wavelength of emission line in microns
+		Output: Best fitting parameters in dictionary 
+		"""
+		#Construct the gaussian model from lmfit 
+		mod = GaussianModel()
+		#Guess and set the initial parameter values 
+		pars = mod.guess(flux, x=wavelength)
+		pars['center'].set(center)
+		pars['center'].set(vary=False)
+		#pars['sigma'].set(0.0008)
+		#pars['amplitude'].set(0.0005)
+
+		#Perform the model fit
+		out = mod.fit(flux, pars, x=wavelength)
+		print out.fit_report()
+		#plot an initial evaluation of the model on top of the spectrum 
+		f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+		ax1.plot(wavelength, flux, color='b')
+		ax1.plot(wavelength, out.best_fit, 'r-')
+		ax1.set_title('Object Spectrum', fontsize=30)
+		#ax1.set_ylim(0, 4)
+		ax1.tick_params(axis='y', which='major', labelsize=15)
+		ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+		ax1.set_ylabel(r'Flux', fontsize=24)
+		f.tight_layout()
+		plt.show()
+		return out.best_values
+
+	def sToNK(self):
+		"""
+		Computes the S/N for the three optical emission lines 
+		which have been redshifted into the K-band by virtue of 
+		a gaussian fit to each of the emission lines in turn. Each 
+		line is selected by sectioning off the relevant wavelength 
+		range, found by supplying redshift as an argument 
+		
+		Ouptut: S/N values for each of the OIII and HB emission lines 
+		"""
+		#First need to construct the vector arrays for each of the three emission lines 
+		#have visually examined the width of the emission lines and decided that 
+		#0.007 is a decent width to choose for making the wavelength cuts
+
+		#Compute noise area. Do this by taking the median of the absolute values of a stretch of 
+		#continuum, find the max - min wavelengths of this stretch and then multiply 
+		#those two values to get the area 
+
+		noise_indices = np.where(np.logical_and(
+		self.wavelength > self.OIII5007_shifted + 0.007, 
+		self.wavelength < self.OIII5007_shifted + 0.057))[0]
+		#find the flux at these indices 
+		noise_flux = self.flux[noise_indices]
+		#wavelength difference in the range 
+		noise_wavelength = self.wavelength[noise_indices]
+		noise_wavelength_diff = max(noise_wavelength) - min(noise_wavelength)
+		#median noise flux 
+		med_noise_flux = np.nanmedian(abs(noise_flux))
+		#estimated noise area is the product
+		noise_area = med_noise_flux * noise_wavelength_diff
+
+		#OIII_5007
+		OIII5007_indices = np.where(np.logical_and(
+		self.wavelength > self.OIII5007_shifted - 0.007, 
+		self.wavelength < self.OIII5007_shifted + 0.007))[0]
+		#Use these indices to define the flux and wavelength arrays 
+		OIII5007_wavelength = self.wavelength[OIII5007_indices]
+		OIII5007_flux = self.flux[OIII5007_indices]
+
+		#OIII_4957
+		OIII4959_indices = np.where(np.logical_and(
+		self.wavelength > self.OIII4959_shifted - 0.007, 
+		self.wavelength < self.OIII4959_shifted + 0.007))
+		OIII4959_wavelength = self.wavelength[OIII4959_indices]
+		OIII4959_flux = self.flux[OIII4959_indices]
+
+		#H_Beta
+		H_beta_indices = np.where(np.logical_and(
+		self.wavelength > self.H_beta_shifted - 0.007, 
+		self.wavelength < self.H_beta_shifted + 0.007))
+		H_beta_wavelength = self.wavelength[H_beta_indices]
+		H_beta_flux = self.flux[H_beta_indices]
+
+		#Now have 6 arrays corresponding to the flux and wavelength
+		#Zip these together for the purposes of a loop
+		wavelength_list = [OIII5007_wavelength, OIII4959_wavelength, H_beta_wavelength]
+		flux_list = [OIII5007_flux, OIII4959_flux, H_beta_flux]
+
+		#zip these together 
+		zipped_list = zip(wavelength_list, flux_list)
+
+		#Construct central wavelength list 
+		central_wave_list = [self.OIII5007_shifted, self.OIII4959_shifted, self.H_beta_shifted]
+
+		#Construct best values list 
+		best_values_list = []
+		#Loop round and fit / plot gaussian each time 
+		for i in range(3):
+			#Use the gaussian fitting method defined above 
+			best_values_list.append(self.fitSingleGauss(zipped_list[i][0], zipped_list[i][1], central_wave_list[i]))
+
+		print noise_area

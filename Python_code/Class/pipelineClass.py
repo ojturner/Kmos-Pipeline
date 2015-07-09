@@ -24,7 +24,7 @@ from matplotlib.ticker import MaxNLocator
 #add the class file to the PYTHONPATH
 sys.path.append('/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Class')
 from cubeClass import cubeOps
-
+from galPhysClass import galPhys
 
 #Import pyraf - python iraf 
 import pyraf
@@ -4321,3 +4321,51 @@ class pipelineOps(object):
 		#Create a plot of both the sky and the object next to one another
 		self.plotSpecs(sci_dir, gal_name[:-5] + '_spectrum.fits', sky_cube, n)
 
+
+	def fitSingleGauss(self, wavelength, flux, center):
+		"""
+		Def:
+		Supply wavelength and flux arrays as well as a guess 
+		at the central wavelength value of the gaussian to perform 
+		a fit and recover the best fit parameters 
+		Input: wavelength - wavelength array 
+				flux - corresponding flux array 
+				center - central wavelength of emission line in microns
+		Output: Best fitting parameters in dictionary 
+		"""
+		#Construct the gaussian model from lmfit 
+		mod = GaussianModel()
+		#Guess and set the initial parameter values 
+		pars = mod.guess()
+		pars['center'].set(center)
+		pars['center'].set(vary=False)
+		#pars['sigma'].set(0.0008)
+		#pars['amplitude'].set(0.0005)
+
+		#Perform the model fit
+		out = mod.fit(flux, pars, x=wavelength)
+		print out.fit_report()
+		#plot an initial evaluation of the model on top of the spectrum 
+		f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+		ax1.plot(wavelength, flux, color='b')
+		ax1.plot(wavelength, out.best_fit, 'r-')
+		ax1.set_title('Object Spectrum', fontsize=30)
+		#ax1.set_ylim(0, 4)
+		ax1.tick_params(axis='y', which='major', labelsize=15)
+		ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+		ax1.set_ylabel(r'Flux', fontsize=24)
+		f.tight_layout()
+		plt.show()
+		return out.best_values
+
+	def pSTNK(self, object_spectrum, z):
+		"""
+		Def: 
+		Uses the methods in galPhys class to fit a gaussian 
+		to each of the K-band emission lines and print out 
+		the signal to noise of each line 
+		"""
+		#Create an instance of the galPhysClass with the object spectrum
+		galaxy = galPhys(object_spectrum, z)
+		#Compute the signal to noise
+		galaxy.sToNK()
