@@ -77,19 +77,23 @@ skySpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/
 hobjframe = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
 hskyframe = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-combine_input = '/Users/owenturner/DATA/688/H/Calibrations/combine_input.txt'
-sci_dir = '/Users/owenturner/DATA/688/H/Science'
+combine_input = '/Users/owenturner/DATA/NGC55/14_2014/Calibrations/combine_input.txt'
+sci_dir = '/Users/owenturner/DATA/NGC55/14_2014/combine/2.6-'
+combNames = '/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/ok_conames.txt'
+obj_names = '/Users/owenturner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
-#pipe_methods.combine_by_name(sci_dir, combine_input, 0.4, 1.0, 1.2)
+#pipe_methods.frameCheck(sci_dir, obj_names, 'n55_19')
+#pipe_methods.combine_by_name(sci_dir, combine_input, 2.6, 4.5, 10.0)
+#pipe_methods.compareSky(sci_dir, combNames)
 #new_Table = pipe_methods.reduce_list_seeing(combine_input, 0.5, 1.0)
 #print 'length new_Table is: %s'  % len(new_Table)
 #name_Table = pipe_methods.reduce_list_name(new_Table, 'P107')
 #print 'length name_Table is: %s'  % len(name_Table)
 #combine_Table = pipe_methods.reduce_list_sky(name_Table, 1.2)
 #print 'length combine_Table is: %s'  % len(combine_Table)
-stuff, stuff1, stuff2 = pipe_methods.compareSky(sci_dir='/Users/owenturner/DATA/688/H/Science', combNames='co_names.txt')
+#stuff, stuff1, stuff2 = pipe_methods.compareSky(sci_dir='/Users/owenturner/DATA/688/H/Science', combNames='co_names.txt')
 #pipe_methods.saveSpec('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/May_20th_tests/corr_with/sci_combined_s152__skytweak.fits')
-#pipe_methods.plotSpecs('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/May_20th_tests/corr_with/sci_combined_s152__skytweak_spectrum.fits', '/Users/owenturner/DATA/688/H/Science/combine_cube_science_arm18_sky.fits', 1)
+pipe_methods.plotSpecs('/Users/owenturner/DATA/NGC55/2013/Science/Best/Best_sci_combined_n55_58__skytweak_spectrum.fits', '/Users/owenturner/DATA/NGC55/2013/Science/combine_cube_science_arm18_sky.fits', 3)
 
 #pipe_methods.multiExtractSpec(skyCube=hskyCube, frameNames=h_names)
 #Now try the subtraction method 

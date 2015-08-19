@@ -43,6 +43,10 @@ class cubeOps(object):
 		self.data = self.Table[1].data
 		#Collapse over the wavelength axis to get an image
 		self.imData = np.median(self.data, axis=0)
+		try:
+			self.total_spec = np.nanmedian(np.nanmedian(self.data, axis=1), axis=1)
+		except:
+			print 'Cannot extract the total spectrum'
 		#Create a plot of the image 
 		#Variable housing the noise data cube
 		#self.noise = self.Table[2].data
