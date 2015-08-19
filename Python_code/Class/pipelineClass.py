@@ -11,6 +11,7 @@ from matplotlib.colors import LogNorm
 import numpy.polynomial.polynomial as poly
 import lmfit
 import random
+from lmfit import Model
 from itertools import cycle as cycle
 from lmfit.models import GaussianModel, ExponentialModel, LorentzianModel, VoigtModel, PolynomialModel
 from scipy import stats
@@ -21,9 +22,9 @@ import matplotlib.gridspec as gridspec
 from matplotlib.ticker import MaxNLocator
 
 #add the class file to the PYTHONPATH
-sys.path.append('/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_code/Class')
+sys.path.append('/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Class')
 from cubeClass import cubeOps
-
+from galPhysClass import galPhys
 
 #Import pyraf - python iraf 
 import pyraf
@@ -991,10 +992,10 @@ class pipelineOps(object):
 					badpData[xcoord][ycoord - 1] = 0
 					badpData[xcoord + 1][ycoord] = 0								
 					badpData[xcoord - 1][ycoord] = 0
-					badpData[xcoord + 1][ycoord + 1] = 0
-					badpData[xcoord - 1][ycoord + 1] = 0
-					badpData[xcoord + 1][ycoord - 1] = 0
-					badpData[xcoord - 1][ycoord - 1] = 0
+					#badpData[xcoord + 1][ycoord + 1] = 0
+					#badpData[xcoord - 1][ycoord + 1] = 0
+					#badpData[xcoord + 1][ycoord - 1] = 0
+					#badpData[xcoord - 1][ycoord - 1] = 0
 
 
 			extArray.append(badpData)
@@ -1177,14 +1178,14 @@ class pipelineOps(object):
 
  		#NOTE FOR FUTURE - THIS IS NOT A TOTALLY SECURE WAY OF COMPUTING THE CROSS CORR 
  		#I'VE HAD VERY SUCCESSFUL RUNS OF THE ALGORITHM HARD-CODING IN THESE LIMITS 
- 		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
+ 		#AND FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
  		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
  		
 
-		objData[objData < 250] = np.nan
-		objData[objData > 1500] = np.nan
-		skyData[skyData < 250] = np.nan
-		skyData[skyData > 1500] = np.nan		
+		objData[objData < 500] = np.nan
+		objData[objData > 2500] = np.nan
+		skyData[skyData < 500] = np.nan
+		skyData[skyData > 2500] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)			
 
@@ -1239,10 +1240,10 @@ class pipelineOps(object):
  		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
  		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
  		
-		objData[objData < 250] = np.nan
-		objData[objData > 1500] = np.nan
-		skyData[skyData < 250] = np.nan
-		skyData[skyData > 1500] = np.nan		
+		objData[objData < 500] = np.nan
+		objData[objData > 2500] = np.nan
+		skyData[skyData < 500] = np.nan
+		skyData[skyData > 2500] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)		
 
@@ -1308,10 +1309,10 @@ class pipelineOps(object):
  		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
  		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
 
-		objData[objData < 250] = np.nan
-		objData[objData > 1500] = np.nan
-		skyData[skyData < 250] = np.nan
-		skyData[skyData > 1500] = np.nan	
+		objData[objData < 500] = np.nan
+		objData[objData > 2500] = np.nan
+		skyData[skyData < 500] = np.nan
+		skyData[skyData > 2500] = np.nan	
 
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)		
@@ -1367,10 +1368,10 @@ class pipelineOps(object):
  		#BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
  		#BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
  		
-		objData[objData < 250] = np.nan
-		objData[objData > 1500] = np.nan
-		skyData[skyData < 250] = np.nan
-		skyData[skyData > 1500] = np.nan		
+		objData[objData < 500] = np.nan
+		objData[objData > 2500] = np.nan
+		skyData[skyData < 500] = np.nan
+		skyData[skyData > 2500] = np.nan		
 		newobjDataMedian = np.nanmedian(objData)				
 		newskyDataMedian = np.nanmedian(skyData)	
 
@@ -2552,9 +2553,10 @@ class pipelineOps(object):
 		all of these together into a single shifted fits file 
 
 		"""
-
+		#First do the extra masking of the whole infile, this saves as masked_infile.fits 
+		self.maskExtraPixels(infile, badpmap)
 		#Prepare the headers for writing out the fits file
-		objTable = fits.open(infile)
+		objTable = fits.open('masked_infile.fits')
 		objPrimHeader = objTable[0].header
 		objExtHeader1 = objTable[1].header
 		objExtHeader2 = objTable[2].header
@@ -2576,7 +2578,7 @@ class pipelineOps(object):
 		#Use the shifted image segment function 
 		for i in range(1, 4):
 			print '[INFO]: Shifting Extension: %s' % i
-			reconstructedData, shiftArray = self.shiftImageSegmentsMin(i, infile, skyfile, badpmap,\
+			reconstructedData, shiftArray = self.shiftImageSegmentsMin(i, 'masked_infile.fits', skyfile, badpmap,\
   	 vertSegments, horSegments, interp_type)
 			reconstructedDataArray.append(reconstructedData)
 			ShiftArrayList.append(shiftArray)
@@ -2591,11 +2593,17 @@ class pipelineOps(object):
 		fits.append(shiftedName, data=reconstructedDataArray[1], header=objExtHeader2)
 		fits.append(shiftedName, data=reconstructedDataArray[2], header=objExtHeader3)
 
+		os.system('rm masked_infile.fits')
+
 		return ShiftArrayList
 
 
 	def applyShiftAllExtensionsMin(self, fileList, badpmap,\
   	 vertSegments, horSegments, interp_type):
+
+		#Check for existence of masked_infile 
+		if os.path.isfile('masked_infile.fits'):
+			os.system('rm masked_infile.fits')
 		#Read in the data from the fileList
 		data = np.genfromtxt(fileList, dtype='str')
 		#Save the names and types as lists 
@@ -2615,6 +2623,7 @@ class pipelineOps(object):
 
 				print '[INFO]: Shifting file: %s : %s' % (i, objFile)	
 				#Now use the method defined within this class 
+				#Do additional masking before starting the shift 
 				shiftList.append(self.shiftAllExtensionsMin(objFile, skyFile, badpmap,\
   	 					vertSegments, horSegments, interp_type))
 				#Which will loop through all and save the corrected object file 
@@ -2626,6 +2635,204 @@ class pipelineOps(object):
 			g.append(np.hstack(entry))
 		h = np.vstack(g)	
 		np.savetxt(saveName, h, fmt='%10.5f')
+
+	#Write a function for masking the additional bad pixels before feeding to Pyraf 
+	def maskExtraPixels(self, infile, badpixel_dark):
+		"""
+		Def:
+		Take an input raw data file and mask extra bad pixels above a certain flux level. 
+		Although these aren't included in the cross correlation computation, they mess up the 
+		pyraf interpolation, appearing as funny blobs. Depending on which waveband is fed in, 
+		need to be careful about thermal signals on the detector. 
+		Input: file - fits file to identify the extra bad pixels in 
+		Output: overwrite the file with a version of the fits file with the bad pixels masked. It is 
+		important that this is local to the shiftImage method and that we are not overwriting any of the  
+		raw fits files.  
+		"""
+		#First read in the fits file and find which waveband is being used 
+		objTable = fits.open(infile)
+		darkTable = fits.open(badpixel_dark)
+   		objHeader = objTable[0].header
+   		objHeader_one = objTable[1].header
+   		objHeader_two = objTable[2].header
+   		objHeader_three = objTable[3].header 
+  		objFilter = objHeader['HIERARCH ESO INS FILT1 ID']
+  		new_obj_data = []
+  		new_obj_copy = []
+  		#Loop over the extension number 
+  		for i in range(1, 4):
+  			#assign both the object data and object data copies
+  			objData = objTable[i].data
+  			darkData = darkTable[i].data
+  			#Mask the bad pixels we already know about before starting
+			darkData[darkData == 0] = np.nan
+			objCopy = copy(objData)
+			objCopy = objCopy * darkData  			
+  			#First subtract thermal spectrum 
+  			if objFilter == 'K' or objFilter == 'HK':
+  				print 'FOUND K or HK'
+  				#Need to subtract the thermal spectrum from these wavebands 
+  				#Use the blackbody function defined beneath 
+  				black_flux = [] 
+  				black_flux_2d = []
+  				#HARDWIRED K-BAND STARTING WAVELENGTH
+  				start_L = 1.92499995231628
+  				delta_L = 0.000280761742033064
+  				#define wavelength array 
+  				wave_array = start_L + np.arange(0, 2048*(delta_L), delta_L)
+  				#for each of the values in the wavelength array evaluate the blackbody
+  				for i in range(len(wave_array)):
+  					#append the evaluated blackbody to the black_flux array 
+  					black_flux.append(self.blackbody(250, 17.8, wave_array[i] * 1E-6))
+  				black_flux = np.array(black_flux)
+  				black_flux = black_flux[::-1]
+  				#Create 2D detector array of the blackbody spectrum 
+  				for i in range(2048):
+  					black_flux_2d.append(black_flux)
+  				black_flux_2d = np.array(black_flux_2d)
+  				black_flux_2d = np.transpose(black_flux_2d)
+  				#Now have 2D thermal spectrum rising in the K-band with the same dimensions as detector 
+  				#Subtract this from the objCopy
+  				objCopy = objCopy - black_flux_2d
+  			#Now continue with additional masking as before
+  			#Point is to identify the extra bad pixels on the object copy and then mask on the actual object and save
+  			#Initialise i_array and j_array for storing the bad pixel coordinates 
+  			i_array = []
+  			j_array = []
+  			#Can't loop over all pixels as this takes too long 
+  			#Also only looking for the very worst pixels to mask
+  			print 'This is the percentile: %s %s %s' % (np.nanpercentile(objCopy, 99.9), np.nanpercentile(objCopy, 99.99), np.nanpercentile(objCopy, 99.999))
+  			index = np.where(objCopy > (np.nanpercentile(objCopy, 99.9)))
+  			coords = np.array(index)
+  			print len(coords[0])
+#  			#returns a tuple - turn into a numpy array
+#  			for i in range(2048):
+#  				print i
+#  				for j in range(2048):
+#  					print i, j
+#  					if objCopy[i][j] > np.percentile(objCopy, 99) and not (np.nanmedian(objCopy[i] > np.percentile(objCopy, 90))):
+#  						i_array.append(i)
+#  						j_array.append(j)
+
+  			#Now mask these pixels on the actual data 
+  			for i, j in zip(coords[0], coords[1]):
+  				print i, j
+  				#Check that the indices will be in range 
+  				if i >= 4 and i <=2043 and j >= 4 and j <= 2043:
+  					#Take the average of the surrounding pixels - if unusually high don't mask
+  					#Taking a more horizontally extended chunk to check for the presence of sky lines 
+  					pixAv = np.nanmean( [objCopy[i - 2][j], objCopy[i - 3][j], objCopy[i - 4][j], \
+  										objCopy[i + 2][j], objCopy[i + 3][j], objCopy[i + 4][j], \
+  										objCopy[i - 2][j + 1], objCopy[i - 2][j - 1], objCopy[i - 1][j + 1], objCopy[i - 1][j - 1], \
+  										objCopy[i + 2][j + 1], objCopy[i + 2][j - 1], objCopy[i + 1][j + 1], objCopy[i + 1][j - 1]])
+  					print 'PixAv and percentile: %s %s' % (pixAv, np.nanpercentile(objCopy, 95)) 
+  					if pixAv < np.nanpercentile(objCopy, 95):
+  						print 'YES - Adding to mask'
+  						#Append these coordinates to an array and do all the masking at the end
+  						i_array.append(i)
+  						j_array.append(j)
+
+  			#Do the actual masking
+  			for i, j in zip(i_array, j_array):
+  				print 'Masking %s %s' % (i, j)
+				#Mask off a cross around the offending pixel
+				objData[i][j] = np.nan
+				objData[i + 1][j] = np.nan
+				objData[i - 1][j] = np.nan
+				objData[i][j - 1] = np.nan
+				objData[i][j + 1] = np.nan
+
+				#For test also mask off the copy
+				objCopy[i][j] = np.nan
+				objCopy[i + 1][j] = np.nan
+				objCopy[i - 1][j] = np.nan
+				objCopy[i][j - 1] = np.nan
+				objCopy[i][j + 1] = np.nan  						
+	
+			#Also mask all of the most extreme pixels
+			worst_index = np.where(objCopy > 15000)
+			coords = np.array(worst_index)
+			for i, j in zip(coords[0], coords[1]):
+				#Mask off the cross again for the worst pixels
+				objData[i][j] = np.nan
+				objData[i + 1][j] = np.nan
+				objData[i - 1][j] = np.nan
+				objData[i][j - 1] = np.nan
+				objData[i][j + 1] = np.nan
+
+  			new_obj_data.append(objData)
+  			new_obj_copy.append(objCopy)
+		temp = sys.stdout
+		sys.stdout = open('log.txt', 'w')
+		print objHeader
+		print objHeader_one
+		print objHeader_two
+		print objHeader_three
+		sys.stdout.close()
+		sys.stdout = temp
+
+		#Write out to a different fits file, with name user specified
+		nameOfFile = 'masked_infile.fits'  
+		hdu = fits.PrimaryHDU(header=objHeader)
+		hdu.writeto(nameOfFile, clobber=True)
+		fits.append(nameOfFile, data=new_obj_data[0], header=objHeader_one)	
+		fits.append(nameOfFile, data=new_obj_data[1], header=objHeader_two)	
+		fits.append(nameOfFile, data=new_obj_data[2], header=objHeader_three)
+
+#		#Write out to a different fits file, with name user specified
+#		nameOfFile = 'test_Copy.fits'  
+#		hdu = fits.PrimaryHDU(header=objHeader)
+#		hdu.writeto(nameOfFile, clobber=True)
+#		fits.append(nameOfFile, data=new_obj_copy[0], header=objHeader_one)	
+#		fits.append(nameOfFile, data=new_obj_copy[1], header=objHeader_two)	
+#		fits.append(nameOfFile, data=new_obj_copy[2], header=objHeader_three)
+#		os.system('rm log.txt')
+
+
+
+  	def blackbody(self, T, scaling, L):
+  		"""
+  		Def:
+  		Return the blackbody function
+  		"""
+  		#Define constants before writing the function 
+  		h = 6.62606957E-34
+  		c = 299792458
+  		k = 1.3806488E-23
+  		#Initially try a temperature of 10K
+  		#T = 10
+
+  		preFactor = (2 * h * c**2) / L**5
+  		#print 'This is the pre-factor: %s' % preFactor
+  		expPower = (h * c) / (L * k * T)
+  		#print 'This is the exponent: %s' % expPower
+  		denom = np.exp(expPower) - 1
+  		#print 'This is the denominator: %s' % denom
+  		B_L = scaling * (preFactor / denom) 
+  		return B_L
+
+	def blackbodyMod(self):
+		mod = Model(self.blackbody, independent_vars=['L'], param_names=['T', 'scaling'], missing='drop')
+		#print mod.independent_vars
+		#print mod.param_names
+		
+		return mod
+
+	def blackbodyModFit(self, wavelength, flux):
+		"""
+		Def:
+		Fit for the blackbody temperature given input wavelength array and flux data
+		"""
+		mod = self.blackbodyMod()
+		#Set the parameter hints from the initialPars method 
+		mod.set_param_hint('T', value=120, vary=False)
+		mod.set_param_hint('scaling', value=1E9)
+		#Initialise a parameters object to use in the fit
+		fit_pars = mod.make_params()
+		#Guess isn't implemented for this model 
+		mod_fit = mod.fit(flux, L=wavelength, params=fit_pars)
+		print mod_fit.fit_report
+		return mod_fit
 
 
 ##########################################################################################################################
@@ -2711,19 +2918,19 @@ class pipelineOps(object):
 		cubeNames = {}
 		#Loop round each of the cubes in combNames, create a cube 
 		#and store the median 
-
+		print '[INFO:] Computing Sky Performance Statistic'
 		for fileName in namesOfFiles:
 			#print fileName
 			tempCube = cubeOps(sci_dir + '/' + fileName)
 			IFUNR = tempCube.IFUNR
 			#print IFUNR
-			sky_name = sci_dir + '/combine_cube_science_arm' + str(IFUNR) + '_sky.fits'
+			sky_name = sci_dir + '/combine_sci_reconstructed_arm' + str(IFUNR) + '_sky.fits'
 			#Create instance from the skycube 
 			sky_cube = cubeOps(sky_name)
 			#Extract the sky flux
 			sky_flux = sky_cube.centralSpec()
 			wavelength = sky_cube.wave_array
-			print 'This is the sky wavelength range: %s %s' % (min(wavelength), max(wavelength))
+			#print 'This is the sky wavelength range: %s %s' % (min(wavelength), max(wavelength))
 			#There is a sky_flux value at every wavelength value 
 			#Want to restrict the data to just the inner regions of the filter 
 			#This has to be done conditinoally depending on what waveband we're in
@@ -2732,9 +2939,9 @@ class pipelineOps(object):
 				filter_indices = np.where(np.logical_and(wavelength > 1.45, wavelength < 1.75))[0]
 				sky_flux = sky_flux[filter_indices]
 				wavelength = wavelength[filter_indices]
-			elif np.nanmedian(wavelength) > 2.0 and np.nanmedian(wavelength) < 2.4:
+			elif np.nanmedian(wavelength) > 2.0 and np.nanmedian(wavelength) < 2.3:
 				#we're in the K-band
-				filter_indices = np.where(np.logical_and(wavelength > 2.0, wavelength < 2.4))[0]
+				filter_indices = np.where(np.logical_and(wavelength > 2.0, wavelength < 2.3))[0]
 				sky_flux = sky_flux[filter_indices]	
 				wavelength = wavelength[filter_indices]
 			elif np.nanmedian(wavelength) > 1.00 and np.nanmedian(wavelength) < 1.35:
@@ -2747,7 +2954,7 @@ class pipelineOps(object):
 			#Temporarily plot sky flux 
 			#self.quickSpecPlot(flux, sky_cube.wave_array)
 			#Check for where the flux exceeds a certain number of counts 
-			emission_indices = np.where(sky_flux > 200)[0]
+			emission_indices = np.where(sky_flux > 1000)[0]
 			#print 'initially the emission_indices have value: %s' % emission_indices 
 			#Grow the emission_indices to include values either side of each > 500 index 
 			add_array = []
@@ -2813,14 +3020,14 @@ class pipelineOps(object):
 			#Fit a polynomial to the continuum and subtract 
 			#Create the polynomial model from lmFit (from lmfit import PolynomialModel)
 			mod = PolynomialModel(4)
-			print 'This is the object spectrum at the cont. indices: %s %s' % (tempObjContinuum, np.nanmedian(tempObjContinuum))
+			#print 'This is the object spectrum at the cont. indices: %s %s' % (tempObjContinuum, np.nanmedian(tempObjContinuum))
 			#Have an initial guess at the model parameters 
 			pars = mod.guess(tempObjContinuum, x=tempObjWavelength)
 			#Use the parameters for the full model fit 
 			out  = mod.fit(tempObjContinuum, pars, x=tempObjWavelength)
 			#The output of the model is the fitted continuum
 			continuum = out.best_fit
-			print 'This is the object continuum: %s %s %s' % (continuum, len(continuum), np.nanmedian(continuum)) 
+			#print 'This is the object continuum: %s %s %s' % (continuum, len(continuum), np.nanmedian(continuum)) 
 			#extrapolate the model to the full wavelength range
 			full_continuum = out.eval(x=object_wavelength)
 			#print 'The length of the continuum is: %s' % len(continuum)
@@ -2850,10 +3057,10 @@ class pipelineOps(object):
 			#print 'The sky performance statistic for this object is: %s' % medVals[tempCube.IFUNR]
 
 
-		print 'The resultant dictionary is: %s' % (medVals)
-		print 'The names of the files are: %s' % cubeNames
+		#print 'The resultant dictionary is: %s' % (medVals)
+		#print 'The names of the files are: %s' % cubeNames
 		medVector = np.nanmean(medVals.values())
-		print 'The sky performance statistic for this frame is: %s' % medVector
+		#print 'The sky performance statistic for this frame is: %s' % medVector
 		#print 'This is the median values Dictionary: %s' % medVals
 		#print medVector
 		return np.array(medVals.values()), list(cubeNames.values()), np.array(medVals.keys())
@@ -2874,16 +3081,18 @@ class pipelineOps(object):
 
 		fwhmArray = []
 		psfArray = []
+		paramsArray = []
 		try:
 
 			#Loop round and create an instance of the class each time
 			for fileName in namesOfFiles:
 				print 'Gaussian fitting science frame: %s' % fileName
 				tempCube = cubeOps(fileName)
+				shift_list = [tempCube.xDit, tempCube.yDit]
 				params, psfProfile, fwhm, offList = tempCube.psfMask()
 				fwhmArray.append(fwhm)
 				psfArray.append(psfProfile)
-			return fwhmArray, psfArray, offList
+			return fwhmArray, psfArray, offList, params, shift_list
 
 		except TypeError:
 			#Only one file in the list of files 
@@ -2891,8 +3100,9 @@ class pipelineOps(object):
 			cubeName = str(namesOfFiles)
 			print 'Gaussian fitting sky frame: %s' % namesOfFiles
 			tempCube = cubeOps(cubeName)
+			shift_list = [tempCube.xDit, tempCube.yDit]
 			params, psfProfile, fwhm, offList = tempCube.psfMask()
-			return fwhm, psfProfile, offList
+			return fwhm, psfProfile, offList, params, shift_list
 
 
 		#Return the arrays	
@@ -3038,7 +3248,7 @@ class pipelineOps(object):
 					f.write('\n%s\tSCIENCE' % objFile)
 					f.write('\n%s\tSCIENCE' % skyFile)
 				#Now just execute the esorex recipe for this new file 
-				os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.2 --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % sci_dir)
+				os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.1 --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % sci_dir)
 
 				#We have all the science products now execute the above method for each 
 				#of the pairs. Should think of a better way to create the combNames file
@@ -3055,7 +3265,7 @@ class pipelineOps(object):
 
 				#Move onto FWHM analysis of chosen tracked star 	
 				print 'Checking PSF of tracked star'
-				fwhm, psfProfile, offList = self.gaussFit('tracked.txt')
+				fwhm, psfProfile, offList, params, shift_list = self.gaussFit('tracked.txt')
 				fwhmValVec.append(fwhm)
 				#remove the temporary .sof file and go back to the start of the loop
 				os.system('rm sci_reduc_temp.sof') 	
@@ -3085,7 +3295,8 @@ class pipelineOps(object):
 
 				with open('combine_input.txt', 'a') as f:
 					for i in range(len(cube_name_list)):
-						f.write('%s\t%s\t%s\t%s\t%s\t%s\n' % (rec_objFile, skyFile, IFU_number_array[i], cube_name_list[i], medVals[i], arc_fwhm))
+						f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (rec_objFile, skyFile, IFU_number_array[i], cube_name_list[i], \
+							medVals[i], arc_fwhm, params['center_x'], params['center_y'], shift_list[0] / pixel_scale, shift_list[1] / pixel_scale))
 
 				#Conditional binning - HARDWIRED VALUES 
 				#Could look at percentiles of FWHM distribution?
@@ -3166,7 +3377,7 @@ class pipelineOps(object):
 		ax.set_xlim(1,24)
 		ax.set_xticks((np.arange(min(IFUID), max(IFUID)+1, 1.0)))
 		ax.grid(b=True, which='both', linestyle='--')
-		plt.legend(prop={'size':10})
+		#plt.legend(prop={'size':10})
 		fig.savefig('IFU_by_Frame.png')
 		#plt.show()
 		plt.close('all')
@@ -3240,7 +3451,7 @@ class pipelineOps(object):
 					axArray[col][row].set_xlabel('Frame ID')
 					axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
 					axArray[col][row].grid(b=True, which='both', linestyle='--')
-					axArray[col][row].set_ylim(0, 2.5)
+					#axArray[col][row].set_ylim(0, 2.5)
 					axArray[col][row].set_xlim(0, len(ID))
 					dataCount += 1
 				#Increment the IFUCount number
@@ -3488,7 +3699,7 @@ class pipelineOps(object):
 
 				print 'Fitting Gaussian to each of the stacked %s objects' % group
 				#Record the centre of the tracked star 
-				tracked_centre = [params[2], params[1]]
+				tracked_centre = [params['center_y'], params['center_x']]
 				tracked_profile = copy(psfProfile)
 				tracked_fwhm = copy(FWHM)
 				#From here onwards should definitely be fine with the new sci_dir convention
@@ -3501,7 +3712,7 @@ class pipelineOps(object):
 					#Find the central value of the object flux by 
 					#fitting a gaussian to the image
 					params, objProfile, FWHM, offList = cube.psfMask()
-					obj_centre = [params[2], params[1]]
+					obj_centre = [params['center_y'], params['center_x']]
 
 					print '[INFO]: The standard star centre is: %s' % tracked_centre
 					print '[INFO]: The Object centre is: %s' % obj_centre
@@ -3525,7 +3736,7 @@ class pipelineOps(object):
 					colFig.colorbar(colCax)
 					#plt.show()
 					#Extract each optimal spectrum 
-					optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params[2], params[1])
+					optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params['center_y'], params['center_x'])
 					#Save the optimal spectrum for each object 
 					#Need to create a new fits table for this 
 					tbhdu = fits.new_table(fits.ColDefs(\
@@ -3534,9 +3745,9 @@ class pipelineOps(object):
 					prihdu = fits.PrimaryHDU(header=cube.primHeader)
 					thdulist = fits.HDUList([prihdu, tbhdu])
 					thdulist.writeto(spec_name, clobber=True)
-					plot_sky_name = sci_dir + '/combine_cube_science_arm' + str(cube.IFUNR) + '_sky.fits'
+					plot_sky_name = sci_dir + '/combine_sci_reconstructed_arm' + str(cube.IFUNR) + '_sky.fits'
 					print 'The skycube name for the plotting routine is: %s' % plot_sky_name
-					self.plotSpecs(spec_name, plot_sky_name, 1)
+					self.plotSpecs(sci_dir, spec_name, plot_sky_name, 1)
 #					try:
 #						self.plotSpecs(spec_name, plot_sky_name, 1)
 #					except:
@@ -3575,7 +3786,7 @@ class pipelineOps(object):
 		#Read in the combine_file, which contains 4 columns  
 		Table = np.loadtxt(combine_file, dtype='str')
 		#zip these together into a combined object, which can be looped
-		zipped_entries = zip(Table[:,0], Table[:,1], Table[:,2], Table[:,3], Table[:,4], Table[:,5])
+		zipped_entries = zip(Table[:,0], Table[:,1], Table[:,2], Table[:,3], Table[:,4], Table[:,5], Table[:,6], Table[:,7], Table[:,8], Table[:,9] )
 		#Loop over each of the entries and decide if it is in this seeing range 
 		#The seeing is the last entry of the table 
 		new_Table = []
@@ -3633,6 +3844,51 @@ class pipelineOps(object):
 
 		return new_Table
 
+	def compute_shifts(self, sci_dir, combine_list, name):
+
+		"""
+		Def: 
+		Helper method for taking the output from reduce_list_sky and calculating the list of 
+		shift values to pass to combine_by_name. This function will be called each time for 
+		the different object names.
+		Output: *_shift_file.txt - List of shifts relative to first in the list
+				name - the name of the object being shifted 
+				plot of the increase in the difference between actual and theoretical 
+				shift values - shift_plot.png
+		"""
+		#Record the names of the deltaFile and shiftFile 
+		deltaFile = sci_dir + '/' + name + '_delta_file.txt'
+		shiftFile = sci_dir + '/' + name + '_shift_file.txt'
+		#If the shift file exists in the current directory, delete this 
+		if os.path.isfile(deltaFile):
+			os.system('rm %s' % deltaFile) 
+		if os.path.isfile(shiftFile):
+			os.system('rm %s' % shiftFile)
+
+		#print combine_list[0]
+		#Find the initial central values 
+		center_x = float(combine_list[0][7])
+		center_y = float(combine_list[0][6])
+		shift_x = float(combine_list[0][8])
+		shift_y = float(combine_list[0][9])
+		#Now write to the shift file the actual shifts
+		#write to the delta file the difference between expected and actual 
+		with open(shiftFile, 'a') as s:
+			with open(deltaFile, 'a') as d:
+				for i in range(1, len(combine_list)):
+					row = combine_list[i]
+					real_shift_x = float(row[7]) - center_x   
+					real_shift_y = center_y - float(row[6])
+					dshift_x = shift_x - float(row[8])
+					dshift_y = shift_y - float(row[9])
+					dX = real_shift_x + dshift_x
+					dY = real_shift_y + dshift_y
+					s.write('%s\t%s\n' % (real_shift_x, real_shift_y))
+					d.write('%s\t%s\n' % (dX, dY))
+		#shift file has now been created for each of the objects 
+
+
+
 	def combine_by_name(self, sci_dir, combine_file, seeing_lower, seeing_upper, performance_limit):
 
 		"""
@@ -3658,10 +3914,17 @@ class pipelineOps(object):
 		ifu_names = list(set(ifu_names))
 		#For each name execute the three helper reduce methods 
 		for name in ifu_names:
+			#Initialise the names of the files 
+			deltaFile = sci_dir + '/' + name + '_delta_file.txt'
+			shiftFile = sci_dir + '/' + name + '_shift_file.txt'
 			print '[INFO]: Combining Object: %s ' % name
 			new_Table = self.reduce_list_seeing(combine_file, seeing_lower, seeing_upper)
 			name_Table = self.reduce_list_name(new_Table, name)
 			combine_Table = self.reduce_list_sky(name_Table, performance_limit)
+			#Create the shift list for this object 
+			self.compute_shifts(sci_dir, combine_Table, name)
+			#Plot the drift results 
+			self.plotDrift(deltaFile, name) 
 			#This combine_Table contains as first column the reconstructed names to combine for that object 
 			#Want to write these out to a combine.sof file - checking to see whether it exists already
 			combine_name = name + '_combine.sof' 
@@ -3674,7 +3937,7 @@ class pipelineOps(object):
 					for row in combine_Table:
 						f.write('%s\n' % row[0])
 				#Now execute the combine recipe for this name given the sof file has been created 
-				os.system('esorex --output-dir=%s kmo_combine --name=%s --method="header" --edge_nan=TRUE %s' % (sci_dir, name, combine_name))
+				os.system('esorex --output-dir=%s kmo_combine --name=%s --cpos_rej=2.0 --cneg_rej=2.0 --method="user" --filename=%s --edge_nan=TRUE %s' % (sci_dir, name, shiftFile, combine_name))
 			#If there is only a single object in this seeing bin, isolate the core part of the name 
 			#and execute the kmo_sci_red recipe after appending the object name to the sci_reduc.sof file  
 			#Since this is being executed in the calibrations directory the sci_reduc.sof file is already there
@@ -3697,14 +3960,53 @@ class pipelineOps(object):
 					f.write('\n%s\tSCIENCE' % real_name)
 					f.write('\n%s\tSCIENCE' % combine_Table[0][1])
 				#Now just execute the esorex recipe for this new file 
-				os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.2 --name=%s --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % (sci_dir, name))	
+				os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.1 --name=%s --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % (sci_dir, name))	
 				os.system('rm sci_reduc_temp.sof')			
 			#Final case - if the list is empty, do nothing 
 			else:
 				print 'Nothing to combine for object %s' % name
 
 
+	def plotDrift(self, deltaFile, name):
+		"""
+		Def: 
+		Simple plotting method to visualise the drift away from given shift values 
+		Takes the output delta shift file from compute_shifts and plots seperate 
+		graphs for the x_y_shift from each object 
+		Input: deltaFile - file produced by compute_shifts with x in column 1 and y 
+		in column 2 
+				name - name of the object being plotted
+		Output: x plot and y plot for each object 
+		"""
 
+		#Read in the x and y columns from the input file 
+		Table = np.loadtxt(deltaFile, dtype='str')
+		#The names are the third column 
+		x_drift = Table[:,0]
+		y_drift = Table[:,1]
+		fileCount = np.arange(1, len(x_drift) + 1, 1)
+		#Plot the results 
+		#Now make the plots for both nights, want the same x-axis for all three layers
+		f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(18.0, 10.0))
+		ax1.plot(fileCount, x_drift, color='b')
+		ax1.set_title('X-Shift ' + name, fontsize=24)
+		#ax1.set_ylim(0, max(x_drift))
+		ax1.tick_params(axis='y', which='major', labelsize=15)
+		ax1.grid(b=True, which='both', linestyle='--')
+		ax2.plot(fileCount, y_drift, color='g')
+		ax2.set_title('Y-Shift ' + name, fontsize=24)
+		ax2.set_xlabel(r'Frame Number', fontsize=24)
+		ax2.tick_params(axis='both', which='major', labelsize=15)
+		ax2.grid(b=True, which='both', linestyle='--')
+		#ax2.set_ylim(0, 80)
+		nbins = len(ax1.get_xticklabels())
+		ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
+		ax2.set_xlim(min(fileCount) + 0.1, max(fileCount) - 0.1)
+		#ax2.set_xlim(1.1,1.25)
+		f.subplots_adjust(hspace=0.001)
+		f.tight_layout()
+		#plt.show()
+		f.savefig(name + '_drift.png')
 
 ############################################################################################################
 ############################################################################################################
@@ -3824,9 +4126,9 @@ class pipelineOps(object):
 		print '[INFO]: These are the Bad names: %s ' % fwhmDict['Bad']
 
 		#Extract the spectra in each of the fwhm bins and save
-		self.extractSpec(sci_dir, fwhmDict, combNames, rec_combNames, tracked_name)
+		#self.extractSpec(sci_dir, fwhmDict, combNames, rec_combNames, tracked_name)
 
-	def saveSpec(self, cubeName):
+	def saveSpec(self, sci_dir, cubeName):
 		"""
 		Def:
 		Extract a spectrum from a given cube optimally 
@@ -3846,12 +4148,20 @@ class pipelineOps(object):
 		     fits.Column(name='Flux', format='E', array=spec)]))
 		prihdu = fits.PrimaryHDU(header=cube.primHeader)
 		thdulist = fits.HDUList([prihdu, tbhdu])
-		thdulist.writeto(cubeName[:-5] + '_spectrum.fits', clobber=True)
+		#Find the name of the cube 
+		if cubeName.find("/") == -1:
+			sky_name = sci_dir + '/' + cubeName
+		#Otherwise the directory structure is included and have to 
+		#search for the backslash and omit up to the last one 
+		else:
+			objName = cubeName[len(cubeName) - cubeName[::-1].find("/"):]
+			sky_name = sci_dir + '/'  + objName
+		thdulist.writeto(sky_name[:-5] + '_spectrum.fits', clobber=True)
 		 
 
 
 
-	def plotSpecs(self, objSpec, skyCube, n):
+	def plotSpecs(self, sci_dir, objSpec, skyCube, n):
 
 
 		"""
@@ -3873,14 +4183,22 @@ class pipelineOps(object):
 
 		#Read in the files 
 		objTable = fits.open(objSpec)
-		obj_spec = objTable[1].data['FLUX']
-		obj_wave = objTable[1].data['WAVELENGTH']
+		obj_spec = objTable[1].data['Flux']
+		obj_wave = objTable[1].data['Wavelength']
 
 		#skyCube
-		self.saveSpec(skyCube) 
-		skyTable = fits.open(skyCube[:-5] + '_spectrum.fits')
-		sky_spec = skyTable[1].data['FLUX']
-		sky_wave = skyTable[1].data['WAVELENGTH']
+		self.saveSpec(sci_dir, skyCube) 
+		#Find the name of the skyCube in the science directory 
+		if skyCube.find("/") == -1:
+			sky_name = sci_dir + '/' + skyCube
+		#Otherwise the directory structure is included and have to 
+		#search for the backslash and omit up to the last one 
+		else:
+			objName = skyCube[len(skyCube) - skyCube[::-1].find("/"):]
+			sky_name = sci_dir + '/'  + objName		
+		skyTable = fits.open(sky_name[:-5] + '_spectrum.fits')
+		sky_spec = skyTable[1].data['Flux']
+		sky_wave = skyTable[1].data['Wavelength']
 
 		if n == 1:
 			new_obj_spec = copy(obj_spec)
@@ -3922,20 +4240,239 @@ class pipelineOps(object):
 		f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(18.0, 10.0))
 		ax1.plot(new_obj_wave, new_obj_spec, color='b')
 		ax1.set_title('Object and Sky Comparison', fontsize=24)
-		ax1.set_ylim(0, max(new_obj_spec))
+		ax1.set_ylim(0, 4.0)
 		ax1.tick_params(axis='y', which='major', labelsize=15)
 		ax2.plot(new_sky_wave, new_sky_spec, color='g')
-		ax2.set_xlabel(r'Wavelength ($\AA$)', fontsize=24)
+		ax2.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
 		ax2.tick_params(axis='both', which='major', labelsize=15)
 		#ax2.set_ylim(0, 80)
 		nbins = len(ax1.get_xticklabels())
 		ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-		ax2.set_xlim(min(new_obj_wave) + 0.1, max(new_obj_wave) - 0.1)
+		ax2.set_xlim(1.95, 2.4)
 		#ax2.set_xlim(1.1,1.25)
 		f.subplots_adjust(hspace=0.001)
 		f.tight_layout()
 		plt.show()
 		f.savefig(objSpec[:-5] + '.png')
-	
+
+	def arrayCompare(self, profile, imData):
+		"""
+		Def: Function to compare the shapes of the optimal extraction profile 
+		and the object image data which may not necessarily be the same. But in 
+		order for the optimal extraction from profile to work they have to be. This 
+		method spits out an adjusted profile so that the shape matches that of the 
+		object data, allowing them to be multiplied together 
+		Input: profile - the optimal extraction profile 
+				imData - the object cube data 
+		Output: new_profile - adjusted profile with shape matches the last two indices 
+		of the object data
+		"""
+		if imData.shape[1] != profile.shape[0]:
+
+		    print 'Must adjust rows'
+
+		    #decide whether to add rows or clip rows 
+
+		    if imData.shape[1] - profile.shape[0] > 0:
+
+		        #need to add rows to the profile
+
+		        print 'Adding Rows' 
+
+		        row_addition = np.zeros([abs(imData.shape[1] - profile.shape[0]), profile.shape[1]])
+
+		        #vstack this together with the original profile
+
+		        profile = np.vstack((profile, row_addition))
+
+		    else:
+
+		        #need to clip rows from the profile, assuming we're at the edge so it won't affect the process
+
+		        print 'Deleting Rows'
+
+		        profile = np.delete(profile, (len(profile) -  abs(imData.shape[1] - profile.shape[0])), axis=0)
+
+		    #Now deal with the columns 
+
+		if imData.shape[2] != profile.shape[1]:
+
+		    print 'Must adjust columns'
+
+		    #Decide whether to add or clip columns 
+
+		    if imData.shape[2] - profile.shape[1] > 0:
+
+		        #need to add columns 
+
+		        print 'Adding Columns'
+
+		        column_addition = np.zeros([profile.shape[0], abs(imData.shape[2] - profile.shape[1])])
+
+		        #hstack this togehter with the original profile 
+
+		        profile = np.hstack((profile, column_addition))
+
+		    else:
+
+		        #need to clip the columns 
+
+		        print 'Deleting columns'
+
+		        profile = np.delete(profile, (len(profile[0]) -  abs(imData.shape[2] - profile.shape[1])), axis=1)
+
+		#return the profile 
+
+		return profile
+
+#Starting to write some functions for extracting spectra from galaxies and measuring their properties  
+	def galExtract(self, sci_dir, std_cube, obj_cube, sky_cube, center_x, center_y, n):
+
+		"""
+		Def: Function for extracting the optimal spectrum from a galaxy at the 
+		location specified by the user, after examining the object cube in qfits. 
+		Recovers the object spectrum and makes a plot of this in the usual way 
+		with the sky spectrum beneath. 
+		Input: std_cube - data cube for the IFU dedicated to observing a star 
+				obj_cube - the cube containing the galaxy to extract a spectrum from 
+				sky_cube - one of the sky cubes extracted in the runPipeline.py analysis 
+				center_x - x coordinate of the object center determined from qfits 
+				center_y - y coordinate of the object center determined from qfits 
+				n - binning for spectrum plot
+
+		Output: Plot of the object and sky spectra using plotSpecs
+				If required, a data file containing the optimally extracted object spectrum 
+				Data file containing the optimally extracted sky spectrum 
+		"""
+		#First extract the profile from the standard star cube 
+		std_star_cube = cubeOps(std_cube)
+		print 'The standard star cube shape is: %s ' % str(std_star_cube.data.shape)
+		gal_obj_cube = cubeOps(obj_cube)
+		print 'The object cube has shape: %s ' % str(gal_obj_cube.data.shape)
+		#Find the cube name
+		if obj_cube.find("/") == -1:
+			gal_name = sci_dir + '/' + obj_cube
+		#Otherwise the directory structure is included and have to 
+		#search for the backslash and omit up to the last one 
+		else:
+			objName = obj_cube[len(obj_cube) - obj_cube[::-1].find("/"):]
+			gal_name = sci_dir + '/'  + objName
+		#Extract the PSF profile using the method in cubeClass 
+		params, std_profile, FWHM, offList = std_star_cube.psfMask()
+		#Print the profile and the center in the x/y directions 
+		#print std_profile
+		print 'The x center is: %s' % params['center_x']
+		print 'The y center is: %s' % params['center_y']
+		#Now roll this profile over to the central location of the object and replot 
+		#Use numpy.roll to shift the psfMask to the location of the object 
+		#Find the shift values 
+		x_shift = int(center_x - params['center_x'])
+		y_shift = int(center_y - params['center_y'])
+		new_mask = np.roll(std_profile, x_shift, axis=0)
+		#For the x_shift need to loop round the elements of the new_mask 
+		final_new_mask = []
+		for arr in new_mask:
+			final_new_mask.append(np.roll(arr, y_shift))
+		final_new_mask = np.array(final_new_mask)
+
+		#Check the shapes of the profile and object data, adjust accordingly 
+		final_new_mask = self.arrayCompare(final_new_mask, gal_obj_cube.data)
+
+		#Check to see that the gaussian and shifted profile align
+		colFig, colAx = plt.subplots(1,1, figsize=(14.0,14.0))
+		colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
+		colFig.colorbar(colCax)
+		plt.show()
+		#Extract each optimal spectrum 
+		optimal_spec = gal_obj_cube.optimalSpecFromProfile(final_new_mask, FWHM, center_y, center_x)
+		#Save the optimal spectrum for each object 
+		#Need to create a new fits table for this 
+		tbhdu = fits.new_table(fits.ColDefs(\
+			[fits.Column(name='Wavelength', format='E', array=gal_obj_cube.wave_array),\
+		     fits.Column(name='Flux', format='E', array=optimal_spec)]))
+		prihdu = fits.PrimaryHDU(header=gal_obj_cube.primHeader)
+		thdulist = fits.HDUList([prihdu, tbhdu])
+		thdulist.writeto(gal_name[:-5] + '_spectrum.fits', clobber=True)
+		#Create a plot of both the sky and the object next to one another
+		self.plotSpecs(sci_dir, gal_name[:-5] + '_spectrum.fits', sky_cube, n)
 
 
+	def fitSingleGauss(self, wavelength, flux, center):
+		"""
+		Def:
+		Supply wavelength and flux arrays as well as a guess 
+		at the central wavelength value of the gaussian to perform 
+		a fit and recover the best fit parameters 
+		Input: wavelength - wavelength array 
+				flux - corresponding flux array 
+				center - central wavelength of emission line in microns
+		Output: Best fitting parameters in dictionary 
+		"""
+		#Construct the gaussian model from lmfit 
+		mod = GaussianModel()
+		#Guess and set the initial parameter values 
+		pars = mod.guess()
+		pars['center'].set(center)
+		pars['center'].set(vary=False)
+		#pars['sigma'].set(0.0008)
+		#pars['amplitude'].set(0.0005)
+
+		#Perform the model fit
+		out = mod.fit(flux, pars, x=wavelength)
+		print out.fit_report()
+		#plot an initial evaluation of the model on top of the spectrum 
+		f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+		ax1.plot(wavelength, flux, color='b')
+		ax1.plot(wavelength, out.best_fit, 'r-')
+		ax1.set_title('Object Spectrum', fontsize=30)
+		#ax1.set_ylim(0, 4)
+		ax1.tick_params(axis='y', which='major', labelsize=15)
+		ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+		ax1.set_ylabel(r'Flux', fontsize=24)
+		f.tight_layout()
+		plt.show()
+		return out.best_values
+
+	def pSTNK(self, object_spectrum, z):
+		"""
+		Def: 
+		Uses the methods in galPhys class to fit a gaussian 
+		to each of the K-band emission lines and print out 
+		the signal to noise of each line 
+		"""
+		#Create an instance of the galPhysClass with the object spectrum
+		galaxy = galPhys(object_spectrum, z)
+		#Compute the signal to noise
+		galaxy.sToNK()
+
+	def plotHandOII(self, l_o):
+		"""
+		Def:
+		Plots the H-band sky spectrum and the location of the OII
+		emission line for different objects. Saves with the object name. 
+		""" 
+
+		#Read in from the text file containing the wavelength and flux
+		Table = np.loadtxt('H_sky.txt')
+		wavelength = Table[:,0] / 1000
+		flux = Table[:,1]
+		#Set up a gaussian to simulate the OII emission line 
+		oii_gauss = GaussianModel()
+		pars = oii_gauss.make_params()
+		pars['center'].set(l_o)
+		pars['sigma'].set(0.0008)
+		pars['amplitude'].set(1000)
+		init = oii_gauss.eval(pars, x=wavelength)
+		#plot an initial evaluation of the model on top of the spectrum 
+		f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+		ax1.plot(wavelength, flux, color='b')
+		ax1.set_title('H-band OII Position', fontsize=30)
+		ax1.plot(wavelength, init, 'k--')
+		ax1.axvline(x=l_o, ymin=0, ymax = max(flux), color='r')
+		ax1.set_xlim(1.4, 1.8)
+		ax1.tick_params(axis='y', which='major', labelsize=15)
+		ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+		ax1.set_ylabel(r'Flux', fontsize=24)
+		f.tight_layout()
+		plt.savefig('/disk1/turner/DATA/Gals2/comb/Science/OII_overplots/gals1_lbg105_OII.png')
+		plt.show()		

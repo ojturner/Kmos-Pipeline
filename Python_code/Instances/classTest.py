@@ -6,22 +6,23 @@ from astropy.io import fits
 
 
 #add the class file to the PYTHONPATH
-sys.path.append('/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_code/Class')
+sys.path.append('/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Class')
 
 #import the class 
 from pipelineClass import pipelineOps
 from cubeClass import cubeOps
+from galPhysClass import galPhys
 
 
-oldbadP = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/badpixel_dark.fits'
-oldlcal = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/lcal_YJYJYJ.fits'
+oldbadP = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/badpixel_dark.fits'
+oldlcal = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/8-12-14/Calibration_Files/lcal_YJYJYJ.fits'
 
-objFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/KMOS.2014-08-05T03_14_39.263.fits'
-skyFile = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/KMOS.2014-08-05T03_15_35.245.fits'
-badPMap14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/badpixel_dark_Added.fits'
-badPMap15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/Calibration_Files/badpixel_dark_Added.fits'
-lcalMap14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/lcal_YJYJYJ.fits'
-lcalMap15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/Calibration_Files/lcal_YJYJYJ.fits'
+objFile = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/KMOS.2014-08-05T03_14_39.263.fits'
+skyFile = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/KMOS.2014-08-05T03_15_35.245.fits'
+badPMap14 = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/badpixel_dark_Added.fits'
+badPMap15 = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/Calibration_Files/badpixel_dark_Added.fits'
+lcalMap14 = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/16-3-15_Min_11Seg/Calibration_Files/lcal_YJYJYJ.fits'
+lcalMap15 = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/Calibration_Files/lcal_YJYJYJ.fits'
 
 hskyCube = '/Users/owenturner/DATA/688/H/Science/cube_science.fits'
 kskyCube = '/Users/owenturner/DATA/688/K/Science/cube_science.fits'
@@ -29,61 +30,77 @@ kskyCube = '/Users/owenturner/DATA/688/K/Science/cube_science.fits'
 
 #Create an instance of the class
 pipe_methods = pipelineOps()
-sky_cube = cubeOps(kskyCube)
+galaxy = galPhys('/disk1/turner/DATA/Gals1/K/obs_09/S_Science_nt/combine_sci_reconstructed_bs008543_spectrum.fits', 3.47465)
+#sky_cube = cubeOps(kskyCube)
 
 
 #pipe_methods.computeOffsetSegments(objFile, skyFile, badPMap, lcalMap)
 #The following are examples of using the functions within the class
 #pipe_methods.computeOffsetTopFour('KMOS_SPEC_OBS258_0001_m_2_raw.fits', objFile)
-k_names = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/Calibrations/corrected_object_names.txt'
-h_names = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Calibrations/corrected_object_names.txt'
+k_names = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/K-band/Calibrations/corrected_object_names.txt'
+h_names = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Calibrations/corrected_object_names.txt'
 
 
 #Permanent Names
-raw_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Names.txt'
-names_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names.txt'
-names_14_short = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names_short.txt'
-names_14_shifted = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names_shifted.txt'
+raw_14 = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Names.txt'
+names_14 = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names.txt'
+names_14_short = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names_short.txt'
+names_14_shifted = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names_shifted.txt'
 
-raw_15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Names.txt'
-names_15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names.txt'
-names_15_short = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names_short.txt'
-names_15_shifted = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names_shifted.txt'
+raw_15 = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Names.txt'
+names_15 = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names.txt'
+names_15_short = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names_short.txt'
+names_15_shifted = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names_shifted.txt'
 
 
-noTel_names_15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names_noTel.txt'
-noTel_names_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names_noTel.txt'
+noTel_names_15 = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/NGC55_15_Corrected_Names_noTel.txt'
+noTel_names_14 = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/NGC55_14_Corrected_Names_noTel.txt'
 
 #Changes depending on reduction process
-frame_check_names = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/frameCheck/combNames.txt'
-sci_names_14 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/5sig_Science_Output'
-sci_names_15 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/5sig_Science_Output'
-sci_names_14_noTel = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9_ws/sci_names_noTel.txt'
-sci_names_14_noTel_1 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_names_noTel.txt'
-sci_names_15_noTel = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_250-1500_15/Science_Output/sci_names_noTel.txt'
+frame_check_names = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/frameCheck/combNames.txt'
+sci_names_14 = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/5sig_Science_Output'
+sci_names_15 = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/S24-3-15/5sig_Science_Output'
+sci_names_14_noTel = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9_ws/sci_names_noTel.txt'
+sci_names_14_noTel_1 = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_names_noTel.txt'
+sci_names_15_noTel = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_250-1500_15/Science_Output/sci_names_noTel.txt'
 
 
-newFile2 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/KMOS_SPEC_OBS259_0014_Corrected_22_spline3_Shifted.fits'
-newFile3 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_Subtracted.fits'
+newFile2 = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/15-09-2014/KMOS_SPEC_OBS259_0014_Corrected_22_spline3_Shifted.fits'
+newFile3 = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_Subtracted.fits'
 
-namesOfFile = np.genfromtxt(sci_names_14_noTel, dtype='str')
-namesOfFile_1 = np.genfromtxt(sci_names_14_noTel_1, dtype='str')
+#namesOfFile = np.genfromtxt(sci_names_14_noTel, dtype='str')
+#namesOfFile_1 = np.genfromtxt(sci_names_14_noTel_1, dtype='str')
 
-objCube = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_combined_n55_19__skytweak.fits'
-objSpec2 = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_combined_n55_19__skytweak_spectrum.fits'
-objSpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/Best_sci_combined_P108__skytweak_spectrum.fits'
-skySpec = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/cubesky_spectrum.fits'
+objCube = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_combined_n55_19__skytweak.fits'
+objSpec2 = '/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9/sci_combined_n55_19__skytweak_spectrum.fits'
+objSpec = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/Best_sci_combined_P108__skytweak_spectrum.fits'
+skySpec = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/cubesky_spectrum.fits'
 
-hobjframe = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
-hskyframe = '/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
+hobjframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
+hskyframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-combine_input = '/Users/owenturner/DATA/NGC55/14_2014/Calibrations/combine_input.txt'
-sci_dir = '/Users/owenturner/DATA/NGC55/14_2014/combine/2.6-'
-combNames = '/Users/owenturner/Documents/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/ok_conames.txt'
-obj_names = '/Users/owenturner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
+combine_input = '/disk1/turner/DATA/Gals2/comb/both_nights.txt'
+sci_dir = '/disk1/turner/DATA/Gals2/comb/Science'
+combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals_names.txt'
+obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
+gal_dir = '/disk1/turner/DATA/Gals1/K/comb/Science'
+sky_cube_gal = '/disk1/turner/DATA/Gals1/K/obs_09/Science/combine_sci_reconstructed_arm3_sky.fits'
+obj_cube_gal = gal_dir + '/combine_sci_reconstructed_cdfs_lbg_105.fits'
+std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_7656.fits'
+raw_file = '/disk1/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS344_0018_Corrected.fits'
+badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
+object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
+
+#pipe_methods.pSTNK(object_spectrum, 3.47465)
+#pipe_methods.maskExtraPixels(raw_file, badpixel_dark_new)
+#galaxy.printProps()
+#galaxy.plotSpec()
+#galaxy.fitHbandOIII()
+pipe_methods.plotHandOII(1.666)
+#pipe_methods.galExtract(gal_dir, std_cube_gal, obj_cube_gal, sky_cube_gal, 19, 23, 1)
 #pipe_methods.frameCheck(sci_dir, obj_names, 'n55_19')
-#pipe_methods.combine_by_name(sci_dir, combine_input, 2.6, 4.5, 10.0)
+#pipe_methods.combine_by_name(sci_dir, combine_input, 0, 1.2, 6.0)
 #pipe_methods.compareSky(sci_dir, combNames)
 #new_Table = pipe_methods.reduce_list_seeing(combine_input, 0.5, 1.0)
 #print 'length new_Table is: %s'  % len(new_Table)
@@ -92,12 +109,13 @@ obj_names = '/Users/owenturner/DATA/NGC55/YJ/Calibrations/shifted_object_names.t
 #combine_Table = pipe_methods.reduce_list_sky(name_Table, 1.2)
 #print 'length combine_Table is: %s'  % len(combine_Table)
 #stuff, stuff1, stuff2 = pipe_methods.compareSky(sci_dir='/Users/owenturner/DATA/688/H/Science', combNames='co_names.txt')
-#pipe_methods.saveSpec('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/May_20th_tests/corr_with/sci_combined_s152__skytweak.fits')
-pipe_methods.plotSpecs('/Users/owenturner/DATA/NGC55/2013/Science/Best/Best_sci_combined_n55_58__skytweak_spectrum.fits', '/Users/owenturner/DATA/NGC55/2013/Science/combine_cube_science_arm18_sky.fits', 3)
+
+#pipe_methods.saveSpec('/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/May_20th_tests/corr_with/sci_combined_s152__skytweak.fits')
+#pipe_methods.plotSpecs('/Users/owenturner/DATA/NGC55/2013/Science/Best/Best_sci_combined_n55_58__skytweak_spectrum.fits', '/Users/owenturner/DATA/NGC55/2013/Science/combine_cube_science_arm18_sky.fits', 3)
 
 #pipe_methods.multiExtractSpec(skyCube=hskyCube, frameNames=h_names)
 #Now try the subtraction method 
-#pipe_methods.subFrames('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits', skyFile)
+#pipe_methods.subFrames('/disk1/turner/PhD/KMOS/KMOS_DATA/NGC55/14-9-2014/KMOS_SPEC_OBS258_0009_Corrected_11_spline3_Shifted.fits', skyFile)
 #pipe_methods.subFrames('KMOS_SPEC_OBS258_0001_Corrected.fits', skyFile)
 #print 'all good'
 #print 'Hello'
@@ -208,7 +226,7 @@ pipe_methods.plotSpecs('/Users/owenturner/DATA/NGC55/2013/Science/Best/Best_sci_
 #ax.set_xlabel('Detector ID')
 #ax.set_xticks((np.arange(min(xAxis), max(xAxis)+1, 1.0)))
 #ax.grid(b=True, which='both', linestyle='--')
-#fig.savefig('/Users/owenturner/Documents/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9_ws/median_comparison.png')
+#fig.savefig('/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/10-4-15_Pairs_14/all_but_9_ws/median_comparison.png')
 #plt.show()
 #plt.close('all')
 #print d.keys()

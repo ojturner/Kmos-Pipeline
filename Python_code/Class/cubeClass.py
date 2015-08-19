@@ -13,6 +13,7 @@ import math
 from lmfit.models import GaussianModel, ExponentialModel, LorentzianModel, VoigtModel, PolynomialModel
 from scipy import stats
 from scipy import optimize
+from lmfit import Model
 from scipy.optimize import minimize
 from scipy.optimize import basinhopping
 from astropy.io import fits
@@ -42,9 +43,9 @@ class cubeOps(object):
 		#Variable housing the primary data cube
 		self.data = self.Table[1].data
 		#Collapse over the wavelength axis to get an image
-		self.imData = np.median(self.data, axis=0)
+		self.imData = np.nanmedian(self.data, axis=0)
 		try:
-			self.total_spec = np.nanmedian(np.nanmedian(self.data, axis=1), axis=1)
+			self.total_spec = np.nanmedian(np.nanmedian(self.data[:,4:len(self.data[0]),4:len(self.data[1])], axis=1), axis=1)
 		except:
 			print 'Cannot extract the total spectrum'
 		#Create a plot of the image 
@@ -143,6 +144,8 @@ class cubeOps(object):
 		self.raArray = self.raDict.values()
 		self.decArray = self.decDict.values()
 		self.IFUArms = self.raDict.keys()
+		self.xDit = self.primHeader['HIERARCH ESO OCS TARG DITHA']
+		self.yDit = self.primHeader['HIERARCH ESO OCS TARG DITHD']
 
 		#Find the pixel scale if this is a combined cube 
 		try:
@@ -456,17 +459,17 @@ class cubeOps(object):
 		print '[INFO]: And the width is: %s' % width
 
 		#Set the upper and lower limits for optimal spectrum extraction
-		x_upper = int(np.round((x + (1.5*width))))
+		x_upper = int(np.round((x + (2.0*width))))
 		if x_upper > len(self.data[0]):
 			x_upper = len(self.data[0])
-		x_lower = int(np.round((x - (1.5*width))))
+		x_lower = int(np.round((x - (2.0*width))))
 		if x_lower < 0:
 			x_lower = 0	
 
-		y_upper = int(np.round((y + (1.5*width))))
+		y_upper = int(np.round((y + (2.0*width))))
 		if y_upper > len(self.data[0]):
 			y_upper = len(self.data[0])
-		y_lower = int(np.round((y - (1.5*width))))
+		y_lower = int(np.round((y - (2.0*width))))
 		if y_lower < 0:
 			y_lower = 0
 
@@ -485,7 +488,7 @@ class cubeOps(object):
 		colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
 		colCax = colAx.imshow(imModCube, interpolation='bicubic')
 		colFig.colorbar(colCax)
-		#plt.show()
+		plt.show()
 		plt.close('all')
 		#Sum over each spatial dimension to get the spectrum 
 		first_sum = np.nansum(modCube, axis=1)
@@ -493,54 +496,112 @@ class cubeOps(object):
 		return spectrum
 
 
-	#Attempt to use someone elses code to fit a 2D gaussian to the data	
-	def gaussian(self, height, center_x, center_y, width_x, width_y):
+	#Create a gaussian function for use with lmfit 	
+	def gaussian(self, x1, x2, pedastal, height, center_x, center_y, width_x, width_y):
+		#make sure we have floating point values 
+		width_x = float(width_x)
+		width_y = float(width_y)
+		#Specify the gaussian function here 
+		func = pedastal + height*exp(-(((center_x-x1)/width_x)**2+((center_y-x2)/width_y)**2)/2)
+		return func
+
+	#Create a gaussian function for use with the integral
+	def gaussianLam(self, pedastal, height, center_x, center_y, width_x, width_y):
 	    """Returns a gaussian function with the given parameters"""
 	    width_x = float(width_x)
 	    width_y = float(width_y)
-	    return lambda x,y: height*exp(
+	    return lambda x,y: pedastal + height*exp(
 	                -(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
 
+
+	def gauss2dMod(self):
+		mod = Model(self.gaussian, independent_vars=['x1', 'x2'], param_names=\
+			['pedastal','height', 'center_x', 'center_y', 'width_x', 'width_y'], missing='drop')
+		#print mod.independent_vars
+		#print mod.param_names
+		
+		return mod
+
 	def moments(self, data):
-		"""Returns (height, center_x, center_y, width_x, width_y)
+		"""Returns (pedastal, height, center_x, center_y, width_x, width_y)
 		the gaussian parameters of a 2D distribution by calculating its
 		moments """
 		#First set all np.nan values in data to 0 
 		#And all the negative values to 0 
 		#These shouldn't influence the moment calculation
+		#data[np.isnan(data)] = 0
+		#data[data < 0] = 0
+		#total = np.nansum(data)
+	    #print 'The sum over the data is: %s' % total
+		#X, Y = indices(data.shape)
+	    #print 'The Indices are: %s, %s' % (X, Y)
+		#x = np.nansum((X*data))/total
+		#y = np.nansum((Y*data))/total
+	    #print x, y
+		#col = data[:, int(y)]
+		#if col.sum() == 0:
+		#	width_x = sqrt(abs((arange(col.size)-y)**2*1.0).sum()/1.0)
+		#else:
+		#	width_x = sqrt(abs((arange(col.size)-y)**2*col).sum()/col.sum())
+		#row = data[int(x), :]
+
+		#if row.sum() == 0:
+		#	width_y = sqrt(abs((arange(row.size)-x)**2*1.0).sum()/1.0)
+		#else:
+		#	width_y = sqrt(abs((arange(row.size)-x)**2*row).sum()/row.sum())
+		#height = np.nanmax(data)
+		#print '[INFO]: The Initial Guess at the G.Params;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (height, x, y, width_x, width_y)
+		#return height, x, y, width_x, width_y, pedastal
+
+		pedastal = np.nanmedian(data)
+		height = np.nanmax(data)
 		data[np.isnan(data)] = 0
 		data[data < 0] = 0
 		total = np.nansum(data)
 	    #print 'The sum over the data is: %s' % total
 		X, Y = indices(data.shape)
 	    #print 'The Indices are: %s, %s' % (X, Y)
-		x = np.nansum((X*data))/total
-		y = np.nansum((Y*data))/total
-	    #print x, y
-		col = data[:, int(y)]
-		if col.sum() == 0:
-			width_x = sqrt(abs((arange(col.size)-y)**2*1.0).sum()/1.0)
-		else:
-			width_x = sqrt(abs((arange(col.size)-y)**2*col).sum()/col.sum())
-		row = data[int(x), :]
-
-		if row.sum() == 0:
-			width_y = sqrt(abs((arange(row.size)-x)**2*1.0).sum()/1.0)
-		else:
-			width_y = sqrt(abs((arange(row.size)-x)**2*row).sum()/row.sum())
-		height = data.max()
-		print '[INFO]: The Initial Guess at the G.Params;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (height, x, y, width_x, width_y)
-		return height, x, y, width_x, width_y
+		center_x = np.nansum((X*data))/total
+		center_y = np.nansum((Y*data))/total
+		width_x = 1.2
+		width_y = 1.2
+		#print '[INFO]: The Initial Guess at the G.Params;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (height, x, y, width_x, width_y)
+		return [height, center_x, center_y, width_x, width_y, pedastal]	
 
 	def fitgaussian(self, data):
-	    """Returns (height, x, y, width_x, width_y)
-	    the gaussian parameters of a 2D distribution found by a fit"""
-	    params = self.moments(data)
-	    print '[INFO]: The Data has shape: %s %s' % (data.shape[0], data.shape[1])
-	    errorfunction = lambda p: ravel(self.gaussian(*p)(*indices(data.shape)) - data)
-	    p, success = optimize.leastsq(errorfunction, params)
-	    print '[INFO]: The Gaussian fitting parameters are;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (p[0], p[1], p[2], p[3], p[4])
-	    return p
+		"""Returns (height, x, y, width_x, width_y)
+		the gaussian parameters of a 2D distribution found by a fit"""
+		#params = self.moments(data)
+		#print '[INFO]: The Data has shape: %s %s' % (data.shape[0], data.shape[1])
+		#errorfunction = lambda p: ravel(self.gaussian(*p)(*indices(data.shape)) - data)
+		#p, success = optimize.leastsq(errorfunction, params)
+		#print '[INFO]: The Gaussian fitting parameters are;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (p[0], p[1], p[2], p[3], p[4])
+		#return p
+		#At the moment will assume that the data is imagedata which needs flattened 
+		pars = self.moments(data)
+		flat_data = np.ndarray.flatten(data)
+		print 'This is the flattened data: %s' % flat_data
+		#Get the gaussian model 
+		mod = self.gauss2dMod()
+		#Set the parameter hints from the initialPars method 
+		mod.set_param_hint('height', value=pars[0])
+		mod.set_param_hint('center_x', value=pars[1])
+		mod.set_param_hint('center_y', value=pars[2])
+		mod.set_param_hint('width_x', value=pars[3])
+		mod.set_param_hint('width_y', value=pars[4])
+		mod.set_param_hint('pedastal', value=pars[5])
+		#Initialise a parameters object to use in the fit
+		fit_pars = mod.make_params()
+		#Guess isn't implemented for this model 
+		#Need to pass independent variables for the fit. these come from 
+		#flattening the indices of data.shape
+		x1 = np.ndarray.flatten(indices(data.shape)[0])
+		#print 'The first independent variable: %s %s' % (x1, type(x1))
+		x2 = np.ndarray.flatten(indices(data.shape)[1])
+		#print 'The second independent variable: %s' % x2
+		mod_fit = mod.fit(flat_data, x1=x1, x2=x2, params=fit_pars)
+		#print mod_fit.best_values['pedastal']
+		return mod_fit, x1, x2
 
 	def psfMask(self):
 		"""Returns (FWHM, psfMask) which are the FWHM of the 2D gaussian 
@@ -551,33 +612,41 @@ class cubeOps(object):
 		#Find the FWHM and the masking profile of a given datacube
 
 		#Step 1 - perform least squares minimisation to find the parameters  
-		params = self.fitgaussian(self.imData)
-		#Check to find sigma 
-		if (np.isnan(params[3]) and np.isnan(params[4])):
-			sigma = 3.0
-		elif (np.isnan(params[3]) and not np.isnan(params[4])):
-			sigma = 3.0
-		elif (not np.isnan(params[3]) and np.isnan(params[4])):
-			sigma = 3.0
-		else:
-			sigma = 0.5*(params[3] + params[4])
+		mod_fit, x1, x2 = self.fitgaussian(self.imData)
+#		#Check to find sigma 
+#		if (np.isnan(params[3]) and np.isnan(params[4])):
+#			sigma = 3.0
+#		elif (np.isnan(params[3]) and not np.isnan(params[4])):
+#			sigma = 3.0
+#		elif (not np.isnan(params[3]) and np.isnan(params[4])):
+#			sigma = 3.0
+#		else:
+#			sigma = 0.5*(params[3] + params[4])
+		#Set the params variable as the best fit attribute 
+		params = mod_fit.best_values
+		sigma = 0.5*(params['width_x'] + params['width_y'])
 		FWHM = 2.3548 * sigma
 		try: 
 			print '[INFO]: The FWHM of object %s is: %s' % (self.IFUName, FWHM)
 		except AttributeError:
 			print '[INFO]: The FWHM is: %s' % FWHM
-		#Step 2 - Return a gaussian function with the fit parameters 
-		fit = self.gaussian(*params)
-		#Step 3 - Evaluate the gaussian over the pixel range 
-		gEval = fit(*indices(self.imData.shape))
+
+
+		#Create an instance of the gaussian for integrating 
+		fit = self.gaussianLam(params['pedastal'], params['height'],\
+		 params['center_x'], params['center_y'], params['width_x'], params['width_y'])
+		#Evaluate the gaussian with the best fit parameters  
+		mod_eval = mod_fit.eval(x1=x1, x2=x2)
+		#Step 3 - reshape back to 2D array 
+		gEval = np.reshape(mod_eval, self.imData.shape)
 		#This is the initial grid of values, but need to normalise to 1 
 		#Integrate the gaussian using double quadrature 
 		integral = scipy.integrate.dblquad(fit, a=0, b=self.imData.shape[1],\
  			gfun=lambda x: 0 , hfun=lambda x: self.imData.shape[1])
 		#Plot the image and the fit 
-		colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
+		colFig, colAx = plt.subplots(1,1, figsize=(14.0,14.0))
 		colCax = colAx.imshow(self.imData, interpolation='bicubic')
-		colAx.contour(fit(*indices(self.imData.shape)))
+		colAx.contour(gEval)
 		colFig.colorbar(colCax)
 		saveName = (self.fileName)[:-5] + '_gauss.png'
 		colFig.savefig(saveName)
