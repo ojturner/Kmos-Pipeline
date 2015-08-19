@@ -110,6 +110,7 @@ pipe_methods.stackSpectra('/disk1/turner/DATA/Gals2/comb/Science/stack.txt', 0.0
 #combine_Table = pipe_methods.reduce_list_sky(name_Table, 1.2)
 #print 'length combine_Table is: %s'  % len(combine_Table)
 #stuff, stuff1, stuff2 = pipe_methods.compareSky(sci_dir='/Users/owenturner/DATA/688/H/Science', combNames='co_names.txt')
+
 #pipe_methods.saveSpec('/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/May_20th_tests/corr_with/sci_combined_s152__skytweak.fits')
 #pipe_methods.plotSpecs('/Users/owenturner/DATA/NGC55/2013/Science/Best/Best_sci_combined_n55_58__skytweak_spectrum.fits', '/Users/owenturner/DATA/NGC55/2013/Science/combine_cube_science_arm18_sky.fits', 3)
 
