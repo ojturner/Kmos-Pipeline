@@ -79,28 +79,28 @@ skySpec = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/Science/cubesky_spectr
 hobjframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
 hskyframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-combine_input = '/disk1/turner/DATA/Gals1/K/obs_10/Calibrations/combine_input_no_shift.txt'
-sci_dir = '/disk1/turner/DATA/Gals1/K/obs_10/Science_Not_Shifted_ksigma3'
+combine_input = '/disk1/turner/DATA/Gals2/comb/both_nights.txt'
+sci_dir = '/disk1/turner/DATA/Gals2/comb/Science'
 combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals_names.txt'
 obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
-gal_dir = '/disk1/turner/DATA/Gals1/K/obs_10/Science_Shifted_ksigma3'
+gal_dir = '/disk1/turner/DATA/Gals1/K/comb/Science'
 sky_cube_gal = '/disk1/turner/DATA/Gals1/K/obs_09/Science/combine_sci_reconstructed_arm3_sky.fits'
-obj_cube_gal = gal_dir + '/combine_sci_reconstructed_bs006541.fits'
+obj_cube_gal = gal_dir + '/combine_sci_reconstructed_cdfs_lbg_105.fits'
 std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_7656.fits'
 raw_file = '/disk1/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS344_0018_Corrected.fits'
 badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
 object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
 
-
-pipe_methods.pSTNK(object_spectrum, 3.47465)
+#pipe_methods.pSTNK(object_spectrum, 3.47465)
 #pipe_methods.maskExtraPixels(raw_file, badpixel_dark_new)
 #galaxy.printProps()
 #galaxy.plotSpec()
 #galaxy.fitHbandOIII()
-#pipe_methods.galExtract(gal_dir, std_cube_gal, obj_cube_gal, sky_cube_gal, 21, 18, 1)
+pipe_methods.plotHandOII(1.666)
+#pipe_methods.galExtract(gal_dir, std_cube_gal, obj_cube_gal, sky_cube_gal, 19, 23, 1)
 #pipe_methods.frameCheck(sci_dir, obj_names, 'n55_19')
-#pipe_methods.combine_by_name(sci_dir, combine_input, 0, 1.2, 10.0)
+#pipe_methods.combine_by_name(sci_dir, combine_input, 0, 1.2, 6.0)
 #pipe_methods.compareSky(sci_dir, combNames)
 #new_Table = pipe_methods.reduce_list_seeing(combine_input, 0.5, 1.0)
 #print 'length new_Table is: %s'  % len(new_Table)

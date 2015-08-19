@@ -4240,21 +4240,91 @@ class pipelineOps(object):
 		f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(18.0, 10.0))
 		ax1.plot(new_obj_wave, new_obj_spec, color='b')
 		ax1.set_title('Object and Sky Comparison', fontsize=24)
-		ax1.set_ylim(0, 4)
+		ax1.set_ylim(0, 4.0)
 		ax1.tick_params(axis='y', which='major', labelsize=15)
 		ax2.plot(new_sky_wave, new_sky_spec, color='g')
-		ax2.set_xlabel(r'Wavelength ($\AA$)', fontsize=24)
+		ax2.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
 		ax2.tick_params(axis='both', which='major', labelsize=15)
 		#ax2.set_ylim(0, 80)
 		nbins = len(ax1.get_xticklabels())
 		ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-		ax2.set_xlim(2.1, 2.35)
+		ax2.set_xlim(1.95, 2.4)
 		#ax2.set_xlim(1.1,1.25)
 		f.subplots_adjust(hspace=0.001)
 		f.tight_layout()
 		plt.show()
 		f.savefig(objSpec[:-5] + '.png')
-	
+
+	def arrayCompare(self, profile, imData):
+		"""
+		Def: Function to compare the shapes of the optimal extraction profile 
+		and the object image data which may not necessarily be the same. But in 
+		order for the optimal extraction from profile to work they have to be. This 
+		method spits out an adjusted profile so that the shape matches that of the 
+		object data, allowing them to be multiplied together 
+		Input: profile - the optimal extraction profile 
+				imData - the object cube data 
+		Output: new_profile - adjusted profile with shape matches the last two indices 
+		of the object data
+		"""
+		if imData.shape[1] != profile.shape[0]:
+
+		    print 'Must adjust rows'
+
+		    #decide whether to add rows or clip rows 
+
+		    if imData.shape[1] - profile.shape[0] > 0:
+
+		        #need to add rows to the profile
+
+		        print 'Adding Rows' 
+
+		        row_addition = np.zeros([abs(imData.shape[1] - profile.shape[0]), profile.shape[1]])
+
+		        #vstack this together with the original profile
+
+		        profile = np.vstack((profile, row_addition))
+
+		    else:
+
+		        #need to clip rows from the profile, assuming we're at the edge so it won't affect the process
+
+		        print 'Deleting Rows'
+
+		        profile = np.delete(profile, (len(profile) -  abs(imData.shape[1] - profile.shape[0])), axis=0)
+
+		    #Now deal with the columns 
+
+		if imData.shape[2] != profile.shape[1]:
+
+		    print 'Must adjust columns'
+
+		    #Decide whether to add or clip columns 
+
+		    if imData.shape[2] - profile.shape[1] > 0:
+
+		        #need to add columns 
+
+		        print 'Adding Columns'
+
+		        column_addition = np.zeros([profile.shape[0], abs(imData.shape[2] - profile.shape[1])])
+
+		        #hstack this togehter with the original profile 
+
+		        profile = np.hstack((profile, column_addition))
+
+		    else:
+
+		        #need to clip the columns 
+
+		        print 'Deleting columns'
+
+		        profile = np.delete(profile, (len(profile[0]) -  abs(imData.shape[2] - profile.shape[1])), axis=1)
+
+		#return the profile 
+
+		return profile
+
 #Starting to write some functions for extracting spectra from galaxies and measuring their properties  
 	def galExtract(self, sci_dir, std_cube, obj_cube, sky_cube, center_x, center_y, n):
 
@@ -4276,7 +4346,9 @@ class pipelineOps(object):
 		"""
 		#First extract the profile from the standard star cube 
 		std_star_cube = cubeOps(std_cube)
+		print 'The standard star cube shape is: %s ' % str(std_star_cube.data.shape)
 		gal_obj_cube = cubeOps(obj_cube)
+		print 'The object cube has shape: %s ' % str(gal_obj_cube.data.shape)
 		#Find the cube name
 		if obj_cube.find("/") == -1:
 			gal_name = sci_dir + '/' + obj_cube
@@ -4288,7 +4360,7 @@ class pipelineOps(object):
 		#Extract the PSF profile using the method in cubeClass 
 		params, std_profile, FWHM, offList = std_star_cube.psfMask()
 		#Print the profile and the center in the x/y directions 
-		print std_profile
+		#print std_profile
 		print 'The x center is: %s' % params['center_x']
 		print 'The y center is: %s' % params['center_y']
 		#Now roll this profile over to the central location of the object and replot 
@@ -4302,6 +4374,9 @@ class pipelineOps(object):
 		for arr in new_mask:
 			final_new_mask.append(np.roll(arr, y_shift))
 		final_new_mask = np.array(final_new_mask)
+
+		#Check the shapes of the profile and object data, adjust accordingly 
+		final_new_mask = self.arrayCompare(final_new_mask, gal_obj_cube.data)
 
 		#Check to see that the gaussian and shifted profile align
 		colFig, colAx = plt.subplots(1,1, figsize=(14.0,14.0))
@@ -4369,3 +4444,35 @@ class pipelineOps(object):
 		galaxy = galPhys(object_spectrum, z)
 		#Compute the signal to noise
 		galaxy.sToNK()
+
+	def plotHandOII(self, l_o):
+		"""
+		Def:
+		Plots the H-band sky spectrum and the location of the OII
+		emission line for different objects. Saves with the object name. 
+		""" 
+
+		#Read in from the text file containing the wavelength and flux
+		Table = np.loadtxt('H_sky.txt')
+		wavelength = Table[:,0] / 1000
+		flux = Table[:,1]
+		#Set up a gaussian to simulate the OII emission line 
+		oii_gauss = GaussianModel()
+		pars = oii_gauss.make_params()
+		pars['center'].set(l_o)
+		pars['sigma'].set(0.0008)
+		pars['amplitude'].set(1000)
+		init = oii_gauss.eval(pars, x=wavelength)
+		#plot an initial evaluation of the model on top of the spectrum 
+		f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+		ax1.plot(wavelength, flux, color='b')
+		ax1.set_title('H-band OII Position', fontsize=30)
+		ax1.plot(wavelength, init, 'k--')
+		ax1.axvline(x=l_o, ymin=0, ymax = max(flux), color='r')
+		ax1.set_xlim(1.4, 1.8)
+		ax1.tick_params(axis='y', which='major', labelsize=15)
+		ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+		ax1.set_ylabel(r'Flux', fontsize=24)
+		f.tight_layout()
+		plt.savefig('/disk1/turner/DATA/Gals2/comb/Science/OII_overplots/gals1_lbg105_OII.png')
+		plt.show()		
