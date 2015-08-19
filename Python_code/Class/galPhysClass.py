@@ -127,21 +127,21 @@ class galPhys(object):
 		pars = OIII5007_gauss.make_params()
 		pars['OIII5007_center'].set(self.OIII5007_shifted)
 		pars['OIII5007_center'].set(vary=False)
-		pars['OIII5007_sigma'].set(0.0008)
+		pars['OIII5007_sigma'].set(0.0001)
 		pars['OIII5007_amplitude'].set(0.004)
 
 		OIII4959_gauss = GaussianModel(prefix='OIII4959_')
 		pars.update(OIII4959_gauss.make_params())
 		pars['OIII4959_center'].set(self.OIII4959_shifted)
 		pars['OIII4959_center'].set(vary=False)
-		pars['OIII4959_sigma'].set(0.0008)
+		pars['OIII4959_sigma'].set(0.0001)
 		pars['OIII4959_amplitude'].set(0.002)
 
 		H_beta_gauss = GaussianModel(prefix='H_beta_')
 		pars.update(H_beta_gauss.make_params())
 		pars['H_beta_center'].set(self.H_beta_shifted)
 		pars['H_beta_center'].set(vary=False)
-		pars['H_beta_sigma'].set(0.0008)
+		pars['H_beta_sigma'].set(0.0001)
 		pars['H_beta_amplitude'].set(0.0005)
 
 		#create the composite model as the sum of these three 
@@ -156,11 +156,12 @@ class galPhys(object):
 		ax1.plot(self.wavelength, init, 'k--')
 		ax1.plot(self.wavelength, out.best_fit, 'r-')
 		ax1.set_title('Object Spectrum', fontsize=30)
-		ax1.set_ylim(0, 4)
+		ax1.set_ylim(-2, 35)
 		ax1.tick_params(axis='y', which='major', labelsize=15)
 		ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
 		ax1.set_ylabel(r'Flux', fontsize=24)
 		f.tight_layout()
+		plt.savefig('comp_triple_gauss_fit.png')
 		plt.show()
 
 	def fitSingleGauss(self, wavelength, flux, center):

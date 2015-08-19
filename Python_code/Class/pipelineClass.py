@@ -4476,3 +4476,118 @@ class pipelineOps(object):
 		f.tight_layout()
 		plt.savefig('/disk1/turner/DATA/Gals2/comb/Science/OII_overplots/gals1_lbg105_OII.png')
 		plt.show()		
+
+	def stackSpectra(self, fitsList, dL):
+		"""
+		Def:
+		Takes a collection of spectra of objects in a similar redshift range, 
+		blueshifts back to rest wavelength and then stacks these to create a composite 
+		spectrum. 
+		Input: fitsList - file containing the names of the .fits files housing the spectra 
+				dL - the wavelength separation between adjacent points in the spectra		
+		Output: compSpec.fits - composite spectrum, spanning the full range of rest frame wavelengths the observations have probed
+		"""
+		#Read in the fitsList filenames and redshift values  
+		data = np.genfromtxt(fitsList, dtype='str')
+		#Save the names and types as lists 
+		fileNames = data[:,0]
+		redshifts = data[:,1]
+		for item in zip(fileNames, redshifts):
+			print item
+		#Working up to here. Now read in the first spectrum and set this as the composite 
+		initTable = fits.open(fileNames[0])
+		#Set the Wavelength and flux, blueshifting the initial wavelength values
+		compWavelength = initTable[1].data['Wavelength'] / (1 + float(redshifts[0]))
+		compFlux = initTable[1].data['Flux']
+		#Start loop over the other files and redshift values 
+		for i in range(1, len(fileNames)):
+			#Open each fits file separately and define the blueshifted wavelength / flux values 
+			fitsTable = fits.open(fileNames[i])
+			fitsWavelength = fitsTable[1].data['Wavelength'] / (1 + float(redshifts[i]))
+			fitsFlux = fitsTable[1].data['Flux']
+
+			###IS THE LOWEST WAVELENGTH LOWER###
+			if fitsWavelength[0] < compWavelength[0]:
+				print '[INFO]: The lowest new array wavelength is lower than the lowest composite array wavelength: %s ' % (compWavelength[0])
+
+				#The lowest wavelength is lower (meaning the redshift is higher than the maximum in the composite)  
+				#Find the highest wavelength index at which this is still the case 
+
+				low_counter = 0
+				while fitsWavelength[low_counter] < compWavelength[0]:		
+					low_counter += 1
+					#print 'This is the wavelength and the counter: %s %s' % (fitsWavelength[low_counter], low_counter)
+					#print compWavelength[0]
+
+				#low_counter is the correct index to clip until. Do so and delete from both the fitsWavelength and fitsFlux arrays
+				lowFitsWavelength = fitsWavelength[:low_counter]
+				lowFitsFlux = fitsFlux[:low_counter]
+				fitsWavelength = fitsWavelength[low_counter:]
+				fitsFlux = fitsFlux[low_counter:]
+
+				#Append the lowFitsWavelength and flux arrays to the beginning of the composite spectrum
+				compWavelength = np.hstack([lowFitsWavelength, compWavelength])
+				compFlux = np.hstack([lowFitsFlux, compFlux])
+
+				#Working up to here
+			###IS THE HIGHEST WAVELENGTH LOWER###
+			if fitsWavelength[len(fitsWavelength) - 1] > compWavelength[len(compWavelength) - 1]:
+				print '[INFO]: The highest new array wavelength is higher than the highest composite array wavelength: %s ' % (compWavelength[len(compWavelength) - 1])
+
+				#The highest wavelength is higher (meaning the redshift is lower than the minimum in the composite)  
+				#Find the lowest wavelength index at which this is still the case 
+
+				high_counter = len(fitsWavelength) - 1
+				while fitsWavelength[high_counter] > compWavelength[len(compWavelength) - 1]:		
+					high_counter -= 1
+					#print 'This is the wavelength and the counter: %s %s' % (fitsWavelength[high_counter], high_counter)
+					#print compWavelength[len(compWavelength) - 1]
+
+				#high_counter is the correct index to clip until. Do so and delete from both the fitsWavelength and fitsFlux arrays
+				highFitsWavelength = fitsWavelength[high_counter + 1:]
+				highFitsFlux = fitsFlux[high_counter + 1:]
+				fitsWavelength = fitsWavelength[:high_counter + 1]
+				fitsFlux = fitsFlux[:high_counter + 1]
+
+				#Append the highFitsWavelength and flux arrays to the end of the composite spectrum
+				compWavelength = np.hstack([compWavelength, highFitsWavelength])
+				compFlux = np.hstack([compFlux, highFitsFlux])
+
+			#Stage 1 done - maximum and minimum sections added. 
+			#Remaining stage is to evaluate the points remaining in fitsWavelength and fitsFlux 1 by 1
+			#and stack the fluxes together in bins 
+
+			#Check all the remaining wavelength values
+			print 'Stacking remaining wavelengths'
+			for i in range(len(fitsWavelength)):
+				counter = -1
+				for j in range(len(compWavelength)):
+					counter += 1
+					if compWavelength[j] - dL <= fitsWavelength[i] <= compWavelength[j]:
+						break
+				compFlux[j] = compFlux[j] + fitsFlux[i]		
+
+
+		#plot an initial evaluation of the spectrum 
+		f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+		ax1.plot(compWavelength, compFlux, color='b')
+		ax1.set_title('Composite Spectrum', fontsize=30)
+		ax1.set_ylim(-1, 50)
+		ax1.tick_params(axis='y', which='major', labelsize=15)
+		ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+		ax1.set_ylabel(r'Flux', fontsize=24)
+		f.tight_layout()	
+		plt.savefig('/disk1/turner/DATA/Gals2/comb/Science/compSpectrum.png')
+		plt.show()	
+
+
+		#Isolate the Hbeta and OIII lines and save to a new spectrum
+		index = np.where(np.logical_and(compWavelength > 0.485, compWavelength < 0.510))[0]
+		saveWavelength = compWavelength[index]
+		saveFlux = compFlux[index]
+		tbhdu = fits.new_table(fits.ColDefs(\
+			[fits.Column(name='Wavelength', format='E', array=saveWavelength),\
+		     fits.Column(name='Flux', format='E', array=saveFlux)]))
+		prihdu = fits.PrimaryHDU(header=initTable[0].header)
+		thdulist = fits.HDUList([prihdu, tbhdu])
+		thdulist.writeto('comp_spectrum.fits', clobber=True)
