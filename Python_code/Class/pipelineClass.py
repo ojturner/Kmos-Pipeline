@@ -4396,6 +4396,148 @@ class pipelineOps(object):
 		#Create a plot of both the sky and the object next to one another
 		self.plotSpecs(sci_dir, gal_name[:-5] + '_spectrum.fits', sky_cube, n)
 
+	#Starting to write some functions for extracting spectra from galaxies and measuring their properties  
+	def singlePixelExtract(self, sci_dir, obj_cube, centre_x, centre_y, z, n):
+		"""
+		Def: Function for extracting the spectrum from a stacked galaxy image pixel by pixel at  
+		locations specified by the user, after examining the object cube in qfits. 
+		Recovers the object spectrum and makes a plot of this in the usual way 
+		with the sky spectrum beneath. 
+		Input:  
+		obj_cube - the cube containing the galaxy to extract a spectrum from 
+		sky_cube - one of the sky cubes extracted in the runPipeline.py analysis
+		centre_x - galaxy central pixel location in x-direction
+		centre_y - galaxy central pixel location in y-direction   
+		n - binning for spectrum plot
+
+		Output: Plot of the object and sky spectra using plotSpecs
+		If required, a data file containing the optimally extracted object spectrum 
+		Data file containing the optimally extracted sky spectrum 
+		"""
+		z = float(z)
+		centre_x = int(centre_x)
+		centre_y = int(centre_y)
+		#Find the cube name
+		if obj_cube.find("/") == -1:
+			gal_name = sci_dir + '/' + obj_cube
+		#Otherwise the directory structure is included and have to 
+		#search for the backslash and omit up to the last one 
+		else:
+			objName = obj_cube[len(obj_cube) - obj_cube[::-1].find("/"):]
+			gal_name = sci_dir + '/'  + objName
+
+		#Literally all we need to do is extract the spectrum and compute S/N - do this by comparing 
+		#with the noise from a skycube extraction 
+		#First find the noise by extracting a spectrum from the skycube 
+		objCube = cubeOps(obj_cube)
+		objWavelength = objCube.wave_array * 100
+		print objWavelength * 100
+		fluxArray = objCube.centralSpec()
+		new_flux_array = fluxArray[np.where(fluxArray < 1)[0]]
+		print new_flux_array[500]
+		noise_value = abs(np.nanmean(new_flux_array))
+		print 'This is the noise value: %s' % (noise_value)
+		print new_flux_array[500] / noise_value
+		#Now have our estimate of the noise level of the measurements 
+		#Extract a spectrum using the cubeOps class
+		central_spec = objCube.singlePixelExtract(centre_x, centre_y)
+		#Now split the flux array into the region around the OIII emission line 
+		OIII_lower = (50.07 * (1 + z)) - 1.0
+		OIII_upper = (50.07 * (1 + z)) + 1.0
+		#Will construct x and y arrays housing the S/N value. Need to loop around 
+		#both of those and plug in the pixel values to extract the spectrum 
+		x_loop_array = np.arange(1, len(objCube.data[0][0]) - 1)
+		y_loop_array = np.arange(1, len(objCube.data[0]) - 1)
+		x_SN_array = []
+		y_SN_array = []
+
+		#for each of the values in the x_loop_array and y_loop_array compute the signal to noise of OIII 
+
+		for item in x_loop_array:
+			flux = objCube.singlePixelExtract(item, centre_y)
+			indices = np.where(np.logical_and(objWavelength > OIII_lower, objWavelength < OIII_upper))[0]
+			fit_wavelength = objWavelength[indices]
+			fit_flux = flux[indices]
+			#print 'This is the fit flux: %s' % (fit_flux)
+			#Now have both the fit flux and wavelength - fit a gaussian to measure the amplitude of emission line 
+			best_values, covar = self.fitSingleGauss(fit_wavelength, fit_flux, 50.07 * (1 + z))
+			if covar is None:
+				x_SN_array.append(0.0)
+			elif 100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])) > 20:
+				print 100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude']))
+				x_SN_array.append(0.0)
+			else:
+				print 100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude']))
+				x_SN_array.append(abs(best_values['amplitude']) / (noise_value))
+
+		#Now for the y_array
+		print 'Moving onto y array'
+		for item in y_loop_array:
+			flux = objCube.singlePixelExtract(centre_x, item)
+			indices = np.where(np.logical_and(objWavelength > OIII_lower, objWavelength < OIII_upper))[0]
+			fit_wavelength = objWavelength[indices]
+			fit_flux = flux[indices]
+			#Now have both the fit flux and wavelength - fit a gaussian to measure the amplitude of emission line 
+			best_values, covar = self.fitSingleGauss(fit_wavelength, fit_flux, 50.07 * (1 + z))
+			if covar is None:
+				y_SN_array.append(0.0)
+			elif 100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])) > 20:
+				print 100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude']))
+				y_SN_array.append(0.0)
+			else:
+				print 100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude']))
+				y_SN_array.append(abs(best_values['amplitude']) / (noise_value))
+
+		print 'This is the x S/N Array: %s ' % x_SN_array
+		print 'This is the y S/N Array: %s ' % y_SN_array
+		f, (ax1, ax2) = plt.subplots(2, 1, sharex=False, figsize=(18.0, 10.0))
+		ax1.plot(x_loop_array, x_SN_array, color='b')
+		ax1.set_title('%s x-direction S/N OIII5007' % objName[26:-5], fontsize=24)
+		ax1.set_xlabel(r'x-pixel Position at y = %s' % centre_y, fontsize=24)
+		#ax1.set_ylim(0, 4.0)
+		ax1.tick_params(axis='y', which='major', labelsize=15)
+		ax2.plot(y_loop_array, y_SN_array, color='g')
+		ax2.set_xlabel(r'y-pixel Position at x = %s' % centre_x, fontsize=24)
+		ax2.tick_params(axis='both', which='major', labelsize=15)
+		#ax2.set_ylim(0, 80)
+		nbins = len(ax1.get_xticklabels())
+		ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
+		#ax2.set_xlim(1.95, 2.4)
+		#ax2.set_xlim(1.1,1.25)
+		f.subplots_adjust(hspace=0.001)
+		f.tight_layout()
+		plt.show()
+		f.savefig(gal_name[:-5] + '_SN.png')
+
+		#Take the median of this array where the flux values don't exceed 50
+		#plot an initial evaluation of the spectrum 
+		f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+		ax1.plot(objWavelength, fluxArray, color='b')
+		ax1.plot(objWavelength, central_spec, color='red')
+		ax1.set_title('Sky Spectrum', fontsize=30)
+		#ax1.axhline(y=0.04405, xmin=min(objWavelength), xmax=max(objWavelength), linewidth=2, color = 'red')
+		ax1.set_ylim(-1, 10)
+		#ax1.set_xlim(2.05, 2.40)
+		ax1.tick_params(axis='y', which='major', labelsize=15)
+		ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+		ax1.set_ylabel(r'Flux', fontsize=24)
+		f.tight_layout()	
+		#plt.savefig('/disk1/turner/DATA/Gals2/comb/Science/compSpectrum.png')
+		plt.show()
+
+	def singlePixelExtractMulti(self, inFile, sci_dir):
+		"""
+		Def:
+		Applies the singlePixelExtract function to a list of files, 
+		in the infile we have the name of the object to read in, the redshift and the x,y positions 
+		of the center of the galaxy from Qfits 
+		Input: inFile - Containing the object attributes listed above 
+		"""
+		#Want to apply the above function to everything within a file 
+		#First read in the whole file as a Table 
+		Table = np.loadtxt(inFile, dtype='str')
+		for row in Table:
+			self.singlePixelExtract(sci_dir, row[0], row[2], row[3], row[1], 1)
 
 	def fitSingleGauss(self, wavelength, flux, center):
 		"""
@@ -4411,27 +4553,28 @@ class pipelineOps(object):
 		#Construct the gaussian model from lmfit 
 		mod = GaussianModel()
 		#Guess and set the initial parameter values 
-		pars = mod.guess()
+		pars = mod.make_params()
 		pars['center'].set(center)
 		pars['center'].set(vary=False)
-		#pars['sigma'].set(0.0008)
-		#pars['amplitude'].set(0.0005)
+		pars['sigma'].set(0.05)
+		pars['amplitude'].set(1.0)
 
 		#Perform the model fit
 		out = mod.fit(flux, pars, x=wavelength)
-		print out.fit_report()
+		#print out.fit_report()
 		#plot an initial evaluation of the model on top of the spectrum 
 		f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
 		ax1.plot(wavelength, flux, color='b')
 		ax1.plot(wavelength, out.best_fit, 'r-')
 		ax1.set_title('Object Spectrum', fontsize=30)
-		#ax1.set_ylim(0, 4)
+		ax1.set_ylim(-10, 10)
 		ax1.tick_params(axis='y', which='major', labelsize=15)
 		ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
 		ax1.set_ylabel(r'Flux', fontsize=24)
 		f.tight_layout()
-		plt.show()
-		return out.best_values
+		#plt.show()
+		plt.close('all')
+		return out.best_values, out.covar
 
 	def pSTNK(self, object_spectrum, z):
 		"""

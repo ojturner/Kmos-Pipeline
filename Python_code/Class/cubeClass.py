@@ -347,6 +347,16 @@ class cubeOps(object):
 		flux_array = np.nanmedian(lst, axis=0)
 		return flux_array				
 
+	def singlePixelExtract(self, centre_x, centre_y):
+		"""
+		Def: 
+		Extracts a 1-D spectrum at the central x and y locations provided
+		Input - centre_x: the central location of the galaxy on the 2D image in the x direction 
+				centre_y: the central location of the galaxy on the 2D image in the y direction
+		Output - FluxArray: Extracted 1D flux spectrum from the object at the chosen location 
+		"""
+		#Already have Data defined - want to collapse this down to a 1D array at the chosen x-y location 
+		return self.data[:,centre_y, centre_x]
 
 	def specPlot2D(self, orientation):
 		"""

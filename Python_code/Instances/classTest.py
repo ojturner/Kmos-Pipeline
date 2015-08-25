@@ -86,20 +86,23 @@ obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
 gal_dir = '/disk1/turner/DATA/Gals2/comb/Science'
 sky_cube_gal = '/disk1/turner/DATA/Gals1/K/obs_09/Science/combine_sci_reconstructed_arm3_sky.fits'
-obj_cube_gal = gal_dir + '/combine_sci_reconstructed_cdfs_lbg_113.fits'
+obj_cube_gal = gal_dir + '/combine_sci_reconstructed_cdfs_lbg_24.fits'
 std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_23991.fits'
 raw_file = '/disk1/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS344_0018_Corrected.fits'
 badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
 object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
 
-pipe_methods.stackSpectra('/disk1/turner/DATA/Gals2/comb/Science/stack.txt', 0.00028)
+
+#pipe_methods.singlePixelExtractMulti(sci_dir + '/sn.txt', sci_dir)
+#pipe_methods.singlePixelExtract(sci_dir, obj_cube_gal, 23, 21, 3.27917, 1)
+#pipe_methods.stackSpectra('/disk1/turner/DATA/Gals2/comb/Science/stack.txt', 0.00028)
 #pipe_methods.pSTNK(object_spectrum, 3.47465)
 #pipe_methods.maskExtraPixels(raw_file, badpixel_dark_new)
 #galaxy.printProps()
 #galaxy.plotSpec()
 #galaxy.fitHbandOIII()
 #pipe_methods.plotHandOII(1.666)
-#pipe_methods.galExtract(gal_dir, std_cube_gal, obj_cube_gal, sky_cube_gal, 18, 18, 1)
+pipe_methods.galExtract(gal_dir, std_cube_gal, obj_cube_gal, sky_cube_gal, 20, 17, 1)
 #pipe_methods.frameCheck(sci_dir, obj_names, 'n55_19')
 #pipe_methods.combine_by_name(sci_dir, combine_input, 0, 1.2, 6.0)
 #pipe_methods.compareSky(sci_dir, combNames)
