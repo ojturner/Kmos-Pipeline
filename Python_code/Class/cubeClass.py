@@ -1243,6 +1243,125 @@ class cubeOps(object):
         if savefig:
             fig.savefig('%s_OIII_Hb.pdf' % self.fileName[:-5])
         plt.close('all')
+
+
+    def OIII_vel_map(self, redshift, savefig=False):
+
+        # open the data
+        data = self.data
+        noise = self.Table[2].data
+
+        # get the wavelegnth index of the oiii5007 line:
+        wl_0 = self.Table[1].header['CRVAL3']
+        dwl = self.Table[1].header['CDELT3']
+        wl_n = wl_0 + (data.shape[0] * dwl)
+
+        wl = np.linspace(wl_0, wl_n, data.shape[0])
+
+
+        # the shape of the data is (spectrum, xpixel, ypixel)
+        # loop through each x and y pixel and get the OIII5007 S/N
+        xpixs = data.shape[1]
+        ypixs = data.shape[2]
+
+        # set the central wavelength of the OIII line 
+        oiii5007_wl = 0.500824 * (1. + redshift)
+        line_idx = np.argmin(np.abs(wl - oiii5007_wl))
+
+        # initialise the empty velocity array
+        OIII_vel_array = np.empty(shape=(xpixs, ypixs))  
+
+        for i, xpix in enumerate(np.arange(0, xpixs, 1)):
+
+            for j, ypix in enumerate(np.arange(0, ypixs, 1)):
+
+                spaxel_spec = data[:, i, j]
+                spaxel_noise = noise[:, i, j]
+
+                line_counts = np.median(spaxel_spec[line_idx - 3:
+                                                    line_idx + 3])
+
+                line_noise = np.median(spaxel_noise[line_idx - 3:
+                                                    line_idx + 3])
+
+                line_sn = line_counts / line_noise
+
+                # check for nan, inf, poor s/n
+                if np.isnan(line_sn):
+                    OIII_vel_array[i, j] = np.nan
+
+                elif np.isinf(line_sn):
+                    OIII_vel_array[i, j] = np.nan
+
+                elif line_sn < 1.5:
+                    OIII_vel_array[i, j] = np.nan
+
+                # now the condition where we have good s/n
+                # can fit a gaussian to the data in each spaxel
+
+                else:
+
+                    # isolate the flux and wavelength data 
+                    # to be used in the gaussian fit
+                    # print 'Gaussian fitting spaxel [%s,%s]' % (i, j)
+
+                    fit_wl = wl[line_idx - 6: line_idx + 6]
+                    fit_flux = spaxel_spec[line_idx - 6: line_idx + 6]
+
+
+                    
+                    # construct gaussian model using lmfit
+                    gmod = GaussianModel()
+                    # set the initial parameter values 
+                    pars = gmod.make_params()
+
+                    pars['center'].set(value=oiii5007_wl, 
+                                       min=oiii5007_wl - 0.0015, 
+                                       max=oiii5007_wl + 0.0015)
+
+                    pars['sigma'].set(0.0004)
+                    pars['amplitude'].set(0.001)
+
+                    # perform the fit 
+                    out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+#                    print out.fit_report()
+#                    fig, ax = plt.subplots(1, figsize=(16, 10))
+#                    ax.plot(fit_wl, fit_flux)
+#                    ax.plot(fit_wl, out.best_fit, 'r-')
+#                    ax.plot()
+#                    ax.axvline(x=oiii5007_wl, ymin=0, ymax=max(fit_flux))
+#                    plt.show()
+                    # assuming that the redshift measured in qfits is the 
+                    # correct one - subtract the fitted centre and convert 
+                    # to kms-1
+                    c = 2.99792458E5
+                    OIII_vel = c * ((out.best_values['center'] - oiii5007_wl) / oiii5007_wl)         
+                    # add this result to the velocity array 
+                    OIII_vel_array[i, j] = OIII_vel
+
+        # create a plot of the velocity field
+
+        vel_fig, vel_ax = plt.subplots(figsize=(12, 10), nrows=1, ncols=1)
+        # vel_fig.subplots_adjust(right=0.83)
+        # cbar_ax = vel_fig.add_axes([0.85, 0.15, 0.02, 0.7])
+        vel_ax.minorticks_on()
+
+        im = vel_ax.imshow(OIII_vel_array, aspect='auto', vmin=-50,
+                       vmax=50,
+                       cmap=plt.get_cmap('jet'))
+
+        vel_ax.set_title('[OIII] velocity')
+
+        vel_fig.colorbar(im)
+
+        # plt.tight_layout()
+        plt.show()
+        if savefig:
+            vel_fig.savefig('%s_velocity_OIII.pdf' % self.fileName[:-5])
+        plt.close('all')        
+
+
 ##############################################################################
 #Uncomment to create test instance of class and try out the methods###########
 ##############################################################################

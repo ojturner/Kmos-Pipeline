@@ -21,7 +21,7 @@ from galPhysClass import galPhys
 
 # Create an instance of the class
 pipe_methods = pipelineOps()
-# cube = cubeOps('/disk1/turner/DATA/SSA')
+cube = cubeOps('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/combine_sci_reconstructed_s_sa22b-c10.fits')
 #galaxy = galPhys('/disk1/turner/DATA/Gals2/comb/Science/comp_spectrum.fits', 0)
 #sky_cube = cubeOps(kskyCube)
 
@@ -84,7 +84,11 @@ raw_file = '/disk1/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS
 badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
 object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
 
-pipe_methods.multi_plot_K_image('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
+
+pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/goods_k_p1_spec_data.txt')
+#pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/ssa22_p1_spec_data.txt')
+#cube.OIII_vel_map(3.284804)
+#pipe_methods.multi_plot_K_image('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
 #pipe_methods.multi_plot_HK_image('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/ssa22_p2_spec_data.txt')
 #pipe_methods.seeing_better_than(combine_input, 0.65)
 #pipe_methods.av_seeing(combine_input)

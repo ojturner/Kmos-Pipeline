@@ -5074,19 +5074,19 @@ class pipelineOps(object):
         redshifts = data[:,1]
         for item in zip(fileNames, redshifts):
             print item
-        #Working up to here. Now read in the first spectrum and set this as the composite 
+        # Working up to here. Now read in the first spectrum and set this as the composite 
         initTable = fits.open(fileNames[0])
-        #Set the Wavelength and flux, blueshifting the initial wavelength values
+        # Set the Wavelength and flux, blueshifting the initial wavelength values
         compWavelength = initTable[1].data['Wavelength'] / (1 + float(redshifts[0]))
         compFlux = initTable[1].data['Flux']
-        #Start loop over the other files and redshift values 
+        # Start loop over the other files and redshift values 
         for i in range(1, len(fileNames)):
-            #Open each fits file separately and define the blueshifted wavelength / flux values 
+            # Open each fits file separately and define the blueshifted wavelength / flux values 
             fitsTable = fits.open(fileNames[i])
             fitsWavelength = fitsTable[1].data['Wavelength'] / (1 + float(redshifts[i]))
             fitsFlux = fitsTable[1].data['Flux']
 
-            ###IS THE LOWEST WAVELENGTH LOWER###
+            ### IS THE LOWEST WAVELENGTH LOWER###
             if fitsWavelength[0] < compWavelength[0]:
                 print '[INFO]: The lowest new array wavelength is lower than the lowest composite array wavelength: %s ' % (compWavelength[0])
 
@@ -5295,3 +5295,24 @@ class pipelineOps(object):
             print "\nDoing %s (redshift = %.3f) ..." % (obj_name, redshift)
 
             cube.plot_K_image(redshift, savefig=True)
+
+    def multi_plot_OIII_vel_map(self, infile):
+        """
+        Def: 
+        Plot the velocity maps for lots of cubes together
+        Input: infile - file listing the redshifts and cubenames
+        """
+        # read in the table of cube names 
+        Table = ascii.read(infile)
+
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            cube = cubeOps(obj_name)
+
+            redshift = entry[1]
+
+            print "\nDoing %s (redshift = %.3f) ..." % (obj_name, redshift)
+
+            cube.OIII_vel_map(redshift, savefig=True)
