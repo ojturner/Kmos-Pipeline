@@ -141,7 +141,7 @@ class cubeOps(object):
         #This is now in order of the IFU
         self.combNames = []
         for entry in self.combDict.keys():
-            combinedName = 'sci_combined_' + entry + '__skytweak.fits'
+            combinedName = 'sci_combined_' + entry + '__telluric_skytweak.fits'
             self.combNames.append(combinedName)
 
         #Also construct the list of kmo_combine recipe combined names 
@@ -704,7 +704,10 @@ class cubeOps(object):
 
         wl = np.linspace(wl_0, wl_n, data.shape[0])
 
-        for line, ax in zip(['[OIII]5007', 'Hb', '[OII]'], axes.flatten()):
+        # create a sn dictionary to house the line sn maps
+        sn_dict = {}
+
+        for line, ax in zip(['[OII]', 'Hb', '[OIII]5007'], axes.flatten()):
 
             ax.minorticks_on()
 
@@ -746,6 +749,8 @@ class cubeOps(object):
                         sn_array[i, j] = line_sn
 
             # print max(sn_array.flatten())
+            #add the result to the sn_dict
+            sn_dict[line] = sn_array
 
             im = ax.imshow(sn_array, aspect='auto', vmin=0.,
                            vmax=3.,
@@ -756,10 +761,12 @@ class cubeOps(object):
         fig.colorbar(im, cax=cbar_ax)
 
         #plt.tight_layout()
-        plt.show()
+        # plt.show()
 
         if savefig:
             fig.savefig('%s_sn_map.pdf' % self.fileName[:-5])
+        # return the dictionary containing the noise values
+        return sn_dict
 
 
     def plot_K_sn_map(self, redshift, savefig=False):
@@ -779,8 +786,10 @@ class cubeOps(object):
         wl_n = wl_0 + (data.shape[0] * dwl)
 
         wl = np.linspace(wl_0, wl_n, data.shape[0])
+        # Create a dictionary to house the sn_arrays
+        sn_dict = {}
 
-        for line, ax in zip(['[OIII]5007', 'Hb'], axes.flatten()):
+        for line, ax in zip(['Hb', '[OIII]5007'], axes.flatten()):
 
             ax.minorticks_on()
 
@@ -819,6 +828,8 @@ class cubeOps(object):
                         sn_array[i, j] = line_sn
 
             # print max(sn_array.flatten())
+            # add the result to the sn dictionary
+            sn_dict[line] = sn_array
 
             im = ax.imshow(sn_array, aspect='auto', vmin=0.,
                            vmax=3.,
@@ -829,10 +840,12 @@ class cubeOps(object):
         fig.colorbar(im, cax=cbar_ax)
 
         #plt.tight_layout()
-        plt.show()
+        # plt.show()
 
         if savefig:
             fig.savefig('%s_sn_map.pdf' % self.fileName[:-5])
+        return sn_dict
+
 
     def plot_HK_image(self, redshift, savefig=False):
         """
@@ -859,7 +872,7 @@ class cubeOps(object):
 
         wl = np.linspace(wl_0, wl_n, data.shape[0])
 
-        for line, ax in zip(['[OIII]5007', 'Hb', '[OII]'], axes.flatten()):
+        for line, ax in zip(['[OII]', 'Hb', '[OIII]5007'], axes.flatten()):
 
             ax.minorticks_on()
 
@@ -941,36 +954,36 @@ class cubeOps(object):
             fig.savefig('%s_images.pdf' % self.fileName[:-5])
         plt.close('all')    
 
-        # before creating the three plots create plots for each graph 
-        fig, ax = plt.subplots(1, figsize=(10, 10))
-        im = ax.imshow(met_array_OIII, aspect='auto', vmin=0.,
-                       vmax=3.,
-                       cmap=plt.get_cmap('hot'))
-        ax.set_title('[OIII]')
-        fig.colorbar(im)
+#        # before creating the three plots create plots for each graph 
+#        fig, ax = plt.subplots(1, figsize=(10, 10))
+#        im = ax.imshow(met_array_OIII, aspect='auto', vmin=0.,
+#                       vmax=3.,
+#                       cmap=plt.get_cmap('hot'))
+#        ax.set_title('[OIII]')
+#        fig.colorbar(im)#
 
-        plt.show()
-        plt.close('all')
+#        plt.show()
+#        plt.close('all')#
 
-        fig, ax = plt.subplots(1, figsize=(10, 10))
-        im = ax.imshow(met_array_Hb, aspect='auto', vmin=0.,
-                       vmax=3.,
-                       cmap=plt.get_cmap('hot'))
-        ax.set_title('Hb')
-        fig.colorbar(im)
+#        fig, ax = plt.subplots(1, figsize=(10, 10))
+#        im = ax.imshow(met_array_Hb, aspect='auto', vmin=0.,
+#                       vmax=3.,
+#                       cmap=plt.get_cmap('hot'))
+#        ax.set_title('Hb')
+#        fig.colorbar(im)#
 
-        plt.show()
-        plt.close('all')
+#        plt.show()
+#        plt.close('all')#
 
-        fig, ax = plt.subplots(1, figsize=(10, 10))
-        im = ax.imshow(met_array_OII, aspect='auto', vmin=-3.0,
-                       vmax=3.,
-                       cmap=plt.get_cmap('hot'))
-        ax.set_title('[OII]')
-        fig.colorbar(im)
+#        fig, ax = plt.subplots(1, figsize=(10, 10))
+#        im = ax.imshow(met_array_OII, aspect='auto', vmin=-3.0,
+#                       vmax=3.,
+#                       cmap=plt.get_cmap('hot'))
+#        ax.set_title('[OII]')
+#        fig.colorbar(im)#
 
-        plt.show()
-        plt.close('all')    
+#        plt.show()
+#        plt.close('all')    
 
         # now should also have the Hb and OIII metallicity maps
         # divide the two and plot the result 
@@ -1075,7 +1088,7 @@ class cubeOps(object):
 
         fig.colorbar(im) 
 
-        plt.show()
+        # plt.show()
         if savefig:
             fig.savefig('%s_OIII_Hb.pdf' % self.fileName[:-5])
         plt.close('all')
@@ -1088,10 +1101,12 @@ class cubeOps(object):
         ax.set_title('[OIII] / [OII]')
 
         fig.colorbar(im) 
-        plt.show()
+        # plt.show()
         if savefig:
             fig.savefig('%s_OIII_OII.pdf' % self.fileName[:-5])
         plt.close('all')
+        return Hb_met_array, OII_met_array
+
 
     def plot_K_image(self, redshift, savefig=False):
 
@@ -1111,7 +1126,7 @@ class cubeOps(object):
 
         wl = np.linspace(wl_0, wl_n, data.shape[0])
 
-        for line, ax in zip(['[OIII]5007', 'Hb'], axes.flatten()):
+        for line, ax in zip(['Hb', '[OIII]5007'], axes.flatten()):
 
             ax.minorticks_on()
 
@@ -1175,7 +1190,7 @@ class cubeOps(object):
         fig.colorbar(im, cax=cbar_ax)
 
         # plt.tight_layout()
-        plt.show()
+        # plt.show()
         if savefig:
             fig.savefig('%s_images.pdf' % self.fileName[:-5])
         plt.close('all')        
@@ -1239,10 +1254,11 @@ class cubeOps(object):
         ax.set_title('log([OIII] / Hb)')
 
         fig.colorbar(im) 
-        plt.show()
+        # plt.show()
         if savefig:
             fig.savefig('%s_OIII_Hb.pdf' % self.fileName[:-5])
         plt.close('all')
+        return Hb_met_array
 
 
     def OIII_vel_map(self, redshift, savefig=False):
@@ -1347,20 +1363,22 @@ class cubeOps(object):
         # cbar_ax = vel_fig.add_axes([0.85, 0.15, 0.02, 0.7])
         vel_ax.minorticks_on()
 
-        im = vel_ax.imshow(OIII_vel_array, aspect='auto', vmin=-50,
-                       vmax=50,
-                       cmap=plt.get_cmap('jet'))
+        im = vel_ax.imshow(OIII_vel_array, aspect='auto', 
+                           vmin=-50,
+                           vmax=50,
+                           interpolation='catrom',
+                           cmap=plt.get_cmap('jet'))
 
         vel_ax.set_title('[OIII] velocity')
 
         vel_fig.colorbar(im)
 
         # plt.tight_layout()
-        plt.show()
+        # plt.show()
         if savefig:
             vel_fig.savefig('%s_velocity_OIII.pdf' % self.fileName[:-5])
         plt.close('all')        
-
+        return OIII_vel_array
 
 ##############################################################################
 #Uncomment to create test instance of class and try out the methods###########

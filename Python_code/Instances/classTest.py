@@ -85,7 +85,8 @@ badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark
 object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
 
 
-pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/goods_k_p1_spec_data.txt')
+pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt')
+#pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/goods_k_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/ssa22_p1_spec_data.txt')
 #cube.OIII_vel_map(3.284804)
 #pipe_methods.multi_plot_K_image('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')

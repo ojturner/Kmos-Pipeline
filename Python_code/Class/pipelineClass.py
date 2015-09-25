@@ -18,6 +18,7 @@ from lmfit.models import GaussianModel, PolynomialModel
 from scipy.optimize import minimize
 from astropy.io import fits, ascii
 from matplotlib.ticker import MaxNLocator
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 # add the class file to the PYTHONPATH
@@ -5316,3 +5317,175 @@ class pipelineOps(object):
             print "\nDoing %s (redshift = %.3f) ..." % (obj_name, redshift)
 
             cube.OIII_vel_map(redshift, savefig=True)
+
+    def multi_plot_all_maps(self, infile):
+        """
+        Def: 
+        Plot the velocity maps for lots of cubes together
+        Input: infile - file listing the redshifts and cubenames
+        """
+        # read in the table of cube names 
+        Table = ascii.read(infile)
+
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            cube = cubeOps(obj_name)
+
+            redshift = entry[1]
+
+            print "\nDoing %s (redshift = %.3f) ..." % (obj_name, redshift)
+
+            # check whether we're looking at HK or K band 
+
+            if min(cube.wave_array) < 1.9:
+
+                # we're in the HK band, use the methods which include OII
+                # and construct a 3 x 2 grid of plots 
+                fig, axes = plt.subplots(figsize=(14, 8), nrows=2, ncols=3)
+                # fig.subplots_adjust(right=0.83)
+                # cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+
+                # now this is set up, get the data to populate the plots 
+                sn_dict = cube.plot_HK_sn_map(redshift, savefig=True)
+
+                # these are the sn images of the lines 
+                # add these to the first 
+                for grid, ax in zip(sn_dict.values(), axes[0]):
+
+                    # add the plot
+
+                    im = ax.imshow(grid, aspect='auto', vmin=0.,
+                                   vmax=3.,
+                                   cmap=plt.get_cmap('hot'))
+
+                    # add colourbar to each plot 
+                    divider = make_axes_locatable(ax)
+                    cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                    plt.colorbar(im, cax=cax_new)
+
+                # name the plots
+                for name, ax in zip(sn_dict.keys(), axes[0]):
+                    ax.set_title('%s_image' % name)
+
+                # top row populated, now add the OII & Hb 
+                # metallicity maps and the velocity map
+
+                # metallicity maps
+                Hb_met_array, OII_met_array \
+                     = cube.plot_HK_image(redshift, savefig=True)
+
+                # plot both of these 
+                # Hb
+                im = axes[1][1].imshow(Hb_met_array, aspect='auto', vmin=7.5,
+                                  vmax=9.0,
+                                  cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot 
+                divider = make_axes_locatable(axes[1][1])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the name                
+                axes[1][1].set_title('Hb metallicity')
+
+                # OII
+                im = axes[1][0].imshow(OII_met_array, aspect='auto', vmin=7.5,
+                                  vmax=9.0,
+                                  cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot 
+                divider = make_axes_locatable(axes[1][0])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[1][0].set_title('OII metallicity')
+
+                # velocity map
+                OIII_vel = cube.OIII_vel_map(redshift, savefig=True)
+                im = axes[1][2].imshow(OIII_vel, aspect='auto', vmin=-70,
+                                  vmax=70,
+                                  cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot 
+                divider = make_axes_locatable(axes[1][2])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[1][2].set_title('OIII velocity')
+
+                # save the big figure
+                fig.show() 
+                fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
+                plt.close('all') 
+
+
+            else: 
+
+                # we're in the K band, use the methods which dont include OII
+                # and construct a 2 x 2 grid of plots 
+                fig, axes = plt.subplots(figsize=(10, 8), nrows=2, ncols=2)
+
+                # now this is set up, get the data to populate the plots 
+                sn_dict = cube.plot_K_sn_map(redshift, savefig=True)
+
+                # these are the sn images of the lines 
+                # add these to the first 
+                for grid, ax in zip(sn_dict.values(), axes[0]):
+
+                    # add the plot
+
+                    im = ax.imshow(grid, aspect='auto', vmin=0.,
+                                   vmax=3.,
+                                   cmap=plt.get_cmap('hot'))
+
+                    # add colourbar to each plot 
+                    divider = make_axes_locatable(ax)
+                    cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                    plt.colorbar(im, cax=cax_new)
+
+                # name the plots
+                for name, ax in zip(sn_dict.keys(), axes[0]):
+                    ax.set_title('%s_image' % name)
+
+                # top row populated, now add the OII & Hb 
+                # metallicity maps and the velocity map
+
+                # metallicity maps
+                Hb_met_array \
+                     = cube.plot_K_image(redshift, savefig=True)
+
+                # plot this 
+                # Hb
+                im = axes[1][0].imshow(Hb_met_array, aspect='auto', vmin=7.5,
+                                       vmax=9.0,
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot 
+                divider = make_axes_locatable(axes[1][0])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                axes[1][0].set_title('Hb metallicity')
+
+                # velocity map
+                OIII_vel = cube.OIII_vel_map(redshift, savefig=True)
+                im = axes[1][1].imshow(OIII_vel, aspect='auto', vmin=-70,
+                                       vmax=70,
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot 
+                divider = make_axes_locatable(axes[1][1])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # name the plot
+                axes[1][1].set_title('OIII velocity')
+
+                # save the big figure
+                fig.show() 
+                fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
+                plt.close('all')            
