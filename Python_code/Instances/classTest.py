@@ -13,6 +13,7 @@ from astropy.io import fits
 from pipelineClass import pipelineOps
 from cubeClass import cubeOps
 from galPhysClass import galPhys
+from vel_field_class import vel_field
 
 
 
@@ -22,6 +23,7 @@ from galPhysClass import galPhys
 # Create an instance of the class
 pipe_methods = pipelineOps()
 cube = cubeOps('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/combine_sci_reconstructed_s_sa22b-c10.fits')
+field_instance = vel_field('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/combine_sci_reconstructed_n_c49_velocity_map.fits', 14, 15)
 #galaxy = galPhys('/disk1/turner/DATA/Gals2/comb/Science/comp_spectrum.fits', 0)
 #sky_cube = cubeOps(kskyCube)
 
@@ -85,10 +87,18 @@ badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark
 object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
 
 
+#field_instance.fit_kinematic_pa(plot=True, debug=False)
 pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/goods_k_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/ssa22_p1_spec_data.txt')
-#cube.OIII_vel_map(3.284804)
+#pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
+#pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/ssa22_p2_spec_data.txt')
+# data = cube.spaxel_binning(cube.data, 2, 2)
+# print 'this is the original shape: (%s, %s)' % (cube.data.shape[1], cube.data.shape[2])
+# print 'this is the new shape: (%s, %s)' % (data.shape[1], data.shape[2])
+# print data[400:500,12,12]
+# print cube.data
+# cube.OIII_vel_map(3.284804, binning=True, xbin=1, ybin=1)
 #pipe_methods.multi_plot_K_image('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
 #pipe_methods.multi_plot_HK_image('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/ssa22_p2_spec_data.txt')
 #pipe_methods.seeing_better_than(combine_input, 0.65)

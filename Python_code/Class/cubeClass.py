@@ -1260,9 +1260,141 @@ class cubeOps(object):
         plt.close('all')
         return Hb_met_array
 
+    def spaxel_binning(self, data, xbin, ybin):
+        """
+        Def: bins spaxels in xbin and ybin shaped chunks. Sticking with the 
+        convention that xbin will always refer to the first index.
+        Input: xbin - number of spaxels to go into 1 along x direction
+               ybin - number of spaxels to go into 1 along y direction
+        """
+        # the data is a 3D cube - need to preserve this 
+        # use a for loop with a step size 
 
-    def OIII_vel_map(self, redshift, savefig=False):
+        # initially set the dimensions of the data cube
+        xlength = data.shape[1]
+        ylength = data.shape[2]
 
+        print 'The original cube dimensions are: (%s, %s)' % (xlength, ylength)
+
+        # calculate what the shape of the final array will be 
+        # this is tricky if the bin sizes do not match the shape of 
+        # the array. In this case take the modulus result and use that 
+        # as the final bin width (more often than not this will be 1)
+        # for the shape of the final array this means that it is given 
+        # by the initial shape / binsize + 1 (if % != 0)
+
+        if xlength % xbin == 0:
+            new_xlength = xlength / xbin
+
+        else:
+            # account for the additional bin at the edge
+            new_xlength = (xlength / xbin) + 1
+
+        if ylength % ybin == 0:
+            new_ylength = ylength / ybin
+
+        else:
+            # account for the additional bin at the edge
+            new_ylength = (ylength / ybin) + 1
+
+        # create the new array
+        new_data = np.empty(shape=(data.shape[0], new_xlength, new_ylength))
+
+        # loop round and create the new spaxels 
+        # during each loop component need to check 
+        # if the indices are reaching the original data size 
+        # and if so create the final bin using modulus 
+        # then save each 1D array at the appropriate location 
+        # in the new_data cube
+
+        # set counters to record the position to store the new spaxel 
+        # in the new_data array 
+        x_cube_counter = 0
+        
+        for x in range(0, xlength, xbin):
+            y_cube_counter = 0
+            # check if the xlength has been reached or exceeded 
+            if x + xbin >= xlength:
+
+                # need a different y for loop that uses the end point 
+                # limits in the x-direction. First find what these are 
+                modulus_x = xlength % xbin
+                start_x = (xlength - modulus_x) + 1
+
+                # initiate for loop for this scenario
+                for y in range(0, ylength, ybin):
+
+                    # this configuration means we will first 
+                    # be looping down the way, for each row 
+                    if y + ybin >= ylength:
+
+                        # we've exceeded the original spaxel limit 
+                        # meaning that indicing will fail. create the final bin
+                        modulus_y = ylength % ybin
+                        start_y = (ylength - modulus_y) + 1
+
+                        # note the + 1 is required for proper indexing 
+                        new_spaxel = np.nanmedian(\
+                                     np.nanmedian(data[:, start_x:xlength - 1,\
+                                     start_y:ylength - 1], axis=1), axis=1)
+
+                    # everything is okay, limit not exceeded
+                    else:
+
+                        new_spaxel = np.nanmedian(\
+                                     np.nanmedian(data[:, start_x:xlength - 1,\
+                                     y:y + ybin], axis=1), axis=1)
+                        
+                    # add the new spaxel to the new_data
+                    # cube in the correct position
+                    new_data[:, x_cube_counter, y_cube_counter] = new_spaxel
+
+                    # increment both the x and y cube counters
+                    y_cube_counter += 1
+
+            else:
+
+                # everything is okay and the xlimit has not been reached
+                for y in range(0, ylength, ybin):
+
+                    # this configuration means we will first 
+                    # be looping down the way, for each row 
+                    if y + ybin >= ylength:
+
+                        # we've exceeded the original spaxel limit 
+                        # meaning that indicing will fail. create the final bin
+                        modulus_y = ylength % ybin
+                        start_y = (ylength - modulus_y) + 1
+
+                        # note the + 1 is required for proper indexing 
+                        new_spaxel = np.nanmedian(\
+                                     np.nanmedian(data[:, x:x + xbin,\
+                                     start_y:ylength - 1], axis=1), axis=1)
+
+                    # everything is okay, limit not exceeded
+                    else:
+
+                        new_spaxel = np.nanmedian(\
+                                     np.nanmedian(data[:, x:x + xbin,\
+                                     y:y + ybin], axis=1), axis=1)
+
+                    # add the new spaxel to the new_data 
+                    # cube in the correct position
+                    new_data[:, x_cube_counter, y_cube_counter] = new_spaxel
+
+                    # increment both the x and y cube counters
+                    y_cube_counter += 1
+            x_cube_counter += 1
+
+        # return the new_data 
+        return new_data
+
+
+
+
+    def OIII_vel_map(self, redshift, savefig=False, binning=False, **kwargs):
+
+        #TODO: CHECK THAT THE kwargs values xbin and ybin are ints < 10
         # open the data
         data = self.data
         noise = self.Table[2].data
@@ -1273,6 +1405,26 @@ class cubeOps(object):
         wl_n = wl_0 + (data.shape[0] * dwl)
 
         wl = np.linspace(wl_0, wl_n, data.shape[0])
+
+        # if binning is true, take the median of adjacent spaxels
+        # this uses the spaxel_binning method which can bin in any 
+        # different combination of shapes 
+        if binning:
+
+            # redefine the data as the binned spaxel equivalent
+            if not kwargs:
+
+                # haven't specified the bins 
+                raise ValueError("Missing keyword arguments for binsize")
+
+            # have specified the bins - take the values 
+            else:
+                xbin = kwargs['xbin']
+                ybin = kwargs['ybin']
+
+            # important that the data and noise have the same binning
+            data = self.spaxel_binning(data, xbin, ybin)
+            noise = self.spaxel_binning(noise, xbin, ybin)
 
 
         # the shape of the data is (spectrum, xpixel, ypixel)
@@ -1309,7 +1461,7 @@ class cubeOps(object):
                 elif np.isinf(line_sn):
                     OIII_vel_array[i, j] = np.nan
 
-                elif line_sn < 1.5:
+                elif line_sn < 1.0:
                     OIII_vel_array[i, j] = np.nan
 
                 # now the condition where we have good s/n
@@ -1341,13 +1493,6 @@ class cubeOps(object):
                     # perform the fit 
                     out = gmod.fit(fit_flux, pars, x=fit_wl)
 
-#                    print out.fit_report()
-#                    fig, ax = plt.subplots(1, figsize=(16, 10))
-#                    ax.plot(fit_wl, fit_flux)
-#                    ax.plot(fit_wl, out.best_fit, 'r-')
-#                    ax.plot()
-#                    ax.axvline(x=oiii5007_wl, ymin=0, ymax=max(fit_flux))
-#                    plt.show()
                     # assuming that the redshift measured in qfits is the 
                     # correct one - subtract the fitted centre and convert 
                     # to kms-1
@@ -1364,9 +1509,9 @@ class cubeOps(object):
         vel_ax.minorticks_on()
 
         im = vel_ax.imshow(OIII_vel_array, aspect='auto', 
-                           vmin=-50,
-                           vmax=50,
-                           interpolation='catrom',
+                           vmin=-100,
+                           vmax=100,
+                           interpolation='nearest',
                            cmap=plt.get_cmap('jet'))
 
         vel_ax.set_title('[OIII] velocity')
@@ -1374,10 +1519,23 @@ class cubeOps(object):
         vel_fig.colorbar(im)
 
         # plt.tight_layout()
-        # plt.show()
+        plt.show()
         if savefig:
-            vel_fig.savefig('%s_velocity_OIII.pdf' % self.fileName[:-5])
-        plt.close('all')        
+            if binning:
+                vel_fig.savefig('%s_velocity_OIII_binned.pdf'\
+                                % self.fileName[:-5])
+            else:
+                vel_fig.savefig('%s_velocity_OIII.pdf' % self.fileName[:-5])
+        plt.close('all')
+
+        # also write out the velocity array to a fits image file 
+        # will use a very simple format now with no header and 
+        # only a single primary extension 
+
+        hdu = fits.PrimaryHDU(OIII_vel_array)
+        hdu.writeto('%s_velocity_map.fits' % self.fileName[:-5], clobber=True)
+
+        # return the velocity array  
         return OIII_vel_array
 
 ##############################################################################

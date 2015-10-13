@@ -5404,7 +5404,8 @@ class pipelineOps(object):
                 axes[1][0].set_title('OII metallicity')
 
                 # velocity map
-                OIII_vel = cube.OIII_vel_map(redshift, savefig=True)
+                OIII_vel = cube.OIII_vel_map(\
+                    redshift, savefig=True, binning=True, xbin=2, ybin=2)
                 im = axes[1][2].imshow(OIII_vel, aspect='auto', vmin=-70,
                                   vmax=70,
                                   cmap=plt.get_cmap('jet'))
@@ -5472,7 +5473,8 @@ class pipelineOps(object):
                 axes[1][0].set_title('Hb metallicity')
 
                 # velocity map
-                OIII_vel = cube.OIII_vel_map(redshift, savefig=True)
+                OIII_vel = cube.OIII_vel_map(\
+                    redshift, savefig=True, binning=True, xbin=2, ybin=2)
                 im = axes[1][1].imshow(OIII_vel, aspect='auto', vmin=-70,
                                        vmax=70,
                                        cmap=plt.get_cmap('jet'))
