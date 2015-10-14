@@ -21,6 +21,7 @@ from astropy.io import fits
 from matplotlib.backends.backend_pdf import PdfPages
 from pylab import *
 from matplotlib.colors import LogNorm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 ####################################################################
@@ -1260,7 +1261,8 @@ class cubeOps(object):
         plt.close('all')
         return Hb_met_array
 
-    def spaxel_binning(self, data, xbin, ybin):
+    def spaxel_binning(self, data, xbin, ybin, interp='median'):
+
         """
         Def: bins spaxels in xbin and ybin shaped chunks. Sticking with the 
         convention that xbin will always refer to the first index.
@@ -1333,17 +1335,47 @@ class cubeOps(object):
                         modulus_y = ylength % ybin
                         start_y = (ylength - modulus_y) + 1
 
-                        # note the + 1 is required for proper indexing 
-                        new_spaxel = np.nanmedian(\
-                                     np.nanmedian(data[:, start_x:xlength - 1,\
-                                     start_y:ylength - 1], axis=1), axis=1)
+                        # note the + 1 is required for proper indexing
+
+                        # now take into account the chosen interpolation type
+                        if interp == 'sum':
+                            # print 'Sum interpolation chosen' 
+                            new_spaxel = np.nansum(\
+                                         np.nansum(data[:, start_x:xlength - 1,\
+                                         start_y:ylength - 1], axis=1), axis=1)
+
+                        elif interp == 'mean':
+                            # print 'Mean interpolation chosen' 
+                            new_spaxel = np.nanmean(\
+                                         np.nanmean(data[:, start_x:xlength - 1,\
+                                         start_y:ylength - 1], axis=1), axis=1)
+
+                        # default value of median
+                        else: 
+                            new_spaxel = np.nanmedian(\
+                                         np.nanmedian(data[:, start_x:xlength - 1,\
+                                         start_y:ylength - 1], axis=1), axis=1)
 
                     # everything is okay, limit not exceeded
                     else:
 
-                        new_spaxel = np.nanmedian(\
-                                     np.nanmedian(data[:, start_x:xlength - 1,\
-                                     y:y + ybin], axis=1), axis=1)
+                        if interp == 'sum':
+                            # print 'Sum interpolation chosen' 
+                            new_spaxel = np.nansum(\
+                                         np.nansum(data[:, start_x:xlength - 1,\
+                                         y:y + ybin], axis=1), axis=1)
+
+                        elif interp == 'mean':
+                            # print 'Mean interpolation chosen'
+                            new_spaxel = np.nanmean(\
+                                         np.nanmean(data[:, start_x:xlength - 1,\
+                                         y:y + ybin], axis=1), axis=1)
+                                                                                             
+                        # default value of median
+                        else: 
+                            new_spaxel = np.nanmedian(\
+                                         np.nanmedian(data[:, start_x:xlength - 1,\
+                                         y:y + ybin], axis=1), axis=1)
                         
                     # add the new spaxel to the new_data
                     # cube in the correct position
@@ -1366,17 +1398,44 @@ class cubeOps(object):
                         modulus_y = ylength % ybin
                         start_y = (ylength - modulus_y) + 1
 
-                        # note the + 1 is required for proper indexing 
-                        new_spaxel = np.nanmedian(\
-                                     np.nanmedian(data[:, x:x + xbin,\
-                                     start_y:ylength - 1], axis=1), axis=1)
+                        if interp == 'sum':
+                            # print 'Sum interpolation chosen' 
+                            new_spaxel = np.nansum(\
+                                         np.nansum(data[:, x:x + xbin,\
+                                         start_y:ylength - 1], axis=1), axis=1)
+
+                        elif interp == 'mean':
+                            # print 'Mean interpolation chosen' 
+                            new_spaxel = np.nanmean(\
+                                         np.nanmean(data[:, x:x + xbin,\
+                                         start_y:ylength - 1], axis=1), axis=1)
+                                                                                             
+                        # default value of median
+                        else: 
+                            new_spaxel = np.nanmedian(\
+                                         np.nanmedian(data[:, x:x + xbin,\
+                                         start_y:ylength - 1], axis=1), axis=1)
 
                     # everything is okay, limit not exceeded
                     else:
 
-                        new_spaxel = np.nanmedian(\
-                                     np.nanmedian(data[:, x:x + xbin,\
-                                     y:y + ybin], axis=1), axis=1)
+                        if interp == 'sum': 
+                            # print 'Sum interpolation chosen'
+                            new_spaxel = np.nansum(\
+                                         np.nansum(data[:, x:x + xbin,\
+                                         y:y + ybin], axis=1), axis=1)
+
+                        elif interp == 'mean':
+                            # print 'Mean interpolation chosen' 
+                            new_spaxel = np.nanmean(\
+                                         np.nanmean(data[:, x:x + xbin,\
+                                         y:y + ybin], axis=1), axis=1)
+                                                                                             
+                        # default value of median
+                        else: 
+                            new_spaxel = np.nanmedian(\
+                                         np.nanmedian(data[:, x:x + xbin,\
+                                         y:y + ybin], axis=1), axis=1)
 
                     # add the new spaxel to the new_data 
                     # cube in the correct position
@@ -1388,8 +1447,6 @@ class cubeOps(object):
 
         # return the new_data 
         return new_data
-
-
 
 
     def OIII_vel_map(self, redshift, savefig=False, binning=False, **kwargs):
@@ -1412,19 +1469,43 @@ class cubeOps(object):
         if binning:
 
             # redefine the data as the binned spaxel equivalent
-            if not kwargs:
+            if (not kwargs['xbin'] or not kwargs['ybin']):
 
                 # haven't specified the bins 
                 raise ValueError("Missing keyword arguments for binsize")
 
             # have specified the bins - take the values 
             else:
-                xbin = kwargs['xbin']
-                ybin = kwargs['ybin']
 
+                # check that both bins are integers less than 10
+
+                if (np.equal(np.mod(kwargs['xbin'], 1), 0) 
+                    and kwargs['xbin'] < 10.0 
+                    and np.equal(np.mod(kwargs['ybin'], 1), 0) 
+                    and kwargs['ybin'] < 10.0): 
+
+                    xbin = kwargs['xbin']
+                    ybin = kwargs['ybin']
+
+                else: 
+                    raise ValueError("Non-integer or binsize too large")
+
+            # check for an interpolation keyword 
+            if kwargs['interp'] and kwargs['interp'] == 'sum':
+
+                data = self.spaxel_binning(data, xbin, ybin, interp='sum')
+                noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
+
+            elif kwargs['interp'] and kwargs['interp'] == 'mean':
+
+                data = self.spaxel_binning(data, xbin, ybin, interp='mean')
+                noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+
+            # default median value chosen
+            else:                                    
             # important that the data and noise have the same binning
-            data = self.spaxel_binning(data, xbin, ybin)
-            noise = self.spaxel_binning(noise, xbin, ybin)
+                data = self.spaxel_binning(data, xbin, ybin)
+                noise = self.spaxel_binning(noise, xbin, ybin)
 
 
         # the shape of the data is (spectrum, xpixel, ypixel)
@@ -1438,6 +1519,7 @@ class cubeOps(object):
 
         # initialise the empty velocity array
         OIII_vel_array = np.empty(shape=(xpixs, ypixs))  
+        OIII_sigma_array = np.empty(shape=(xpixs, ypixs))
 
         for i, xpix in enumerate(np.arange(0, xpixs, 1)):
 
@@ -1457,12 +1539,15 @@ class cubeOps(object):
                 # check for nan, inf, poor s/n
                 if np.isnan(line_sn):
                     OIII_vel_array[i, j] = np.nan
+                    OIII_sigma_array[i, j] = np.nan
 
                 elif np.isinf(line_sn):
                     OIII_vel_array[i, j] = np.nan
+                    OIII_sigma_array[i, j] = np.nan
 
                 elif line_sn < 1.0:
                     OIII_vel_array[i, j] = np.nan
+                    OIII_sigma_array[i, j] = np.nan
 
                 # now the condition where we have good s/n
                 # can fit a gaussian to the data in each spaxel
@@ -1498,28 +1583,53 @@ class cubeOps(object):
                     # to kms-1
                     c = 2.99792458E5
                     OIII_vel = c * ((out.best_values['center'] - oiii5007_wl) / oiii5007_wl)         
+                    OIII_sig = c * ((out.best_values['sigma']) / oiii5007_wl)
                     # add this result to the velocity array 
                     OIII_vel_array[i, j] = OIII_vel
+                    OIII_sigma_array[i, j] = OIII_sig
 
         # create a plot of the velocity field
 
-        vel_fig, vel_ax = plt.subplots(figsize=(12, 10), nrows=1, ncols=1)
+        vel_fig, vel_ax = plt.subplots(figsize=(14, 6), nrows=1, ncols=2)
         # vel_fig.subplots_adjust(right=0.83)
         # cbar_ax = vel_fig.add_axes([0.85, 0.15, 0.02, 0.7])
-        vel_ax.minorticks_on()
+        vel_ax[0].minorticks_on()
+        vel_ax[1].minorticks_on()
 
-        im = vel_ax.imshow(OIII_vel_array, aspect='auto', 
-                           vmin=-100,
-                           vmax=100,
+        vel_min, vel_max = np.nanpercentile(OIII_vel_array, [2.5, 97.5])
+        sig_min, sig_max = np.nanpercentile(OIII_sigma_array, [2.5, 97.5])
+
+        im_vel = vel_ax[0].imshow(OIII_vel_array, aspect='auto', 
+                           vmin=vel_min,
+                           vmax=vel_max,
                            interpolation='nearest',
                            cmap=plt.get_cmap('jet'))
 
-        vel_ax.set_title('[OIII] velocity')
+        vel_ax[0].set_title('[OIII] velocity')
 
-        vel_fig.colorbar(im)
+        # add colourbar to each plot 
+        divider_vel = make_axes_locatable(vel_ax[0])
+        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_vel, cax=cax_vel)
+
+        im_sig = vel_ax[1].imshow(OIII_sigma_array, aspect='auto', 
+                           vmin=sig_min,
+                           vmax=sig_max,
+                           interpolation='nearest',
+                           cmap=plt.get_cmap('jet'))
+
+        vel_ax[1].set_title('[OIII] Dispersion')
+
+        # add colourbar to each plot 
+        divider_sig = make_axes_locatable(vel_ax[1])
+        cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_sig, cax=cax_sig)
+
+
+        # vel_fig.colorbar(im)
 
         # plt.tight_layout()
-        plt.show()
+        # plt.show()
         if savefig:
             if binning:
                 vel_fig.savefig('%s_velocity_OIII_binned.pdf'\
@@ -1536,8 +1646,406 @@ class cubeOps(object):
         hdu.writeto('%s_velocity_map.fits' % self.fileName[:-5], clobber=True)
 
         # return the velocity array  
-        return OIII_vel_array
+        return OIII_vel_array, OIII_sigma_array
 
+
+    def OII_vel_map(self, redshift, savefig=False, binning=False, **kwargs):
+
+        #TODO: CHECK THAT THE kwargs values xbin and ybin are ints < 10
+        # open the data
+        data = self.data
+        noise = self.Table[2].data
+
+        # get the wavelegnth index of the oiii5007 line:
+        wl_0 = self.Table[1].header['CRVAL3']
+        dwl = self.Table[1].header['CDELT3']
+        wl_n = wl_0 + (data.shape[0] * dwl)
+
+        wl = np.linspace(wl_0, wl_n, data.shape[0])
+
+        # if binning is true, take the median of adjacent spaxels
+        # this uses the spaxel_binning method which can bin in any 
+        # different combination of shapes 
+        if binning:
+
+            # redefine the data as the binned spaxel equivalent
+            if (not kwargs['xbin'] or not kwargs['ybin']):
+
+                # haven't specified the bins 
+                raise ValueError("Missing keyword arguments for binsize")
+
+            # have specified the bins - take the values 
+            else:
+
+                # check that both bins are integers less than 10
+
+                if (np.equal(np.mod(kwargs['xbin'], 1), 0) 
+                    and kwargs['xbin'] < 10.0 
+                    and np.equal(np.mod(kwargs['ybin'], 1), 0) 
+                    and kwargs['ybin'] < 10.0): 
+
+                    xbin = kwargs['xbin']
+                    ybin = kwargs['ybin']
+
+                else: 
+                    raise ValueError("Non-integer or binsize too large")
+
+            # check for an interpolation keyword 
+            if kwargs['interp'] and kwargs['interp'] == 'sum':
+
+                data = self.spaxel_binning(data, xbin, ybin, interp='sum')
+                noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
+
+            elif kwargs['interp'] and kwargs['interp'] == 'mean':
+
+                data = self.spaxel_binning(data, xbin, ybin, interp='mean')
+                noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+
+            # default median value chosen
+            else:                                    
+            # important that the data and noise have the same binning
+                data = self.spaxel_binning(data, xbin, ybin)
+                noise = self.spaxel_binning(noise, xbin, ybin)
+
+
+        # the shape of the data is (spectrum, xpixel, ypixel)
+        # loop through each x and y pixel and get the OIII5007 S/N
+        xpixs = data.shape[1]
+        ypixs = data.shape[2]
+
+        # set the central wavelength of the OIII line 
+        oii_wl = 0.3729875 * (1. + redshift)
+        line_idx = np.argmin(np.abs(wl - oii_wl))
+
+        # initialise the empty velocity array
+        OII_vel_array = np.empty(shape=(xpixs, ypixs))  
+        OII_sigma_array = np.empty(shape=(xpixs, ypixs))
+
+        for i, xpix in enumerate(np.arange(0, xpixs, 1)):
+
+            for j, ypix in enumerate(np.arange(0, ypixs, 1)):
+
+                spaxel_spec = data[:, i, j]
+                spaxel_noise = noise[:, i, j]
+
+                line_counts = np.median(spaxel_spec[line_idx - 3:
+                                                    line_idx + 3])
+
+                line_noise = np.median(spaxel_noise[line_idx - 3:
+                                                    line_idx + 3])
+
+                line_sn = line_counts / line_noise
+
+                # check for nan, inf, poor s/n
+                if np.isnan(line_sn):
+                    OII_vel_array[i, j] = np.nan
+                    OII_sigma_array[i, j] = np.nan
+
+                elif np.isinf(line_sn):
+                    OII_vel_array[i, j] = np.nan
+                    OII_sigma_array[i, j] = np.nan
+
+                elif line_sn < 1.0:
+                    OII_vel_array[i, j] = np.nan
+                    OII_sigma_array[i, j] = np.nan
+
+                # now the condition where we have good s/n
+                # can fit a gaussian to the data in each spaxel
+
+                else:
+
+                    # isolate the flux and wavelength data 
+                    # to be used in the gaussian fit
+                    # print 'Gaussian fitting spaxel [%s,%s]' % (i, j)
+
+                    fit_wl = wl[line_idx - 6: line_idx + 6]
+                    fit_flux = spaxel_spec[line_idx - 6: line_idx + 6]
+
+
+                    
+                    # construct gaussian model using lmfit
+                    gmod = GaussianModel()
+                    # set the initial parameter values 
+                    pars = gmod.make_params()
+
+                    pars['center'].set(value=oii_wl, 
+                                       min=oii_wl - 0.0015, 
+                                       max=oii_wl + 0.0015)
+
+                    pars['sigma'].set(0.0004)
+                    pars['amplitude'].set(0.001)
+
+                    # perform the fit 
+                    out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+                    # assuming that the redshift measured in qfits is the 
+                    # correct one - subtract the fitted centre and convert 
+                    # to kms-1
+                    c = 2.99792458E5
+                    OII_vel = c * ((out.best_values['center'] - oii_wl) / oii_wl)         
+                    OII_sig = c * ((out.best_values['sigma']) / oii_wl)
+                    # add this result to the velocity array 
+                    OII_vel_array[i, j] = OII_vel
+                    OII_sigma_array[i, j] = OII_sig
+
+        # create a plot of the velocity field
+
+        vel_fig, vel_ax = plt.subplots(figsize=(14, 6), nrows=1, ncols=2)
+        # vel_fig.subplots_adjust(right=0.83)
+        # cbar_ax = vel_fig.add_axes([0.85, 0.15, 0.02, 0.7])
+        vel_ax[0].minorticks_on()
+        vel_ax[1].minorticks_on()
+
+        vel_min, vel_max = np.nanpercentile(OII_vel_array, [2.5, 97.5])
+        sig_min, sig_max = np.nanpercentile(OII_sigma_array, [2.5, 97.5])
+
+        im_vel = vel_ax[0].imshow(OII_vel_array, aspect='auto', 
+                           vmin=vel_min,
+                           vmax=vel_max,
+                           interpolation='nearest',
+                           cmap=plt.get_cmap('jet'))
+
+        vel_ax[0].set_title('[OII] velocity')
+
+        # add colourbar to each plot 
+        divider_vel = make_axes_locatable(vel_ax[0])
+        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_vel, cax=cax_vel)
+
+        im_sig = vel_ax[1].imshow(OII_sigma_array, aspect='auto', 
+                           vmin=sig_min,
+                           vmax=sig_max,
+                           interpolation='nearest',
+                           cmap=plt.get_cmap('jet'))
+
+        vel_ax[1].set_title('[OII] Dispersion')
+
+        # add colourbar to each plot 
+        divider_sig = make_axes_locatable(vel_ax[1])
+        cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_sig, cax=cax_sig)
+
+
+        # vel_fig.colorbar(im)
+
+        # plt.tight_layout()
+        # plt.show()
+        if savefig:
+            if binning:
+                vel_fig.savefig('%s_velocity_OII_binned.pdf'\
+                                % self.fileName[:-5])
+            else:
+                vel_fig.savefig('%s_velocity_OII.pdf' % self.fileName[:-5])
+        plt.close('all')
+
+        # also write out the velocity array to a fits image file 
+        # will use a very simple format now with no header and 
+        # only a single primary extension 
+
+        hdu = fits.PrimaryHDU(OII_vel_array)
+        hdu.writeto('%s_velocity_map.fits' % self.fileName[:-5], clobber=True)
+
+        # return the velocity array  
+        return OII_vel_array, OII_sigma_array
+
+    def Hb_vel_map(self, redshift, savefig=False, binning=False, **kwargs):
+
+        #TODO: CHECK THAT THE kwargs values xbin and ybin are ints < 10
+        # open the data
+        data = self.data
+        noise = self.Table[2].data
+
+        # get the wavelegnth index of the oiii5007 line:
+        wl_0 = self.Table[1].header['CRVAL3']
+        dwl = self.Table[1].header['CDELT3']
+        wl_n = wl_0 + (data.shape[0] * dwl)
+
+        wl = np.linspace(wl_0, wl_n, data.shape[0])
+
+        # if binning is true, take the median of adjacent spaxels
+        # this uses the spaxel_binning method which can bin in any 
+        # different combination of shapes 
+        if binning:
+
+            # redefine the data as the binned spaxel equivalent
+            if (not kwargs['xbin'] or not kwargs['ybin']):
+
+                # haven't specified the bins 
+                raise ValueError("Missing keyword arguments for binsize")
+
+            # have specified the bins - take the values 
+            else:
+
+                # check that both bins are integers less than 10
+
+                if (np.equal(np.mod(kwargs['xbin'], 1), 0) 
+                    and kwargs['xbin'] < 10.0 
+                    and np.equal(np.mod(kwargs['ybin'], 1), 0) 
+                    and kwargs['ybin'] < 10.0): 
+
+                    xbin = kwargs['xbin']
+                    ybin = kwargs['ybin']
+
+                else: 
+                    raise ValueError("Non-integer or binsize too large")
+
+            # check for an interpolation keyword 
+            if kwargs['interp'] and kwargs['interp'] == 'sum':
+
+                data = self.spaxel_binning(data, xbin, ybin, interp='sum')
+                noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
+
+            elif kwargs['interp'] and kwargs['interp'] == 'mean':
+
+                data = self.spaxel_binning(data, xbin, ybin, interp='mean')
+                noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+
+            # default median value chosen
+            else:                                    
+            # important that the data and noise have the same binning
+                data = self.spaxel_binning(data, xbin, ybin)
+                noise = self.spaxel_binning(noise, xbin, ybin)
+
+
+        # the shape of the data is (spectrum, xpixel, ypixel)
+        # loop through each x and y pixel and get the OIII5007 S/N
+        xpixs = data.shape[1]
+        ypixs = data.shape[2]
+
+        # set the central wavelength of the OIII line 
+        hb_wl = 0.486268 * (1. + redshift)
+        line_idx = np.argmin(np.abs(wl - hb_wl))
+
+        # initialise the empty velocity array
+        Hb_vel_array = np.empty(shape=(xpixs, ypixs))  
+        Hb_sigma_array = np.empty(shape=(xpixs, ypixs))
+
+        for i, xpix in enumerate(np.arange(0, xpixs, 1)):
+
+            for j, ypix in enumerate(np.arange(0, ypixs, 1)):
+
+                spaxel_spec = data[:, i, j]
+                spaxel_noise = noise[:, i, j]
+
+                line_counts = np.median(spaxel_spec[line_idx - 3:
+                                                    line_idx + 3])
+
+                line_noise = np.median(spaxel_noise[line_idx - 3:
+                                                    line_idx + 3])
+
+                line_sn = line_counts / line_noise
+
+                # check for nan, inf, poor s/n
+                if np.isnan(line_sn):
+                    Hb_vel_array[i, j] = np.nan
+                    Hb_sigma_array[i, j] = np.nan
+
+                elif np.isinf(line_sn):
+                    Hb_vel_array[i, j] = np.nan
+                    Hb_sigma_array[i, j] = np.nan
+
+                elif line_sn < 1.0:
+                    Hb_vel_array[i, j] = np.nan
+                    Hb_sigma_array[i, j] = np.nan
+
+                # now the condition where we have good s/n
+                # can fit a gaussian to the data in each spaxel
+
+                else:
+
+                    # isolate the flux and wavelength data 
+                    # to be used in the gaussian fit
+                    # print 'Gaussian fitting spaxel [%s,%s]' % (i, j)
+
+                    fit_wl = wl[line_idx - 6: line_idx + 6]
+                    fit_flux = spaxel_spec[line_idx - 6: line_idx + 6]
+
+
+                    
+                    # construct gaussian model using lmfit
+                    gmod = GaussianModel()
+                    # set the initial parameter values 
+                    pars = gmod.make_params()
+
+                    pars['center'].set(value=hb_wl, 
+                                       min=hb_wl - 0.0015, 
+                                       max=hb_wl + 0.0015)
+
+                    pars['sigma'].set(0.0004)
+                    pars['amplitude'].set(0.001)
+
+                    # perform the fit 
+                    out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+                    # assuming that the redshift measured in qfits is the 
+                    # correct one - subtract the fitted centre and convert 
+                    # to kms-1
+                    c = 2.99792458E5
+                    Hb_vel = c * ((out.best_values['center'] - hb_wl) / hb_wl)         
+                    Hb_sig = c * ((out.best_values['sigma']) / hb_wl)
+                    # add this result to the velocity array 
+                    Hb_vel_array[i, j] = Hb_vel
+                    Hb_sigma_array[i, j] = Hb_sig
+
+        # create a plot of the velocity field
+
+        vel_fig, vel_ax = plt.subplots(figsize=(14, 6), nrows=1, ncols=2)
+        # vel_fig.subplots_adjust(right=0.83)
+        # cbar_ax = vel_fig.add_axes([0.85, 0.15, 0.02, 0.7])
+        vel_ax[0].minorticks_on()
+        vel_ax[1].minorticks_on()
+
+        vel_min, vel_max = np.nanpercentile(Hb_vel_array, [2.5, 97.5])
+        sig_min, sig_max = np.nanpercentile(Hb_sigma_array, [2.5, 97.5])
+
+        im_vel = vel_ax[0].imshow(Hb_vel_array, aspect='auto', 
+                           vmin=vel_min,
+                           vmax=vel_max,
+                           interpolation='nearest',
+                           cmap=plt.get_cmap('jet'))
+
+        vel_ax[0].set_title('[Hb] velocity')
+
+        # add colourbar to each plot 
+        divider_vel = make_axes_locatable(vel_ax[0])
+        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_vel, cax=cax_vel)
+
+        im_sig = vel_ax[1].imshow(Hb_sigma_array, aspect='auto', 
+                           vmin=sig_min,
+                           vmax=sig_max,
+                           interpolation='nearest',
+                           cmap=plt.get_cmap('jet'))
+
+        vel_ax[1].set_title('[Hb] Dispersion')
+
+        # add colourbar to each plot 
+        divider_sig = make_axes_locatable(vel_ax[1])
+        cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_sig, cax=cax_sig)
+
+
+        # vel_fig.colorbar(im)
+
+        # plt.tight_layout()
+        # plt.show()
+        if savefig:
+            if binning:
+                vel_fig.savefig('%s_velocity_Hb_binned.pdf'\
+                                % self.fileName[:-5])
+            else:
+                vel_fig.savefig('%s_velocity_Hb.pdf' % self.fileName[:-5])
+        plt.close('all')
+
+        # also write out the velocity array to a fits image file 
+        # will use a very simple format now with no header and 
+        # only a single primary extension 
+
+        hdu = fits.PrimaryHDU(Hb_vel_array)
+        hdu.writeto('%s_velocity_map.fits' % self.fileName[:-5], clobber=True)
+
+        # return the velocity array  
+        return Hb_vel_array, Hb_sigma_array
 ##############################################################################
 #Uncomment to create test instance of class and try out the methods###########
 ##############################################################################

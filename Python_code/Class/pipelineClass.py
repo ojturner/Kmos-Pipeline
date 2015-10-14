@@ -19,6 +19,7 @@ from scipy.optimize import minimize
 from astropy.io import fits, ascii
 from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from scipy import stats
 
 
 # add the class file to the PYTHONPATH
@@ -480,6 +481,16 @@ class pipelineOps(object):
         fits.append(fileName, data=correctedExtensions[2], header=header_three)             
             
     def computeOffsetSegments(self, objectFile, skyFile, badPMap, lcalMap):
+        """
+        Def: method to compute readout column bias 
+        Inputs - objectFile: raw KMOS object file with 3 detector extensions
+                 skyFile: The sky frame corresponding to the objectFile 
+                 badPMap: The 'badpixel_dark.fits' file produced by pipeline
+                 lcalMap: The 'lcal_XXX.fits' file produced by pipeline
+
+        Output - objectFile_Corrected.fits with column correction applied
+        to each extension
+        """
         #function should be identical to compute Offset until the initial pixel loop
 
         #Set up vector to house the corrected extensions
@@ -5343,7 +5354,7 @@ class pipelineOps(object):
 
                 # we're in the HK band, use the methods which include OII
                 # and construct a 3 x 2 grid of plots 
-                fig, axes = plt.subplots(figsize=(14, 8), nrows=2, ncols=3)
+                fig, axes = plt.subplots(figsize=(14, 14), nrows=3, ncols=3)
                 # fig.subplots_adjust(right=0.83)
                 # cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
 
@@ -5404,10 +5415,18 @@ class pipelineOps(object):
                 axes[1][0].set_title('OII metallicity')
 
                 # velocity map
-                OIII_vel = cube.OIII_vel_map(\
-                    redshift, savefig=True, binning=True, xbin=2, ybin=2)
-                im = axes[1][2].imshow(OIII_vel, aspect='auto', vmin=-70,
-                                  vmax=70,
+                OIII_vel, OIII_disp = cube.OIII_vel_map(\
+                    redshift, savefig=True, binning=True, xbin=2, ybin=2, interp='sum')
+
+                # use the velocity map values to get the limits of the 
+                # colourbar using np.nanpercentile
+                mn_vel, mx_vel = np.nanpercentile(OIII_vel, [2.5, 97.5])
+                mn_disp, mx_disp = np.nanpercentile(OIII_disp, [2.5, 97.5])
+                # mx = np.nanmin([mx, -mn])
+
+                im = axes[1][2].imshow(OIII_vel, aspect='auto', vmin=mn_vel,
+                                  vmax=mx_vel,
+                                  interpolation='nearest',
                                   cmap=plt.get_cmap('jet'))
 
                 # add colourbar to each plot 
@@ -5418,8 +5437,69 @@ class pipelineOps(object):
                 # set the title
                 axes[1][2].set_title('OIII velocity')
 
+                im = axes[2][2].imshow(OIII_disp, aspect='auto', vmin=mn_disp,
+                                  vmax=mx_disp,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot 
+                divider = make_axes_locatable(axes[2][2])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[2][2].set_title('OIII dispersion')
+
+                # also include OII and Hb velocity for fun 
+
+                # OII velocity map
+                OII_vel, OII_disp = cube.OII_vel_map(\
+                    redshift, savefig=True, binning=True, xbin=2, ybin=2, interp='sum')
+
+                # use the velocity map values to get the limits of the 
+                # colourbar using np.nanpercentile
+                mn_vel, mx_vel = np.nanpercentile(OII_vel, [2.5, 97.5])
+                mn_disp, mx_disp = np.nanpercentile(OII_disp, [2.5, 97.5])
+                # mx = np.nanmin([mx, -mn])
+
+                im = axes[2][0].imshow(OII_vel, aspect='auto', vmin=mn_vel,
+                                  vmax=mx_vel,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot 
+                divider = make_axes_locatable(axes[2][0])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[2][0].set_title('OII velocity')
+
+                # velocity map
+                Hb_vel, Hb_disp = cube.Hb_vel_map(\
+                    redshift, savefig=True, binning=True, xbin=2, ybin=2, interp='sum')
+
+                # use the velocity map values to get the limits of the 
+                # colourbar using np.nanpercentile
+                mn_vel, mx_vel = np.nanpercentile(Hb_vel, [2.5, 97.5])
+                mn_disp, mx_disp = np.nanpercentile(Hb_disp, [2.5, 97.5])
+                # mx = np.nanmin([mx, -mn])
+
+                im = axes[2][1].imshow(Hb_vel, aspect='auto', vmin=mn_vel,
+                                  vmax=mx_vel,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot 
+                divider = make_axes_locatable(axes[2][1])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[2][1].set_title('Hb velocity')
+
                 # save the big figure
-                fig.show() 
+                # fig.show() 
                 fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
                 plt.close('all') 
 
@@ -5428,7 +5508,7 @@ class pipelineOps(object):
 
                 # we're in the K band, use the methods which dont include OII
                 # and construct a 2 x 2 grid of plots 
-                fig, axes = plt.subplots(figsize=(10, 8), nrows=2, ncols=2)
+                fig, axes = plt.subplots(figsize=(10, 12), nrows=3, ncols=2)
 
                 # now this is set up, get the data to populate the plots 
                 sn_dict = cube.plot_K_sn_map(redshift, savefig=True)
@@ -5473,21 +5553,66 @@ class pipelineOps(object):
                 axes[1][0].set_title('Hb metallicity')
 
                 # velocity map
-                OIII_vel = cube.OIII_vel_map(\
-                    redshift, savefig=True, binning=True, xbin=2, ybin=2)
-                im = axes[1][1].imshow(OIII_vel, aspect='auto', vmin=-70,
-                                       vmax=70,
-                                       cmap=plt.get_cmap('jet'))
+                OIII_vel, OIII_disp = cube.OIII_vel_map(\
+                    redshift, savefig=True, binning=True, xbin=2, ybin=2, interp='sum')
+
+                # use the velocity map values to get the limits of the 
+                # colourbar using np.nanpercentile
+                mn_vel, mx_vel = np.nanpercentile(OIII_vel, [2.5, 97.5])
+                mn_disp, mx_disp = np.nanpercentile(OIII_disp, [2.5, 97.5])
+                # mx = np.nanmin([mx, -mn])
+
+                im = axes[1][1].imshow(OIII_vel, aspect='auto', vmin=mn_vel,
+                                  vmax=mx_vel,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
 
                 # add colourbar to each plot 
                 divider = make_axes_locatable(axes[1][1])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
 
-                # name the plot
+                # set the title
                 axes[1][1].set_title('OIII velocity')
 
+                im = axes[2][1].imshow(OIII_disp, aspect='auto', vmin=mn_disp,
+                                  vmax=mx_disp,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot 
+                divider = make_axes_locatable(axes[2][1])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[2][1].set_title('OIII dispersion')
+
+                # Now add the Hb velocity for fun
+                # velocity map
+                Hb_vel, Hb_disp = cube.Hb_vel_map(\
+                    redshift, savefig=True, binning=True, xbin=2, ybin=2, interp='sum')
+
+                # use the velocity map values to get the limits of the 
+                # colourbar using np.nanpercentile
+                mn_vel, mx_vel = np.nanpercentile(Hb_vel, [2.5, 97.5])
+                mn_disp, mx_disp = np.nanpercentile(Hb_disp, [2.5, 97.5])
+                # mx = np.nanmin([mx, -mn])
+
+                im = axes[2][0].imshow(Hb_vel, aspect='auto', vmin=mn_vel,
+                                  vmax=mx_vel,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot 
+                divider = make_axes_locatable(axes[2][0])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[2][0].set_title('Hb velocity')
+
                 # save the big figure
-                fig.show() 
+                # fig.show() 
                 fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
                 plt.close('all')            

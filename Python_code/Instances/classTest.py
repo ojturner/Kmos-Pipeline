@@ -22,7 +22,7 @@ from vel_field_class import vel_field
 
 # Create an instance of the class
 pipe_methods = pipelineOps()
-cube = cubeOps('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/combine_sci_reconstructed_s_sa22b-c10.fits')
+cube = cubeOps('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/combine_sci_reconstructed_bs008543.fits')
 field_instance = vel_field('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/combine_sci_reconstructed_n_c49_velocity_map.fits', 14, 15)
 #galaxy = galPhys('/disk1/turner/DATA/Gals2/comb/Science/comp_spectrum.fits', 0)
 #sky_cube = cubeOps(kskyCube)
@@ -98,7 +98,7 @@ pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt')
 # print 'this is the new shape: (%s, %s)' % (data.shape[1], data.shape[2])
 # print data[400:500,12,12]
 # print cube.data
-# cube.OIII_vel_map(3.284804, binning=True, xbin=1, ybin=1)
+# cube.Hb_vel_map(3.47374201278, binning=True, xbin=2, ybin=2, interp='sum', savefig=True)
 #pipe_methods.multi_plot_K_image('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
 #pipe_methods.multi_plot_HK_image('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/ssa22_p2_spec_data.txt')
 #pipe_methods.seeing_better_than(combine_input, 0.65)
