@@ -1468,42 +1468,54 @@ class cubeOps(object):
         # different combination of shapes 
         if binning:
 
-            # redefine the data as the binned spaxel equivalent
-            if (not kwargs['xbin'] or not kwargs['ybin']):
+            # check to see if the bins have been defined
+            try:
+                kwargs['xbin']
+            except KeyError:
+                raise KeyError('xbin argument not supplied to function')
 
-                # haven't specified the bins 
-                raise ValueError("Missing keyword arguments for binsize")
+            try:
+                kwargs['ybin']
+            except KeyError:
+                raise KeyError('ybin argument not supplied to function')
 
-            # have specified the bins - take the values 
-            else:
 
-                # check that both bins are integers less than 10
+            # check that both bins are integers less than 10
 
-                if (np.equal(np.mod(kwargs['xbin'], 1), 0) 
-                    and kwargs['xbin'] < 10.0 
-                    and np.equal(np.mod(kwargs['ybin'], 1), 0) 
-                    and kwargs['ybin'] < 10.0): 
+            if (np.equal(np.mod(kwargs['xbin'], 1), 0) 
+                and kwargs['xbin'] < 10.0 
+                and np.equal(np.mod(kwargs['ybin'], 1), 0) 
+                and kwargs['ybin'] < 10.0): 
 
-                    xbin = kwargs['xbin']
-                    ybin = kwargs['ybin']
+                xbin = kwargs['xbin']
+                ybin = kwargs['ybin']
 
-                else: 
-                    raise ValueError("Non-integer or binsize too large")
+            else: 
+                raise ValueError("Non-integer or binsize too large")
 
             # check for an interpolation keyword 
-            if kwargs['interp'] and kwargs['interp'] == 'sum':
+            try:
+                kwargs['interp']
 
-                data = self.spaxel_binning(data, xbin, ybin, interp='sum')
-                noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
+                if kwargs['interp'] == 'sum':
 
-            elif kwargs['interp'] and kwargs['interp'] == 'mean':
+                    data = self.spaxel_binning(data, xbin, ybin, interp='sum')
+                    noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
 
-                data = self.spaxel_binning(data, xbin, ybin, interp='mean')
-                noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+                elif kwargs['interp'] == 'mean':
 
-            # default median value chosen
-            else:                                    
-            # important that the data and noise have the same binning
+                    data = self.spaxel_binning(data, xbin, ybin, interp='mean')
+                    noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+
+                # default median value chosen
+                else:                                    
+                # important that the data and noise have the same binning
+                    data = self.spaxel_binning(data, xbin, ybin)
+                    noise = self.spaxel_binning(noise, xbin, ybin)
+
+            # case where no interpolation keyword is supplied 
+            except KeyError:
+                print 'No interpolation keyword - using median'
                 data = self.spaxel_binning(data, xbin, ybin)
                 noise = self.spaxel_binning(noise, xbin, ybin)
 
@@ -1668,42 +1680,54 @@ class cubeOps(object):
         # different combination of shapes 
         if binning:
 
-            # redefine the data as the binned spaxel equivalent
-            if (not kwargs['xbin'] or not kwargs['ybin']):
+            # check to see if the bins have been defined
+            try:
+                kwargs['xbin']
+            except KeyError:
+                raise KeyError('xbin argument not supplied to function')
 
-                # haven't specified the bins 
-                raise ValueError("Missing keyword arguments for binsize")
+            try:
+                kwargs['ybin']
+            except KeyError:
+                raise KeyError('ybin argument not supplied to function')
 
-            # have specified the bins - take the values 
-            else:
 
-                # check that both bins are integers less than 10
+            # check that both bins are integers less than 10
 
-                if (np.equal(np.mod(kwargs['xbin'], 1), 0) 
-                    and kwargs['xbin'] < 10.0 
-                    and np.equal(np.mod(kwargs['ybin'], 1), 0) 
-                    and kwargs['ybin'] < 10.0): 
+            if (np.equal(np.mod(kwargs['xbin'], 1), 0) 
+                and kwargs['xbin'] < 10.0 
+                and np.equal(np.mod(kwargs['ybin'], 1), 0) 
+                and kwargs['ybin'] < 10.0): 
 
-                    xbin = kwargs['xbin']
-                    ybin = kwargs['ybin']
+                xbin = kwargs['xbin']
+                ybin = kwargs['ybin']
 
-                else: 
-                    raise ValueError("Non-integer or binsize too large")
+            else: 
+                raise ValueError("Non-integer or binsize too large")
 
             # check for an interpolation keyword 
-            if kwargs['interp'] and kwargs['interp'] == 'sum':
+            try:
+                kwargs['interp']
 
-                data = self.spaxel_binning(data, xbin, ybin, interp='sum')
-                noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
+                if kwargs['interp'] == 'sum':
 
-            elif kwargs['interp'] and kwargs['interp'] == 'mean':
+                    data = self.spaxel_binning(data, xbin, ybin, interp='sum')
+                    noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
 
-                data = self.spaxel_binning(data, xbin, ybin, interp='mean')
-                noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+                elif kwargs['interp'] == 'mean':
 
-            # default median value chosen
-            else:                                    
-            # important that the data and noise have the same binning
+                    data = self.spaxel_binning(data, xbin, ybin, interp='mean')
+                    noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+
+                # default median value chosen
+                else:                                    
+                # important that the data and noise have the same binning
+                    data = self.spaxel_binning(data, xbin, ybin)
+                    noise = self.spaxel_binning(noise, xbin, ybin)
+
+            # case where no interpolation keyword is supplied 
+            except KeyError:
+                print 'No interpolation keyword - using median'
                 data = self.spaxel_binning(data, xbin, ybin)
                 noise = self.spaxel_binning(noise, xbin, ybin)
 
@@ -1867,44 +1891,56 @@ class cubeOps(object):
         # different combination of shapes 
         if binning:
 
-            # redefine the data as the binned spaxel equivalent
-            if (not kwargs['xbin'] or not kwargs['ybin']):
+            # check to see if the bins have been defined
+            try:
+                kwargs['xbin']
+            except KeyError:
+                raise KeyError('xbin argument not supplied to function')
 
-                # haven't specified the bins 
-                raise ValueError("Missing keyword arguments for binsize")
+            try:
+                kwargs['ybin']
+            except KeyError:
+                raise KeyError('ybin argument not supplied to function')
 
-            # have specified the bins - take the values 
-            else:
 
-                # check that both bins are integers less than 10
+            # check that both bins are integers less than 10
 
-                if (np.equal(np.mod(kwargs['xbin'], 1), 0) 
-                    and kwargs['xbin'] < 10.0 
-                    and np.equal(np.mod(kwargs['ybin'], 1), 0) 
-                    and kwargs['ybin'] < 10.0): 
+            if (np.equal(np.mod(kwargs['xbin'], 1), 0) 
+                and kwargs['xbin'] < 10.0 
+                and np.equal(np.mod(kwargs['ybin'], 1), 0) 
+                and kwargs['ybin'] < 10.0): 
 
-                    xbin = kwargs['xbin']
-                    ybin = kwargs['ybin']
+                xbin = kwargs['xbin']
+                ybin = kwargs['ybin']
 
-                else: 
-                    raise ValueError("Non-integer or binsize too large")
+            else: 
+                raise ValueError("Non-integer or binsize too large")
 
             # check for an interpolation keyword 
-            if kwargs['interp'] and kwargs['interp'] == 'sum':
+            try:
+                kwargs['interp']
 
-                data = self.spaxel_binning(data, xbin, ybin, interp='sum')
-                noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
+                if kwargs['interp'] == 'sum':
 
-            elif kwargs['interp'] and kwargs['interp'] == 'mean':
+                    data = self.spaxel_binning(data, xbin, ybin, interp='sum')
+                    noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
 
-                data = self.spaxel_binning(data, xbin, ybin, interp='mean')
-                noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+                elif kwargs['interp'] == 'mean':
 
-            # default median value chosen
-            else:                                    
-            # important that the data and noise have the same binning
+                    data = self.spaxel_binning(data, xbin, ybin, interp='mean')
+                    noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+
+                # default median value chosen
+                else:                                    
+                # important that the data and noise have the same binning
+                    data = self.spaxel_binning(data, xbin, ybin)
+                    noise = self.spaxel_binning(noise, xbin, ybin)
+
+            # case where no interpolation keyword is supplied 
+            except KeyError:
+                print 'No interpolation keyword - using median'
                 data = self.spaxel_binning(data, xbin, ybin)
-                noise = self.spaxel_binning(noise, xbin, ybin)
+                noise = self.spaxel_binning(noise, xbin, ybin)                
 
 
         # the shape of the data is (spectrum, xpixel, ypixel)

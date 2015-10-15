@@ -88,7 +88,7 @@ object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
 
 
 #field_instance.fit_kinematic_pa(plot=True, debug=False)
-pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt')
+pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt', binning=True, xbin=2, ybin=1, interp='sum')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/goods_k_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/ssa22_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
@@ -98,7 +98,7 @@ pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt')
 # print 'this is the new shape: (%s, %s)' % (data.shape[1], data.shape[2])
 # print data[400:500,12,12]
 # print cube.data
-# cube.Hb_vel_map(3.47374201278, binning=True, xbin=2, ybin=2, interp='sum', savefig=True)
+#cube.Hb_vel_map(3.47374201278, binning=True, xbin=2, ybin=2, interp='mean', savefig=True)
 #pipe_methods.multi_plot_K_image('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
 #pipe_methods.multi_plot_HK_image('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/ssa22_p2_spec_data.txt')
 #pipe_methods.seeing_better_than(combine_input, 0.65)

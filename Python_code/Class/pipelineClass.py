@@ -5329,7 +5329,7 @@ class pipelineOps(object):
 
             cube.OIII_vel_map(redshift, savefig=True)
 
-    def multi_plot_all_maps(self, infile):
+    def multi_plot_all_maps(self, infile, binning, xbin, ybin, interp):
         """
         Def: 
         Plot the velocity maps for lots of cubes together
@@ -5414,9 +5414,14 @@ class pipelineOps(object):
                 # set the title
                 axes[1][0].set_title('OII metallicity')
 
-                # velocity map
-                OIII_vel, OIII_disp = cube.OIII_vel_map(\
-                    redshift, savefig=True, binning=True, xbin=2, ybin=2, interp='sum')
+                  
+                # OIII velocity map
+                OIII_vel, OIII_disp = cube.OIII_vel_map(redshift, 
+                                                        binning=binning, 
+                                                        savefig=True,
+                                                        xbin=xbin, 
+                                                        ybin=ybin,
+                                                        interp=interp)
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
@@ -5453,8 +5458,12 @@ class pipelineOps(object):
                 # also include OII and Hb velocity for fun 
 
                 # OII velocity map
-                OII_vel, OII_disp = cube.OII_vel_map(\
-                    redshift, savefig=True, binning=True, xbin=2, ybin=2, interp='sum')
+                OII_vel, OII_disp = cube.OII_vel_map(redshift, 
+                                                     binning=binning, 
+                                                     savefig=True,
+                                                     xbin=xbin, 
+                                                     ybin=ybin,
+                                                     interp=interp)
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
@@ -5475,9 +5484,13 @@ class pipelineOps(object):
                 # set the title
                 axes[2][0].set_title('OII velocity')
 
-                # velocity map
-                Hb_vel, Hb_disp = cube.Hb_vel_map(\
-                    redshift, savefig=True, binning=True, xbin=2, ybin=2, interp='sum')
+                # Hb velocity map
+                Hb_vel, Hb_disp = cube.Hb_vel_map(redshift, 
+                                                  binning=binning, 
+                                                  savefig=True,
+                                                  xbin=xbin, 
+                                                  ybin=ybin,
+                                                  interp=interp)
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
@@ -5552,9 +5565,13 @@ class pipelineOps(object):
 
                 axes[1][0].set_title('Hb metallicity')
 
-                # velocity map
-                OIII_vel, OIII_disp = cube.OIII_vel_map(\
-                    redshift, savefig=True, binning=True, xbin=2, ybin=2, interp='sum')
+                # OIII velocity map
+                OIII_vel, OIII_disp = cube.OIII_vel_map(redshift, 
+                                                        binning=binning, 
+                                                        savefig=True,
+                                                        xbin=xbin, 
+                                                        ybin=ybin,
+                                                        interp=interp)
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
@@ -5589,9 +5606,12 @@ class pipelineOps(object):
                 axes[2][1].set_title('OIII dispersion')
 
                 # Now add the Hb velocity for fun
-                # velocity map
-                Hb_vel, Hb_disp = cube.Hb_vel_map(\
-                    redshift, savefig=True, binning=True, xbin=2, ybin=2, interp='sum')
+                Hb_vel, Hb_disp = cube.Hb_vel_map(redshift, 
+                                                        binning=binning, 
+                                                        savefig=True,
+                                                        xbin=xbin, 
+                                                        ybin=ybin,
+                                                        interp=interp)
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
