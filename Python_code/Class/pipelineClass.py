@@ -5430,10 +5430,10 @@ class pipelineOps(object):
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[1][2].imshow(OIII_vel, aspect='auto', vmin=mn_vel,
-                                  vmax=mx_vel,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
-
+                                       vmax=mx_vel,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+ 
                 # add colourbar to each plot 
                 divider = make_axes_locatable(axes[1][2])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
@@ -5443,9 +5443,9 @@ class pipelineOps(object):
                 axes[1][2].set_title('OIII velocity')
 
                 im = axes[2][2].imshow(OIII_disp, aspect='auto', vmin=mn_disp,
-                                  vmax=mx_disp,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
+                                       vmax=mx_disp,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
 
                 # add colourbar to each plot 
                 divider = make_axes_locatable(axes[2][2])
@@ -5472,9 +5472,9 @@ class pipelineOps(object):
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[2][0].imshow(OII_vel, aspect='auto', vmin=mn_vel,
-                                  vmax=mx_vel,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
+                                       vmax=mx_vel,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
 
                 # add colourbar to each plot 
                 divider = make_axes_locatable(axes[2][0])
@@ -5499,9 +5499,9 @@ class pipelineOps(object):
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[2][1].imshow(Hb_vel, aspect='auto', vmin=mn_vel,
-                                  vmax=mx_vel,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
+                                       vmax=mx_vel,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
 
                 # add colourbar to each plot 
                 divider = make_axes_locatable(axes[2][1])
@@ -5580,9 +5580,9 @@ class pipelineOps(object):
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[1][1].imshow(OIII_vel, aspect='auto', vmin=mn_vel,
-                                  vmax=mx_vel,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
+                                       vmax=mx_vel,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
 
                 # add colourbar to each plot 
                 divider = make_axes_locatable(axes[1][1])
@@ -5607,11 +5607,11 @@ class pipelineOps(object):
 
                 # Now add the Hb velocity for fun
                 Hb_vel, Hb_disp = cube.Hb_vel_map(redshift, 
-                                                        binning=binning, 
-                                                        savefig=True,
-                                                        xbin=xbin, 
-                                                        ybin=ybin,
-                                                        interp=interp)
+                                                  binning=binning, 
+                                                  savefig=True,
+                                                  xbin=xbin, 
+                                                  ybin=ybin,
+                                                  interp=interp)
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
@@ -5620,9 +5620,9 @@ class pipelineOps(object):
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[2][0].imshow(Hb_vel, aspect='auto', vmin=mn_vel,
-                                  vmax=mx_vel,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
+                                       vmax=mx_vel,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
 
                 # add colourbar to each plot 
                 divider = make_axes_locatable(axes[2][0])
