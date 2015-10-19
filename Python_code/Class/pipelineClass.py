@@ -5425,8 +5425,8 @@ class pipelineOps(object):
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
-                mn_vel, mx_vel = np.nanpercentile(OIII_vel, [2.5, 97.5])
-                mn_disp, mx_disp = np.nanpercentile(OIII_disp, [2.5, 97.5])
+                mn_vel, mx_vel = np.nanpercentile(OIII_vel, [10.0, 90.0])
+                mn_disp, mx_disp = np.nanpercentile(OIII_disp, [10.0, 90.0])
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[1][2].imshow(OIII_vel, aspect='auto', vmin=mn_vel,
@@ -5467,8 +5467,8 @@ class pipelineOps(object):
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
-                mn_vel, mx_vel = np.nanpercentile(OII_vel, [2.5, 97.5])
-                mn_disp, mx_disp = np.nanpercentile(OII_disp, [2.5, 97.5])
+                mn_vel, mx_vel = np.nanpercentile(OII_vel, [10.0, 90.0])
+                mn_disp, mx_disp = np.nanpercentile(OII_disp, [10.0, 90.0])
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[2][0].imshow(OII_vel, aspect='auto', vmin=mn_vel,
@@ -5494,8 +5494,8 @@ class pipelineOps(object):
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
-                mn_vel, mx_vel = np.nanpercentile(Hb_vel, [2.5, 97.5])
-                mn_disp, mx_disp = np.nanpercentile(Hb_disp, [2.5, 97.5])
+                mn_vel, mx_vel = np.nanpercentile(Hb_vel, [10.0, 90.0])
+                mn_disp, mx_disp = np.nanpercentile(Hb_disp, [10.0, 90.0])
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[2][1].imshow(Hb_vel, aspect='auto', vmin=mn_vel,
@@ -5575,8 +5575,8 @@ class pipelineOps(object):
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
-                mn_vel, mx_vel = np.nanpercentile(OIII_vel, [2.5, 97.5])
-                mn_disp, mx_disp = np.nanpercentile(OIII_disp, [2.5, 97.5])
+                mn_vel, mx_vel = np.nanpercentile(OIII_vel, [10.0, 90.0])
+                mn_disp, mx_disp = np.nanpercentile(OIII_disp, [10.0, 90.0])
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[1][1].imshow(OIII_vel, aspect='auto', vmin=mn_vel,
@@ -5615,8 +5615,8 @@ class pipelineOps(object):
 
                 # use the velocity map values to get the limits of the 
                 # colourbar using np.nanpercentile
-                mn_vel, mx_vel = np.nanpercentile(Hb_vel, [2.5, 97.5])
-                mn_disp, mx_disp = np.nanpercentile(Hb_disp, [2.5, 97.5])
+                mn_vel, mx_vel = np.nanpercentile(Hb_vel, [10.0, 90.0])
+                mn_disp, mx_disp = np.nanpercentile(Hb_disp, [10.0, 90.0])
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[2][0].imshow(Hb_vel, aspect='auto', vmin=mn_vel,

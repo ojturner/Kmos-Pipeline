@@ -88,7 +88,7 @@ object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
 
 
 #field_instance.fit_kinematic_pa(plot=True, debug=False)
-pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt', binning=True, xbin=2, ybin=1, interp='sum')
+pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt', binning=True, xbin=1, ybin=1, interp='sum')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/goods_k_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/ssa22_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
