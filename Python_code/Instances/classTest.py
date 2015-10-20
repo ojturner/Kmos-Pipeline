@@ -78,10 +78,10 @@ sci_dir = '/disk1/turner/DATA/30-08-15_GOODS_K_P1/Science'
 combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals_names.txt'
 obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
-gal_dir = '/disk1/turner/DATA/HK_comb_1.0/Science'
-sky_cube_gal = '/disk1/turner/DATA/test_HK/Science/combine_sci_reconstructed_arm3_sky.fits'
-obj_cube_gal = gal_dir + '/combine_sci_reconstructed_n_c47.fits'
-std_cube_gal = gal_dir + '/combine_sci_reconstructed_R39837.fits'
+gal_dir = '/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science'
+sky_cube_gal = '/disk1/turner/DATA/Gals1/K/obs_09/Science/combine_sci_reconstructed_arm3_sky.fits'
+obj_cube_gal = gal_dir + '/combine_sci_reconstructed_bs008543.fits'
+std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_7656.fits'
 raw_file = '/disk1/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS344_0018_Corrected.fits'
 badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
 object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
@@ -98,7 +98,17 @@ pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt', binning=Tru
 # print 'this is the new shape: (%s, %s)' % (data.shape[1], data.shape[2])
 # print data[400:500,12,12]
 # print cube.data
-#cube.Hb_vel_map(3.47374201278, binning=True, xbin=2, ybin=2, interp='mean', savefig=True)
+
+#spectrum, wl = pipe_methods.galExtract(gal_dir, std_cube_gal, obj_cube_gal, sky_cube_gal, 22, 15, 1)
+#oiii_values, hb_values = pipe_methods.fit_lines_K(spectrum, wl, redshift=3.4737420)
+#param_dict = {'centre': 2.24035, 'sigma': 0.00045, 'amplitude': 0.001}
+#cube.OIII_vel_map(redshift=3.47374201278, 
+#                  binning=True, 
+#                  xbin=1, 
+#                  ybin=1, 
+#                  interp='mean', 
+#                  savefig=True,
+#                  **oiii_values)
 #pipe_methods.multi_plot_K_image('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
 #pipe_methods.multi_plot_HK_image('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/ssa22_p2_spec_data.txt')
 #pipe_methods.seeing_better_than(combine_input, 0.65)

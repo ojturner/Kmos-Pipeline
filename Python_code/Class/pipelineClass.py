@@ -4266,81 +4266,104 @@ class pipelineOps(object):
         #ax2.set_xlim(1.1,1.25)
         f.subplots_adjust(hspace=0.001)
         f.tight_layout()
-        plt.show()
+        # plt.show()
         f.savefig(objSpec[:-5] + '.png')
 
     def arrayCompare(self, profile, imData):
         """
-        Def: Function to compare the shapes of the optimal extraction profile 
-        and the object image data which may not necessarily be the same. But in 
-        order for the optimal extraction from profile to work they have to be. This 
-        method spits out an adjusted profile so that the shape matches that of the 
-        object data, allowing them to be multiplied together 
-        Input: profile - the optimal extraction profile 
-                imData - the object cube data 
-        Output: new_profile - adjusted profile with shape matches the last two indices 
+        Def: Function to compare the shapes of the optimal extraction profile
+        and the object image data which may not necessarily be the same. But in
+        order for the optimal extraction from profile to work they have to be. This
+        method spits out an adjusted profile so that the shape matches that of the
+        object data, allowing them to be multiplied together
+        Input: profile - the optimal extraction profile
+                imData - the object cube data
+        Output: new_profile - adjusted profile with shape matches the last two indices
         of the object data
         """
+        print imData.shape
+        print profile.shape
+        print len(profile)
         if imData.shape[1] != profile.shape[0]:
 
             print 'Must adjust rows'
 
-            #decide whether to add rows or clip rows 
+            # decide whether to add rows or clip rows
 
             if imData.shape[1] - profile.shape[0] > 0:
 
-                #need to add rows to the profile
+                # need to add rows to the profile
 
-                print 'Adding Rows' 
+                print 'Adding Rows'
 
-                row_addition = np.zeros([abs(imData.shape[1] - profile.shape[0]), profile.shape[1]])
+                row_addition = np.zeros([abs(imData.shape[1]
+                                        - profile.shape[0]), profile.shape[1]])
 
-                #vstack this together with the original profile
+                # vstack this together with the original profile
 
                 profile = np.vstack((profile, row_addition))
 
             else:
 
-                #need to clip rows from the profile, assuming we're at the edge so it won't affect the process
+                # need to clip rows from the profile,
+                # assuming we're at the edge so it won't affect the process
 
                 print 'Deleting Rows'
 
-                profile = np.delete(profile, (len(profile) -  abs(imData.shape[1] - profile.shape[0])), axis=0)
+                profile = np.delete(profile,
+                                    np.arange(imData.shape[1],
+                                              profile.shape[0],
+                                              1),
+                                    axis=0)
 
-            #Now deal with the columns 
+            # Now deal with the columns
 
         if imData.shape[2] != profile.shape[1]:
 
             print 'Must adjust columns'
 
-            #Decide whether to add or clip columns 
+            # Decide whether to add or clip columns
 
             if imData.shape[2] - profile.shape[1] > 0:
 
-                #need to add columns 
+                # need to add columns
 
                 print 'Adding Columns'
 
-                column_addition = np.zeros([profile.shape[0], abs(imData.shape[2] - profile.shape[1])])
+                column_addition = np.zeros([profile.shape[0],
+                                           abs(imData.shape[2] -
+                                           profile.shape[1])])
 
-                #hstack this togehter with the original profile 
+                # hstack this togehter with the original profile
 
                 profile = np.hstack((profile, column_addition))
 
             else:
 
-                #need to clip the columns 
+                # need to clip the columns
 
                 print 'Deleting columns'
 
-                profile = np.delete(profile, (len(profile[0]) -  abs(imData.shape[2] - profile.shape[1])), axis=1)
+                profile = np.delete(profile,
+                                    np.arange(imData.shape[2],
+                                              profile.shape[1],
+                                              1),
+                                    axis=1)
 
-        #return the profile 
+        # return the profile
 
         return profile
 
-# Starting to write some functions for extracting spectra from galaxies and measuring their properties  
-    def galExtract(self, sci_dir, std_cube, obj_cube, sky_cube, center_x, center_y, n):
+    # Starting to write some functions for extracting
+    # spectra from galaxies and measuring their properties
+    def galExtract(self,
+                   sci_dir,
+                   std_cube,
+                   obj_cube,
+                   sky_cube,
+                   center_x,
+                   center_y,
+                   n):
 
         """
         Def: Function for extracting the optimal spectrum from a galaxy at the 
@@ -4350,65 +4373,84 @@ class pipelineOps(object):
         Input: std_cube - data cube for the IFU dedicated to observing a star 
                 obj_cube - the cube containing the galaxy to extract a spectrum from 
                 sky_cube - one of the sky cubes extracted in the runPipeline.py analysis 
+                note that this is only used in the plotting part. 
                 center_x - x coordinate of the object center determined from qfits 
                 center_y - y coordinate of the object center determined from qfits 
                 n - binning for spectrum plot
 
         Output: Plot of the object and sky spectra using plotSpecs
-                If required, a data file containing the optimally extracted object spectrum 
-                Data file containing the optimally extracted sky spectrum 
+                If required, a data file containing the optimally 
+                extracted object spectrum 
+                returns - 1D optimally extracted spectrum 
         """
-        #First extract the profile from the standard star cube 
+        # First extract the profile from the standard star cube 
         std_star_cube = cubeOps(std_cube)
         print 'The standard star cube shape is: %s ' % str(std_star_cube.data.shape)
         gal_obj_cube = cubeOps(obj_cube)
+        wl = gal_obj_cube.wave_array
         print 'The object cube has shape: %s ' % str(gal_obj_cube.data.shape)
-        #Find the cube name
+        # Find the cube name
         if obj_cube.find("/") == -1:
             gal_name = sci_dir + '/' + obj_cube
-        #Otherwise the directory structure is included and have to 
-        #search for the backslash and omit up to the last one 
+        # Otherwise the directory structure is included and have to
+        # search for the backslash and omit up to the last one
         else:
             objName = obj_cube[len(obj_cube) - obj_cube[::-1].find("/"):]
-            gal_name = sci_dir + '/'  + objName
-        #Extract the PSF profile using the method in cubeClass 
+            gal_name = sci_dir + '/' + objName
+        # Extract the PSF profile using the method in cubeClass
         params, std_profile, FWHM, offList = std_star_cube.psfMask()
-        #Print the profile and the center in the x/y directions 
-        #print std_profile
+        # Print the profile and the center in the x/y directions
+        # print std_profile
         print 'The x center is: %s' % params['center_x']
         print 'The y center is: %s' % params['center_y']
-        #Now roll this profile over to the central location of the object and replot 
-        #Use numpy.roll to shift the psfMask to the location of the object 
-        #Find the shift values 
+
+        # Now roll this profile over to the central location of the object
+        # Use numpy.roll to shift the psfMask to the location of the object
+        # Find the shift values
         x_shift = int(center_x - params['center_x'])
         y_shift = int(center_y - params['center_y'])
         new_mask = np.roll(std_profile, x_shift, axis=0)
-        #For the x_shift need to loop round the elements of the new_mask 
+
+        # For the x_shift need to loop round the elements of the new_mask
         final_new_mask = []
         for arr in new_mask:
             final_new_mask.append(np.roll(arr, y_shift))
         final_new_mask = np.array(final_new_mask)
 
-        #Check the shapes of the profile and object data, adjust accordingly 
+        # Check the shapes of the profile and object data, adjust accordingly
         final_new_mask = self.arrayCompare(final_new_mask, gal_obj_cube.data)
 
-        #Check to see that the gaussian and shifted profile align
+        # Check to see that the gaussian and shifted profile align
         colFig, colAx = plt.subplots(1,1, figsize=(14.0,14.0))
         colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
         colFig.colorbar(colCax)
-        plt.show()
-        #Extract each optimal spectrum 
-        optimal_spec = gal_obj_cube.optimalSpecFromProfile(final_new_mask, FWHM, center_y, center_x)
-        #Save the optimal spectrum for each object 
-        #Need to create a new fits table for this 
-        tbhdu = fits.new_table(fits.ColDefs(\
-            [fits.Column(name='Wavelength', format='E', array=gal_obj_cube.wave_array),\
-             fits.Column(name='Flux', format='E', array=optimal_spec)]))
+        # plt.show()
+        plt.close('all')
+        # Extract each optimal spectrum
+        optimal_spec = gal_obj_cube.optimalSpecFromProfile(final_new_mask,
+                                                           FWHM,
+                                                           center_y,
+                                                           center_x)
+        # Save the optimal spectrum for each object
+        # Need to create a new fits table for this
+        tbhdu = fits.new_table(fits.ColDefs(
+            [fits.Column(name='Wavelength',
+                         format='E',
+                         array=gal_obj_cube.wave_array),
+             fits.Column(name='Flux',
+                         format='E',
+                         array=optimal_spec)]))
+
         prihdu = fits.PrimaryHDU(header=gal_obj_cube.primHeader)
+
         thdulist = fits.HDUList([prihdu, tbhdu])
+
         thdulist.writeto(gal_name[:-5] + '_spectrum.fits', clobber=True)
-        #Create a plot of both the sky and the object next to one another
+
+        # Create a plot of both the sky and the object next to one another
         self.plotSpecs(sci_dir, gal_name[:-5] + '_spectrum.fits', sky_cube, n)
+
+        return optimal_spec, wl
 
     def multiGalExtract(self, inFile, res):
         """
@@ -4434,7 +4476,13 @@ class pipelineOps(object):
         # Loop around these objects and use galExtrac
         for item in zip(obj_names, x_cen, y_cen):
 
-            self.galExtract(gal_dir, std_gal, item[0], sky_gal, int(item[1]), int(item[2]) , res)
+            optimal_spec, wl = self.galExtract(gal_dir, 
+                                           std_gal,
+                                           item[0], 
+                                           sky_gal, 
+                                           int(item[1]), 
+                                           int(item[2]), 
+                                           res)
 
         
 
@@ -5329,15 +5377,28 @@ class pipelineOps(object):
 
             cube.OIII_vel_map(redshift, savefig=True)
 
-    def multi_plot_all_maps(self, infile, binning, xbin, ybin, interp):
+    def multi_plot_all_maps(self,
+                            infile,
+                            binning,
+                            xbin,
+                            ybin,
+                            interp):
         """
-        Def: 
+        Def:
         Plot the velocity maps for lots of cubes together
         Input: infile - file listing the redshifts and cubenames
+                  and also the x,y central position of the galaxy
+                  also needs to contain the 'standard star cube'
+                  and an associated 'skycube'
+               binning - whether to bin velocity field data or not
+               xbin - what the x-direction bin size should be
+               ybin - what the y-direction bin size should be
+               interp - what the bin interpolation should be
         """
-        # read in the table of cube names 
+        # read in the table of cube names
         Table = ascii.read(infile)
 
+        # assign variables to the different items in the infile
         for entry in Table:
 
             obj_name = entry[0]
@@ -5346,23 +5407,34 @@ class pipelineOps(object):
 
             redshift = entry[1]
 
+            centre_x = entry[2]
+
+            centre_y = entry[3]
+
+            std_cube = entry[4]
+
+            sky_cube = entry[5]
+
+            # define the science directory for each cube
+            sci_dir = obj_name[:len(obj_name) - obj_name[::-1].find("/") - 1]
+
             print "\nDoing %s (redshift = %.3f) ..." % (obj_name, redshift)
 
-            # check whether we're looking at HK or K band 
+            # check whether we're looking at HK or K band
 
             if min(cube.wave_array) < 1.9:
 
                 # we're in the HK band, use the methods which include OII
-                # and construct a 3 x 2 grid of plots 
+                # and construct a 3 x 2 grid of plots
                 fig, axes = plt.subplots(figsize=(14, 14), nrows=3, ncols=3)
                 # fig.subplots_adjust(right=0.83)
                 # cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
 
-                # now this is set up, get the data to populate the plots 
+                # now this is set up, get the data to populate the plots
                 sn_dict = cube.plot_HK_sn_map(redshift, savefig=True)
 
-                # these are the sn images of the lines 
-                # add these to the first 
+                # these are the sn images of the lines
+                # add these to the first
                 for grid, ax in zip(sn_dict.values(), axes[0]):
 
                     # add the plot
@@ -5371,7 +5443,7 @@ class pipelineOps(object):
                                    vmax=3.,
                                    cmap=plt.get_cmap('hot'))
 
-                    # add colourbar to each plot 
+                    # add colourbar to each plot
                     divider = make_axes_locatable(ax)
                     cax_new = divider.append_axes('right', size='10%', pad=0.05)
                     plt.colorbar(im, cax=cax_new)
@@ -5380,33 +5452,37 @@ class pipelineOps(object):
                 for name, ax in zip(sn_dict.keys(), axes[0]):
                     ax.set_title('%s_image' % name)
 
-                # top row populated, now add the OII & Hb 
+                # top row populated, now add the OII & Hb
                 # metallicity maps and the velocity map
 
                 # metallicity maps
                 Hb_met_array, OII_met_array \
-                     = cube.plot_HK_image(redshift, savefig=True)
+                    = cube.plot_HK_image(redshift, savefig=True)
 
-                # plot both of these 
+                # plot both of these
                 # Hb
-                im = axes[1][1].imshow(Hb_met_array, aspect='auto', vmin=7.5,
-                                  vmax=9.0,
-                                  cmap=plt.get_cmap('jet'))
+                im = axes[1][1].imshow(Hb_met_array,
+                                       aspect='auto',
+                                       vmin=7.5,
+                                       vmax=9.0,
+                                       cmap=plt.get_cmap('jet'))
 
-                # add colourbar to each plot 
+                # add colourbar to each plot
                 divider = make_axes_locatable(axes[1][1])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
 
-                # set the name                
+                # set the name
                 axes[1][1].set_title('Hb metallicity')
 
                 # OII
-                im = axes[1][0].imshow(OII_met_array, aspect='auto', vmin=7.5,
-                                  vmax=9.0,
-                                  cmap=plt.get_cmap('jet'))
+                im = axes[1][0].imshow(OII_met_array,
+                                       aspect='auto',
+                                       vmin=7.5,
+                                       vmax=9.0,
+                                       cmap=plt.get_cmap('jet'))
 
-                # add colourbar to each plot 
+                # add colourbar to each plot
                 divider = make_axes_locatable(axes[1][0])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
@@ -5414,16 +5490,36 @@ class pipelineOps(object):
                 # set the title
                 axes[1][0].set_title('OII metallicity')
 
-                  
-                # OIII velocity map
-                OIII_vel, OIII_disp = cube.OIII_vel_map(redshift, 
-                                                        binning=binning, 
-                                                        savefig=True,
-                                                        xbin=xbin, 
-                                                        ybin=ybin,
-                                                        interp=interp)
+                # now want to get the initial gaussian parameters to feed
+                # into the OIII, Hb and OII velocity maps
 
-                # use the velocity map values to get the limits of the 
+                # first optimally extract the spectrum using
+                # no binning for the wavelength axis (could do this)
+                spectrum, wl = self.galExtract(sci_dir,
+                                               std_cube,
+                                               obj_name,
+                                               sky_cube,
+                                               centre_y,
+                                               centre_x,
+                                               1)
+
+                # now feed the output of this into fit_lines_HK
+                oiii_values, hb_values, oii_values \
+                    = self.fit_lines_HK(spectrum,
+                                        wl,
+                                        redshift=redshift)
+
+                # OIII velocity map - using the initial gaussian
+                # parameters determined in the above analysis
+                OIII_vel, OIII_disp = cube.OIII_vel_map(redshift,
+                                                        binning=binning,
+                                                        savefig=True,
+                                                        xbin=xbin,
+                                                        ybin=ybin,
+                                                        interp=interp,
+                                                        **oiii_values)
+
+                # use the velocity map values to get the limits of the
                 # colourbar using np.nanpercentile
                 mn_vel, mx_vel = np.nanpercentile(OIII_vel, [10.0, 90.0])
                 mn_disp, mx_disp = np.nanpercentile(OIII_disp, [10.0, 90.0])
@@ -5433,8 +5529,8 @@ class pipelineOps(object):
                                        vmax=mx_vel,
                                        interpolation='nearest',
                                        cmap=plt.get_cmap('jet'))
- 
-                # add colourbar to each plot 
+
+                # add colourbar to each plot
                 divider = make_axes_locatable(axes[1][2])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
@@ -5447,7 +5543,7 @@ class pipelineOps(object):
                                        interpolation='nearest',
                                        cmap=plt.get_cmap('jet'))
 
-                # add colourbar to each plot 
+                # add colourbar to each plot
                 divider = make_axes_locatable(axes[2][2])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
@@ -5455,20 +5551,26 @@ class pipelineOps(object):
                 # set the title
                 axes[2][2].set_title('OIII dispersion')
 
-                # also include OII and Hb velocity for fun 
+                # also include OII and Hb velocity for fun
 
                 # OII velocity map
-                OII_vel, OII_disp = cube.OII_vel_map(redshift, 
-                                                     binning=binning, 
+                OII_vel, OII_disp = cube.OII_vel_map(redshift,
+                                                     binning=binning,
                                                      savefig=True,
-                                                     xbin=xbin, 
+                                                     xbin=xbin,
                                                      ybin=ybin,
-                                                     interp=interp)
+                                                     interp=interp,
+                                                     **oii_values)
 
-                # use the velocity map values to get the limits of the 
+                # use the velocity map values to get the limits of the
                 # colourbar using np.nanpercentile
-                mn_vel, mx_vel = np.nanpercentile(OII_vel, [10.0, 90.0])
-                mn_disp, mx_disp = np.nanpercentile(OII_disp, [10.0, 90.0])
+                try:
+                    mn_vel, mx_vel = np.nanpercentile(OII_vel, [10.0, 90.0])
+                    mn_disp, mx_disp = np.nanpercentile(OII_disp, [10.0, 90.0])
+
+                except TypeError:
+                    mn_vel, mx_vel = [-100, 100]
+                    mn_disp, mx_disp = [0, 100]
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[2][0].imshow(OII_vel, aspect='auto', vmin=mn_vel,
@@ -5476,7 +5578,7 @@ class pipelineOps(object):
                                        interpolation='nearest',
                                        cmap=plt.get_cmap('jet'))
 
-                # add colourbar to each plot 
+                # add colourbar to each plot
                 divider = make_axes_locatable(axes[2][0])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
@@ -5485,17 +5587,23 @@ class pipelineOps(object):
                 axes[2][0].set_title('OII velocity')
 
                 # Hb velocity map
-                Hb_vel, Hb_disp = cube.Hb_vel_map(redshift, 
-                                                  binning=binning, 
+                Hb_vel, Hb_disp = cube.Hb_vel_map(redshift,
+                                                  binning=binning,
                                                   savefig=True,
-                                                  xbin=xbin, 
+                                                  xbin=xbin,
                                                   ybin=ybin,
-                                                  interp=interp)
+                                                  interp=interp,
+                                                  **hb_values)
 
-                # use the velocity map values to get the limits of the 
+                # use the velocity map values to get the limits of the
                 # colourbar using np.nanpercentile
-                mn_vel, mx_vel = np.nanpercentile(Hb_vel, [10.0, 90.0])
-                mn_disp, mx_disp = np.nanpercentile(Hb_disp, [10.0, 90.0])
+                try:
+                    mn_vel, mx_vel = np.nanpercentile(Hb_vel, [10.0, 90.0])
+                    mn_disp, mx_disp = np.nanpercentile(Hb_disp, [10.0, 90.0])
+
+                except TypeError:
+                    mn_vel, mx_vel = [-100, 100]
+                    mn_disp, mx_disp = [0, 100]
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[2][1].imshow(Hb_vel, aspect='auto', vmin=mn_vel,
@@ -5503,7 +5611,7 @@ class pipelineOps(object):
                                        interpolation='nearest',
                                        cmap=plt.get_cmap('jet'))
 
-                # add colourbar to each plot 
+                # add colourbar to each plot
                 divider = make_axes_locatable(axes[2][1])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
@@ -5512,22 +5620,21 @@ class pipelineOps(object):
                 axes[2][1].set_title('Hb velocity')
 
                 # save the big figure
-                # fig.show() 
+                # fig.show()
                 fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
-                plt.close('all') 
+                plt.close('all')
 
-
-            else: 
+            else:
 
                 # we're in the K band, use the methods which dont include OII
-                # and construct a 2 x 2 grid of plots 
+                # and construct a 2 x 2 grid of plots
                 fig, axes = plt.subplots(figsize=(10, 12), nrows=3, ncols=2)
 
-                # now this is set up, get the data to populate the plots 
+                # now this is set up, get the data to populate the plots
                 sn_dict = cube.plot_K_sn_map(redshift, savefig=True)
 
-                # these are the sn images of the lines 
-                # add these to the first 
+                # these are the sn images of the lines
+                # add these to the first
                 for grid, ax in zip(sn_dict.values(), axes[0]):
 
                     # add the plot
@@ -5536,55 +5643,80 @@ class pipelineOps(object):
                                    vmax=3.,
                                    cmap=plt.get_cmap('hot'))
 
-                    # add colourbar to each plot 
+                    # add colourbar to each plot
                     divider = make_axes_locatable(ax)
-                    cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                    cax_new = divider.append_axes('right',
+                                                  size='10%',
+                                                  pad=0.05)
                     plt.colorbar(im, cax=cax_new)
 
                 # name the plots
                 for name, ax in zip(sn_dict.keys(), axes[0]):
                     ax.set_title('%s_image' % name)
 
-                # top row populated, now add the OII & Hb 
+                # top row populated, now add the OII & Hb
                 # metallicity maps and the velocity map
 
                 # metallicity maps
                 Hb_met_array \
-                     = cube.plot_K_image(redshift, savefig=True)
+                    = cube.plot_K_image(redshift, savefig=True)
 
-                # plot this 
+                # plot this
                 # Hb
                 im = axes[1][0].imshow(Hb_met_array, aspect='auto', vmin=7.5,
                                        vmax=9.0,
                                        cmap=plt.get_cmap('jet'))
 
-                # add colourbar to each plot 
+                # add colourbar to each plot
                 divider = make_axes_locatable(axes[1][0])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
 
                 axes[1][0].set_title('Hb metallicity')
 
-                # OIII velocity map
-                OIII_vel, OIII_disp = cube.OIII_vel_map(redshift, 
-                                                        binning=binning, 
-                                                        savefig=True,
-                                                        xbin=xbin, 
-                                                        ybin=ybin,
-                                                        interp=interp)
+                # now want to get the initial gaussian parameters to feed
+                # into the OIII, Hb and OII velocity maps
 
-                # use the velocity map values to get the limits of the 
+                # first optimally extract the spectrum using
+                # no binning for the wavelength axis (could do this)
+                spectrum, wl = self.galExtract(sci_dir,
+                                               std_cube,
+                                               obj_name,
+                                               sky_cube,
+                                               centre_y,
+                                               centre_x,
+                                               1)
+
+                # now feed the output of this into fit_lines_HK
+                oiii_values, hb_values \
+                    = self.fit_lines_K(spectrum,
+                                       wl,
+                                       redshift=redshift)
+
+                # OIII velocity map - using the initial gaussian
+                # parameters determined in the above analysis
+                OIII_vel, OIII_disp = cube.OIII_vel_map(redshift,
+                                                        binning=binning,
+                                                        savefig=True,
+                                                        xbin=xbin,
+                                                        ybin=ybin,
+                                                        interp=interp,
+                                                        **oiii_values)
+
+                # use the velocity map values to get the limits of the
                 # colourbar using np.nanpercentile
                 mn_vel, mx_vel = np.nanpercentile(OIII_vel, [10.0, 90.0])
                 mn_disp, mx_disp = np.nanpercentile(OIII_disp, [10.0, 90.0])
                 # mx = np.nanmin([mx, -mn])
 
-                im = axes[1][1].imshow(OIII_vel, aspect='auto', vmin=mn_vel,
+                im = axes[1][1].imshow(OIII_vel,
+                                       aspect='auto',
+                                       vmin=mn_vel,
                                        vmax=mx_vel,
                                        interpolation='nearest',
                                        cmap=plt.get_cmap('jet'))
 
-                # add colourbar to each plot 
+                # add colourbar to each plot
                 divider = make_axes_locatable(axes[1][1])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
@@ -5592,12 +5724,14 @@ class pipelineOps(object):
                 # set the title
                 axes[1][1].set_title('OIII velocity')
 
-                im = axes[2][1].imshow(OIII_disp, aspect='auto', vmin=mn_disp,
-                                  vmax=mx_disp,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
+                im = axes[2][1].imshow(OIII_disp,
+                                       aspect='auto',
+                                       vmin=mn_disp,
+                                       vmax=mx_disp,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
 
-                # add colourbar to each plot 
+                # add colourbar to each plot
                 divider = make_axes_locatable(axes[2][1])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
@@ -5606,17 +5740,24 @@ class pipelineOps(object):
                 axes[2][1].set_title('OIII dispersion')
 
                 # Now add the Hb velocity for fun
-                Hb_vel, Hb_disp = cube.Hb_vel_map(redshift, 
-                                                  binning=binning, 
+                Hb_vel, Hb_disp = cube.Hb_vel_map(redshift,
+                                                  binning=binning,
                                                   savefig=True,
-                                                  xbin=xbin, 
+                                                  xbin=xbin,
                                                   ybin=ybin,
-                                                  interp=interp)
+                                                  interp=interp,
+                                                  **hb_values)
 
-                # use the velocity map values to get the limits of the 
+                # use the velocity map values to get the limits of the
                 # colourbar using np.nanpercentile
-                mn_vel, mx_vel = np.nanpercentile(Hb_vel, [10.0, 90.0])
-                mn_disp, mx_disp = np.nanpercentile(Hb_disp, [10.0, 90.0])
+
+                try:
+                    mn_vel, mx_vel = np.nanpercentile(Hb_vel, [10.0, 90.0])
+                    mn_disp, mx_disp = np.nanpercentile(Hb_disp, [10.0, 90.0])
+
+                except TypeError:
+                    mn_vel, mx_vel = [-100, 100]
+                    mn_disp, mx_disp = [0, 100]
                 # mx = np.nanmin([mx, -mn])
 
                 im = axes[2][0].imshow(Hb_vel, aspect='auto', vmin=mn_vel,
@@ -5624,7 +5765,7 @@ class pipelineOps(object):
                                        interpolation='nearest',
                                        cmap=plt.get_cmap('jet'))
 
-                # add colourbar to each plot 
+                # add colourbar to each plot
                 divider = make_axes_locatable(axes[2][0])
                 cax_new = divider.append_axes('right', size='10%', pad=0.05)
                 plt.colorbar(im, cax=cax_new)
@@ -5633,6 +5774,236 @@ class pipelineOps(object):
                 axes[2][0].set_title('Hb velocity')
 
                 # save the big figure
-                # fig.show() 
+                # plt.show()
                 fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
-                plt.close('all')            
+                plt.close('all')
+
+    def fit_lines_K(self, spectrum, wl, redshift):
+        """
+        Def: 
+        Takes the 1D spectrum output from galExtract and fits the two 
+        K-band emission lines, returning their parameters in a dict 
+        Input: spectrum - from galExtract 
+               redshift - the redshift of the galaxy being fitted
+               wl - corresponding 1D wavelength array
+        output: Dictionaries containing the gaussian parameters
+        """
+        # the spectrum is a 1D python array
+        # first determine the OIII and Hb central wavelengths
+
+        oiii_central = 0.500824 * (1. + redshift)
+        hb_central = 0.486268 * (1. + redshift)
+
+        # first dealing with OIII 
+        # trying to isolate the wavelength region around the emission line
+
+        line_idx = np.argmin(np.abs(wl - oiii_central))
+
+        fit_wl = wl[line_idx - 8: line_idx + 8]
+        fit_flux = spectrum[line_idx - 8: line_idx + 8]
+
+        # construct gaussian model using lmfit
+        gmod = GaussianModel()
+        # set the initial parameter values
+        pars = gmod.make_params()
+
+        pars['center'].set(value=oiii_central)
+        pars['sigma'].set(0.0004)
+        pars['amplitude'].set(0.001)
+
+        # perform the fit
+        out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+#        # plot the results 
+#        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+#        ax1.plot(fit_wl, fit_flux, color='b')
+#        ax1.plot(fit_wl, out.best_fit, 'r-')
+#        ax1.set_title('Object Spectrum', fontsize=30)
+#        #ax1.set_ylim(0, 4)
+#        ax1.tick_params(axis='y', which='major', labelsize=15)
+#        ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+#        ax1.set_ylabel(r'Flux', fontsize=24)
+#        f.tight_layout()
+#        plt.show()
+
+        # create an oiii dictionary to house the best parameters 
+        oiii_values = {'centre_oiii': out.best_values['center'], 
+                       'sigma_oiii': out.best_values['sigma'], 
+                       'amplitude_oiii' : out.best_values['amplitude']}
+
+        # now dealing with hb 
+        # trying to isolate the wavelength region around the emission line
+
+        line_idx = np.argmin(np.abs(wl - hb_central))
+
+        fit_wl = wl[line_idx - 8: line_idx + 8]
+        fit_flux = spectrum[line_idx - 8: line_idx + 8]
+
+        # construct gaussian model using lmfit
+        gmod = GaussianModel()
+        # set the initial parameter values
+        pars = gmod.make_params()
+
+        pars['center'].set(value=hb_central)
+        pars['sigma'].set(0.0004)
+        pars['amplitude'].set(0.001)
+
+        # perform the fit
+        out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+#        # plot the results 
+#        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+#        ax1.plot(fit_wl, fit_flux, color='b')
+#        ax1.plot(fit_wl, out.best_fit, 'r-')
+#        ax1.set_title('Object Spectrum', fontsize=30)
+#        #ax1.set_ylim(0, 4)
+#        ax1.tick_params(axis='y', which='major', labelsize=15)
+#        ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+#        ax1.set_ylabel(r'Flux', fontsize=24)
+#        f.tight_layout()
+#        plt.show()
+
+        # create an oiii dictionary to house the best parameters 
+        hb_values = {'centre_hb': out.best_values['center'], 
+                       'sigma_hb': out.best_values['sigma'], 
+                       'amplitude_hb' : out.best_values['amplitude']}
+
+        # simply return both of these dictionaries as a good 
+        # indication for what the initial gaussian 
+        # parameters / wavelength values should be
+
+        return oiii_values, hb_values
+
+    def fit_lines_HK(self, spectrum, wl, redshift):
+        """
+        Def: 
+        Takes the 1D spectrum output from galExtract and fits the three 
+        HK-band emission lines, returning their parameters in a dict 
+        Input: spectrum - from galExtract 
+               redshift - the redshift of the galaxy being fitted
+               wl - corresponding 1D wavelength array
+        output: Dictionaries containing the gaussian parameters
+        """
+        # the spectrum is a 1D python array
+        # first determine the OIII and Hb central wavelengths
+
+        oiii_central = 0.500824 * (1. + redshift)
+        hb_central = 0.486268 * (1. + redshift)
+        oii_central = 0.3729875 * (1. + redshift)
+
+        # first dealing with OIII 
+        # trying to isolate the wavelength region around the emission line
+
+        line_idx = np.argmin(np.abs(wl - oiii_central))
+
+        fit_wl = wl[line_idx - 8: line_idx + 8]
+        fit_flux = spectrum[line_idx - 8: line_idx + 8]
+
+        # construct gaussian model using lmfit
+        gmod = GaussianModel()
+        # set the initial parameter values
+        pars = gmod.make_params()
+
+        pars['center'].set(value=oiii_central)
+        pars['sigma'].set(0.0004)
+        pars['amplitude'].set(0.001)
+
+        # perform the fit
+        out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+#        # plot the results 
+#        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+#        ax1.plot(fit_wl, fit_flux, color='b')
+#        ax1.plot(fit_wl, out.best_fit, 'r-')
+#        ax1.set_title('Object Spectrum', fontsize=30)
+#        #ax1.set_ylim(0, 4)
+#        ax1.tick_params(axis='y', which='major', labelsize=15)
+#        ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+#        ax1.set_ylabel(r'Flux', fontsize=24)
+#        f.tight_layout()
+#        plt.show()
+
+        # create an oiii dictionary to house the best parameters 
+        oiii_values = {'centre_oiii': out.best_values['center'], 
+                       'sigma_oiii': out.best_values['sigma'], 
+                       'amplitude_oiii' : out.best_values['amplitude']}
+
+        # now dealing with hb 
+        # trying to isolate the wavelength region around the emission line
+
+        line_idx = np.argmin(np.abs(wl - hb_central))
+
+        fit_wl = wl[line_idx - 8: line_idx + 8]
+        fit_flux = spectrum[line_idx - 8: line_idx + 8]
+
+        # construct gaussian model using lmfit
+        gmod = GaussianModel()
+        # set the initial parameter values
+        pars = gmod.make_params()
+
+        pars['center'].set(value=hb_central)
+        pars['sigma'].set(0.0004)
+        pars['amplitude'].set(0.001)
+
+        # perform the fit
+        out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+#        # plot the results 
+#        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+#        ax1.plot(fit_wl, fit_flux, color='b')
+#        ax1.plot(fit_wl, out.best_fit, 'r-')
+#        ax1.set_title('Object Spectrum', fontsize=30)
+#        #ax1.set_ylim(0, 4)
+#        ax1.tick_params(axis='y', which='major', labelsize=15)
+#        ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+#        ax1.set_ylabel(r'Flux', fontsize=24)
+#        f.tight_layout()
+#        plt.show()
+
+        # create an oiii dictionary to house the best parameters 
+        hb_values = {'centre_hb': out.best_values['center'], 
+                       'sigma_hb': out.best_values['sigma'], 
+                       'amplitude_hb' : out.best_values['amplitude']}
+
+        # simply return both of these dictionaries as a good 
+        # indication for what the initial gaussian 
+        # parameters / wavelength values should be
+
+        # finally dealing with OII
+        # trying to isolate the wavelength region around the emission line
+
+        line_idx = np.argmin(np.abs(wl - oii_central))
+
+        fit_wl = wl[line_idx - 8: line_idx + 8]
+        fit_flux = spectrum[line_idx - 8: line_idx + 8]
+
+        # construct gaussian model using lmfit
+        gmod = GaussianModel()
+        # set the initial parameter values
+        pars = gmod.make_params()
+
+        pars['center'].set(value=oii_central)
+        pars['sigma'].set(0.0004)
+        pars['amplitude'].set(0.001)
+
+        # perform the fit
+        out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+#        # plot the results 
+#        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+#        ax1.plot(fit_wl, fit_flux, color='b')
+#        ax1.plot(fit_wl, out.best_fit, 'r-')
+#        ax1.set_title('Object Spectrum', fontsize=30)
+#        #ax1.set_ylim(0, 4)
+#        ax1.tick_params(axis='y', which='major', labelsize=15)
+#        ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+#        ax1.set_ylabel(r'Flux', fontsize=24)
+#        f.tight_layout()
+#        plt.show()
+
+        # create an oiii dictionary to house the best parameters 
+        oii_values = {'centre_oii': out.best_values['center'], 
+                       'sigma_oii': out.best_values['sigma'], 
+                       'amplitude_oii' : out.best_values['amplitude']}
+
+        return oiii_values, hb_values, oii_values
