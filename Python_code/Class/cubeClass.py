@@ -536,107 +536,105 @@ class cubeOps(object):
         return lambda x,y: pedastal + height*exp(
                     -(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
 
-
     def gauss2dMod(self):
-        mod = Model(self.gaussian, independent_vars=['x1', 'x2'], param_names=\
-            ['pedastal','height', 'center_x', 'center_y', 'width_x', 'width_y'], missing='drop')
-        #print mod.independent_vars
-        #print mod.param_names
-        
+
+        mod = Model(self.gaussian,
+                    independent_vars=['x1', 'x2'],
+                    param_names=['pedastal',
+                                 'height',
+                                 'center_x',
+                                 'center_y',
+                                 'width_x',
+                                 'width_y'],
+                    missing='drop')
+
+        # print mod.independent_vars
+        # print mod.param_names
+
         return mod
 
-    def moments(self, data):
+    def moments(self,
+                data):
+    
         """Returns (pedastal, height, center_x, center_y, width_x, width_y)
         the gaussian parameters of a 2D distribution by calculating its
         moments """
-        #First set all np.nan values in data to 0 
-        #And all the negative values to 0 
-        #These shouldn't influence the moment calculation
-        #data[np.isnan(data)] = 0
-        #data[data < 0] = 0
-        #total = np.nansum(data)
-        #print 'The sum over the data is: %s' % total
-        #X, Y = indices(data.shape)
-        #print 'The Indices are: %s, %s' % (X, Y)
-        #x = np.nansum((X*data))/total
-        #y = np.nansum((Y*data))/total
-        #print x, y
-        #col = data[:, int(y)]
-        #if col.sum() == 0:
-        #   width_x = sqrt(abs((arange(col.size)-y)**2*1.0).sum()/1.0)
-        #else:
-        #   width_x = sqrt(abs((arange(col.size)-y)**2*col).sum()/col.sum())
-        #row = data[int(x), :]
-
-        #if row.sum() == 0:
-        #   width_y = sqrt(abs((arange(row.size)-x)**2*1.0).sum()/1.0)
-        #else:
-        #   width_y = sqrt(abs((arange(row.size)-x)**2*row).sum()/row.sum())
-        #height = np.nanmax(data)
-        #print '[INFO]: The Initial Guess at the G.Params;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (height, x, y, width_x, width_y)
-        #return height, x, y, width_x, width_y, pedastal
 
         pedastal = np.nanmedian(data)
+
         height = np.nanmax(data)
+
         data[np.isnan(data)] = 0
+
         data[data < 0] = 0
+
         total = np.nansum(data)
-        #print 'The sum over the data is: %s' % total
+
+        # print 'The sum over the data is: %s' % total
         X, Y = indices(data.shape)
-        #print 'The Indices are: %s, %s' % (X, Y)
-        center_x = np.nansum((X*data))/total
-        center_y = np.nansum((Y*data))/total
+
+        # print 'The Indices are: %s, %s' % (X, Y)
+        center_x = np.nansum((X * data)) / total
+        center_y = np.nansum((Y * data)) / total
         width_x = 1.2
         width_y = 1.2
-        #print '[INFO]: The Initial Guess at the G.Params;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (height, x, y, width_x, width_y)
-        return [height, center_x, center_y, width_x, width_y, pedastal] 
+
+        return [height, center_x, center_y, width_x, width_y, pedastal]
 
     def fitgaussian(self, data):
+
         """Returns (height, x, y, width_x, width_y)
         the gaussian parameters of a 2D distribution found by a fit"""
-        #params = self.moments(data)
-        #print '[INFO]: The Data has shape: %s %s' % (data.shape[0], data.shape[1])
-        #errorfunction = lambda p: ravel(self.gaussian(*p)(*indices(data.shape)) - data)
-        #p, success = optimize.leastsq(errorfunction, params)
-        #print '[INFO]: The Gaussian fitting parameters are;\nArea:%s\nCentre_y:%s\nCentre_x:%s\nWidth_y:%s\nWidth_x:%s' % (p[0], p[1], p[2], p[3], p[4])
-        #return p
-        #At the moment will assume that the data is imagedata which needs flattened 
+
+        # At the moment will assume that the data
+        # is imagedata which needs flattened
         pars = self.moments(data)
+
         flat_data = np.ndarray.flatten(data)
+
         print 'This is the flattened data: %s' % flat_data
-        #Get the gaussian model 
+
+        # Get the gaussian model
         mod = self.gauss2dMod()
-        #Set the parameter hints from the initialPars method 
+
+        # Set the parameter hints from the initialPars method
         mod.set_param_hint('height', value=pars[0])
         mod.set_param_hint('center_x', value=pars[1])
         mod.set_param_hint('center_y', value=pars[2])
         mod.set_param_hint('width_x', value=pars[3])
         mod.set_param_hint('width_y', value=pars[4])
         mod.set_param_hint('pedastal', value=pars[5])
-        #Initialise a parameters object to use in the fit
+
+        # Initialise a parameters object to use in the fit
         fit_pars = mod.make_params()
-        #Guess isn't implemented for this model 
-        #Need to pass independent variables for the fit. these come from 
-        #flattening the indices of data.shape
+
+        # Guess isn't implemented for this model
+        # Need to pass independent variables for the fit. these come from
+        # flattening the indices of data.shape
         x1 = np.ndarray.flatten(indices(data.shape)[0])
-        #print 'The first independent variable: %s %s' % (x1, type(x1))
+
+        # print 'The first independent variable: %s %s' % (x1, type(x1))
         x2 = np.ndarray.flatten(indices(data.shape)[1])
-        #print 'The second independent variable: %s' % x2
+
+        # print 'The second independent variable: %s' % x2
         mod_fit = mod.fit(flat_data, x1=x1, x2=x2, params=fit_pars)
-        #print mod_fit.best_values['pedastal']
+
+        # print mod_fit.best_values['pedastal']
         return mod_fit, x1, x2
 
     def psfMask(self):
-        """Returns (FWHM, psfMask) which are the FWHM of the 2D gaussian 
-        fit to the collapsed object image and the mask of values found 
-        after integrating the gaussian function over all the pixels and 
-        normalising by this value.  
-        """
-        #Find the FWHM and the masking profile of a given datacube
 
-        #Step 1 - perform least squares minimisation to find the parameters  
+        """Returns (FWHM, psfMask) which are the FWHM of the 2D gaussian
+        fit to the collapsed object image and the mask of values found
+        after integrating the gaussian function over all the pixels and
+        normalising by this value.
+        """
+        # Find the FWHM and the masking profile of a given datacube
+
+        # Step 1 - perform least squares minimisation to find the parameters
         mod_fit, x1, x2 = self.fitgaussian(self.imData)
-#       #Check to find sigma 
+
+#       # Check to find sigma
 #       if (np.isnan(params[3]) and np.isnan(params[4])):
 #           sigma = 3.0
 #       elif (np.isnan(params[3]) and not np.isnan(params[4])):
@@ -645,47 +643,68 @@ class cubeOps(object):
 #           sigma = 3.0
 #       else:
 #           sigma = 0.5*(params[3] + params[4])
-        #Set the params variable as the best fit attribute 
+
+        # Set the params variable as the best fit attribute
         params = mod_fit.best_values
-        sigma = 0.5*(params['width_x'] + params['width_y'])
+        sigma = 0.5 * (params['width_x'] + params['width_y'])
         FWHM = 2.3548 * sigma
-        try: 
+
+        try:
+
             print '[INFO]: The FWHM of object %s is: %s' % (self.IFUName, FWHM)
+
         except AttributeError:
+
             print '[INFO]: The FWHM is: %s' % FWHM
 
+        # Create an instance of the gaussian for integrating
+        fit = self.gaussianLam(params['pedastal'],
+                               params['height'],
+                               params['center_x'],
+                               params['center_y'],
+                               params['width_x'],
+                               params['width_y'])
 
-        #Create an instance of the gaussian for integrating 
-        fit = self.gaussianLam(params['pedastal'], params['height'],\
-         params['center_x'], params['center_y'], params['width_x'], params['width_y'])
-        #Evaluate the gaussian with the best fit parameters  
+        # Evaluate the gaussian with the best fit parameters
         mod_eval = mod_fit.eval(x1=x1, x2=x2)
-        #Step 3 - reshape back to 2D array 
-        gEval = np.reshape(mod_eval, self.imData.shape)
-        #This is the initial grid of values, but need to normalise to 1 
-        #Integrate the gaussian using double quadrature 
-        integral = scipy.integrate.dblquad(fit, a=0, b=self.imData.shape[1],\
-            gfun=lambda x: 0 , hfun=lambda x: self.imData.shape[1])
-        #Plot the image and the fit 
-        colFig, colAx = plt.subplots(1,1, figsize=(14.0,14.0))
-        colCax = colAx.imshow(self.imData, interpolation='bicubic')
-        colAx.contour(gEval)
-        colFig.colorbar(colCax)
-        saveName = (self.fileName)[:-5] + '_gauss.png'
-        colFig.savefig(saveName)
-        #plt.show()     
-        plt.close('all')
-        #return the FWHM and the masked profile 
-        return params, (gEval / integral[0]), FWHM, self.offList
 
+        # Step 3 - reshape back to 2D array
+        gEval = np.reshape(mod_eval, self.imData.shape)
+
+        # This is the initial grid of values, but need to normalise to 1
+        # Integrate the gaussian using double quadrature
+        integral = scipy.integrate.dblquad(fit,
+                                           a=0,
+                                           b=self.imData.shape[1],
+                                           gfun=lambda x: 0,
+                                           hfun=lambda x: self.imData.shape[1])
+
+        # Plot the image and the fit
+        colFig, colAx = plt.subplots(1, 1, figsize=(14.0, 14.0))
+
+        colCax = colAx.imshow(self.imData, interpolation='bicubic')
+
+        colAx.contour(gEval)
+
+        colFig.colorbar(colCax)
+
+        saveName = (self.fileName)[:-5] + '_gauss.png'
+
+        colFig.savefig(saveName)
+
+        # plt.show()
+        plt.close('all')
+
+        # return the FWHM and the masked profile
+        return params, (gEval / integral[0]), FWHM, self.offList
 
     def plot_HK_sn_map(self, redshift, savefig=False):
         """
-        Def: 
-        Check the signal to noise of the emission lines over the face of a cube 
-        with known redshift 
-        Input: redshift - redshift of the galaxy in the cube 
-               savefig - whether or not to save the figures 
+        Def:
+        Check the signal to noise of the emission lines over the face of a cube
+        with known redshift
+        Input: redshift - redshift of the galaxy in the cube
+               savefig - whether or not to save the figures
         """
 
         fig, axes = plt.subplots(figsize=(14, 4), nrows=1, ncols=3)
@@ -749,7 +768,7 @@ class cubeOps(object):
                         sn_array[i, j] = line_sn
 
             # print max(sn_array.flatten())
-            #add the result to the sn_dict
+            # add the result to the sn_dict
             sn_dict[line] = sn_array
 
             im = ax.imshow(sn_array, aspect='auto', vmin=0.,
@@ -760,14 +779,13 @@ class cubeOps(object):
 
         fig.colorbar(im, cax=cbar_ax)
 
-        #plt.tight_layout()
+        # plt.tight_layout()
         # plt.show()
 
         if savefig:
             fig.savefig('%s_sn_map.pdf' % self.fileName[:-5])
         # return the dictionary containing the noise values
         return sn_dict
-
 
     def plot_K_sn_map(self, redshift, savefig=False):
 
@@ -839,21 +857,20 @@ class cubeOps(object):
 
         fig.colorbar(im, cax=cbar_ax)
 
-        #plt.tight_layout()
+        # plt.tight_layout()
         # plt.show()
 
         if savefig:
             fig.savefig('%s_sn_map.pdf' % self.fileName[:-5])
         return sn_dict
 
-
     def plot_HK_image(self, redshift, savefig=False):
         """
-        Def: 
-        Check the signal to noise of the emission lines over the face of a cube 
-        with known redshift 
-        Input: redshift - redshift of the galaxy in the cube 
-               savefig - whether or not to save the figures 
+        Def:
+        Check the signal to noise of the emission lines over the face of a cube
+        with known redshift
+        Input: redshift - redshift of the galaxy in the cube
+               savefig - whether or not to save the figures
         """
 
         fig, axes = plt.subplots(figsize=(14, 4), nrows=1, ncols=3)
@@ -884,7 +901,7 @@ class cubeOps(object):
             if line == '[OIII]5007':
                 oiii5007_wl = 0.500824 * (1. + redshift)
                 line_idx = np.argmin(np.abs(wl - oiii5007_wl))
-                met_array_OIII = np.empty(shape=(xpixs, ypixs))  
+                met_array_OIII = np.empty(shape=(xpixs, ypixs))
             elif line == 'Hb':
                 hb_wl = 0.486268 * (1. + redshift)
                 line_idx = np.argmin(np.abs(wl - hb_wl))
@@ -893,8 +910,6 @@ class cubeOps(object):
                 oii_wl = 0.3729875 * (1. + redshift)
                 line_idx = np.argmin(np.abs(wl - oii_wl))
                 met_array_OII = np.empty(shape=(xpixs, ypixs))
-
-
 
             sn_array = np.empty(shape=(xpixs, ypixs))
 
@@ -938,8 +953,6 @@ class cubeOps(object):
 
             # print max(sn_array.flatten())
 
-
-
             im = ax.imshow(sn_array, aspect='auto', vmin=0.,
                            vmax=3.,
                            cmap=plt.get_cmap('hot'))
@@ -952,9 +965,9 @@ class cubeOps(object):
         # plt.show()
         if savefig:
             fig.savefig('%s_images.pdf' % self.fileName[:-5])
-        plt.close('all')    
+        plt.close('all')
 
-#        # before creating the three plots create plots for each graph 
+#        # before creating the three plots create plots for each graph
 #        fig, ax = plt.subplots(1, figsize=(10, 10))
 #        im = ax.imshow(met_array_OIII, aspect='auto', vmin=0.,
 #                       vmax=3.,
@@ -983,24 +996,23 @@ class cubeOps(object):
 #        fig.colorbar(im)#
 
 #        plt.show()
-#        plt.close('all')    
+#        plt.close('all')
 
         # now should also have the Hb and OIII metallicity maps
-        # divide the two and plot the result 
+        # divide the two and plot the result
         overall_met = met_array_OIII / met_array_Hb
         overall_met_OII = met_array_OIII / met_array_OII
 
-        # now for each of these convert to metallicity using the Maiolino 
-        # relations. The problem here is with which root of the polynomial 
-        # to take. Different roots should be applicable in the high and low 
-        # metallicity intervals 
-        # First the Hb ratio, set up a new array to house the results 
+        # now for each of these convert to metallicity using the Maiolino
+        # relations. The problem here is with which root of the polynomial
+        # to take. Different roots should be applicable in the high and low
+        # metallicity intervals
+        # First the Hb ratio, set up a new array to house the results
 
         x_shape = overall_met.shape[0]
         y_shape = overall_met.shape[1]
 
         Hb_met_array = np.empty(shape=(x_shape, y_shape))
-
 
         # initialise the coefficients, given in Maiolino 2008 
         c_0_Hb = 0.1549
@@ -1013,7 +1025,7 @@ class cubeOps(object):
             for j, ypix in enumerate(np.arange(0, y_shape, 1)):
                 # print 'This is the number: %s' % overall_met[i, j]
 
-                # if the number is nan, leave it as nan 
+                # if the number is nan, leave it as nan
 
                 if np.isnan(overall_met[i, j]) \
                    or np.isinf(overall_met[i, j]) \
@@ -1030,21 +1042,21 @@ class cubeOps(object):
 
                     p = poly1d([c_3_Hb, c_2_Hb, c_1_Hb, c_0_Hb_new])
                     # print p.r
-                    # the roots of the polynomial are given in units 
-                    # of metallicity relative to solar. add 8.69 
+                    # the roots of the polynomial are given in units
+                    # of metallicity relative to solar. add 8.69
                     # met_value = p.r[0] + 8.69
-                    # if the root has an imaginary component, just take 
-                    # the real part 
+                    # if the root has an imaginary component, just take
+                    # the real part
                     Hb_met_array[i, j] = p.r[2].real + 8.69
 
-        # Next the OII ratio, set up a new array to house the results 
+        # Next the OII ratio, set up a new array to house the results
 
         x_shape = overall_met_OII.shape[0]
         y_shape = overall_met_OII.shape[1]
 
         OII_met_array = np.empty(shape=(x_shape, y_shape))
 
-        # initialise the coefficients, given in Maiolino 2008 
+        # initialise the coefficients, given in Maiolino 2008
         c_0_OII = -0.2839
         c_1_OII = -1.3881
         c_2_OII = -0.3172
@@ -1053,7 +1065,7 @@ class cubeOps(object):
 
             for j, ypix in enumerate(np.arange(0, y_shape, 1)):
 
-                # if the number is nan, leave it as nan 
+                # if the number is nan, leave it as nan
                 if np.isnan(overall_met_OII[i, j]) \
                    or np.isinf(overall_met_OII[i, j]) \
                    or (overall_met_OII[i, j]) < 0:
@@ -1107,7 +1119,6 @@ class cubeOps(object):
         plt.close('all')
         return Hb_met_array, OII_met_array
 
-
     def plot_K_image(self, redshift, savefig=False):
 
         fig, axes = plt.subplots(figsize=(10, 4), nrows=1, ncols=2)
@@ -1138,12 +1149,11 @@ class cubeOps(object):
             if line == '[OIII]5007':
                 oiii5007_wl = 0.500824 * (1. + redshift)
                 line_idx = np.argmin(np.abs(wl - oiii5007_wl))
-                met_array_OIII = np.empty(shape=(xpixs, ypixs))  
+                met_array_OIII = np.empty(shape=(xpixs, ypixs))
             elif line == 'Hb':
                 hb_wl = 0.486268 * (1. + redshift)
                 line_idx = np.argmin(np.abs(wl - hb_wl))
                 met_array_Hb = np.empty(shape=(xpixs, ypixs))
-
 
             sn_array = np.empty(shape=(xpixs, ypixs))
 
@@ -1193,25 +1203,24 @@ class cubeOps(object):
         # plt.show()
         if savefig:
             fig.savefig('%s_images.pdf' % self.fileName[:-5])
-        plt.close('all')        
+        plt.close('all')
 
         # now should also have the Hb and OIII metallicity maps
-        # divide the two and plot the result 
+        # divide the two and plot the result
         overall_met = met_array_OIII / met_array_Hb
 
-        # now for each of these convert to metallicity using the Maiolino 
-        # relations. The problem here is with which root of the polynomial 
-        # to take. Different roots should be applicable in the high and low 
-        # metallicity intervals 
-        # First the Hb ratio, set up a new array to house the results 
+        # now for each of these convert to metallicity using the Maiolino
+        # relations. The problem here is with which root of the polynomial
+        # to take. Different roots should be applicable in the high and low
+        # metallicity intervals
+        # First the Hb ratio, set up a new array to house the results
 
         x_shape = overall_met.shape[0]
         y_shape = overall_met.shape[1]
 
         Hb_met_array = np.empty(shape=(x_shape, y_shape))
 
-
-        # initialise the coefficients, given in Maiolino 2008 
+        # initialise the coefficients, given in Maiolino 2008
         c_0_Hb = 0.1549
         c_1_Hb = -1.5031
         c_2_Hb = -0.9790
@@ -1222,7 +1231,7 @@ class cubeOps(object):
             for j, ypix in enumerate(np.arange(0, y_shape, 1)):
                 # print 'This is the number: %s' % overall_met[i, j]
 
-                # if the number is nan, leave it as nan 
+                # if the number is nan, leave it as nan
 
                 if np.isnan(overall_met[i, j]) \
                    or np.isinf(overall_met[i, j]) \
@@ -1239,21 +1248,21 @@ class cubeOps(object):
 
                     p = poly1d([c_3_Hb, c_2_Hb, c_1_Hb, c_0_Hb_new])
                     # print p.r
-                    # the roots of the polynomial are given in units 
-                    # of metallicity relative to solar. add 8.69 
+                    # the roots of the polynomial are given in units
+                    # of metallicity relative to solar. add 8.69
                     # met_value = p.r[0] + 8.69
-                    # if the root has an imaginary component, just take 
-                    # the real part 
+                    # if the root has an imaginary component, just take
+                    # the real part
                     Hb_met_array[i, j] = p.r[2].real + 8.69
 
         fig, ax = plt.subplots(1, figsize=(14, 14))
 
-        im = ax.imshow(Hb_met_array, aspect='auto', 
+        im = ax.imshow(Hb_met_array, aspect='auto',
                        vmin=7.5, vmax=9.0, cmap=plt.get_cmap('jet'))
 
         ax.set_title('log([OIII] / Hb)')
 
-        fig.colorbar(im) 
+        fig.colorbar(im)
         # plt.show()
         if savefig:
             fig.savefig('%s_OIII_Hb.pdf' % self.fileName[:-5])
@@ -1263,13 +1272,13 @@ class cubeOps(object):
     def spaxel_binning(self, data, xbin, ybin, interp='median'):
 
         """
-        Def: bins spaxels in xbin and ybin shaped chunks. Sticking with the 
+        Def: bins spaxels in xbin and ybin shaped chunks. Sticking with the
         convention that xbin will always refer to the first index.
         Input: xbin - number of spaxels to go into 1 along x direction
                ybin - number of spaxels to go into 1 along y direction
         """
-        # the data is a 3D cube - need to preserve this 
-        # use a for loop with a step size 
+        # the data is a 3D cube - need to preserve this
+        # use a for loop with a step size
 
         # initially set the dimensions of the data cube
         xlength = data.shape[1]
@@ -1277,11 +1286,11 @@ class cubeOps(object):
 
         print 'The original cube dimensions are: (%s, %s)' % (xlength, ylength)
 
-        # calculate what the shape of the final array will be 
-        # this is tricky if the bin sizes do not match the shape of 
-        # the array. In this case take the modulus result and use that 
+        # calculate what the shape of the final array will be
+        # this is tricky if the bin sizes do not match the shape of
+        # the array. In this case take the modulus result and use that
         # as the final bin width (more often than not this will be 1)
-        # for the shape of the final array this means that it is given 
+        # for the shape of the final array this means that it is given
         # by the initial shape / binsize + 1 (if % != 0)
 
         if xlength % xbin == 0:
@@ -1301,35 +1310,35 @@ class cubeOps(object):
         # create the new array
         new_data = np.empty(shape=(data.shape[0], new_xlength, new_ylength))
 
-        # loop round and create the new spaxels 
-        # during each loop component need to check 
-        # if the indices are reaching the original data size 
-        # and if so create the final bin using modulus 
-        # then save each 1D array at the appropriate location 
+        # loop round and create the new spaxels
+        # during each loop component need to check
+        # if the indices are reaching the original data size
+        # and if so create the final bin using modulus
+        # then save each 1D array at the appropriate location
         # in the new_data cube
 
-        # set counters to record the position to store the new spaxel 
-        # in the new_data array 
+        # set counters to record the position to store the new spaxel
+        # in the new_data array
         x_cube_counter = 0
-        
+
         for x in range(0, xlength, xbin):
             y_cube_counter = 0
-            # check if the xlength has been reached or exceeded 
+            # check if the xlength has been reached or exceeded
             if x + xbin >= xlength:
 
-                # need a different y for loop that uses the end point 
-                # limits in the x-direction. First find what these are 
+                # need a different y for loop that uses the end point
+                # limits in the x-direction. First find what these are
                 modulus_x = xlength % xbin
                 start_x = (xlength - modulus_x) + 1
 
                 # initiate for loop for this scenario
                 for y in range(0, ylength, ybin):
 
-                    # this configuration means we will first 
-                    # be looping down the way, for each row 
+                    # this configuration means we will first
+                    # be looping down the way, for each row
                     if y + ybin >= ylength:
 
-                        # we've exceeded the original spaxel limit 
+                        # we've exceeded the original spaxel limit
                         # meaning that indicing will fail. create the final bin
                         modulus_y = ylength % ybin
                         start_y = (ylength - modulus_y) + 1
@@ -1338,44 +1347,50 @@ class cubeOps(object):
 
                         # now take into account the chosen interpolation type
                         if interp == 'sum':
-                            # print 'Sum interpolation chosen' 
-                            new_spaxel = np.nansum(\
-                                         np.nansum(data[:, start_x:xlength - 1,\
-                                         start_y:ylength - 1], axis=1), axis=1)
+                            # print 'Sum interpolation chosen'
+                            new_spaxel = np.nansum(
+                                np.nansum(data[:, start_x:xlength - 1,
+                                          start_y:ylength - 1],
+                                          axis=1), axis=1)
 
                         elif interp == 'mean':
-                            # print 'Mean interpolation chosen' 
-                            new_spaxel = np.nanmean(\
-                                         np.nanmean(data[:, start_x:xlength - 1,\
-                                         start_y:ylength - 1], axis=1), axis=1)
+                            # print 'Mean interpolation chosen'
+                            new_spaxel = np.nanmean(
+                                np.nanmean(data[:, start_x:xlength - 1,
+                                           start_y:ylength - 1],
+                                           axis=1), axis=1)
 
                         # default value of median
-                        else: 
-                            new_spaxel = np.nanmedian(\
-                                         np.nanmedian(data[:, start_x:xlength - 1,\
-                                         start_y:ylength - 1], axis=1), axis=1)
+                        else:
+                            new_spaxel = np.nanmedian(
+                                np.nanmedian(data[:, start_x:xlength - 1,
+                                             start_y:ylength - 1],
+                                             axis=1), axis=1)
 
                     # everything is okay, limit not exceeded
                     else:
 
                         if interp == 'sum':
-                            # print 'Sum interpolation chosen' 
-                            new_spaxel = np.nansum(\
-                                         np.nansum(data[:, start_x:xlength - 1,\
-                                         y:y + ybin], axis=1), axis=1)
+                            # print 'Sum interpolation chosen'
+                            new_spaxel = np.nansum(
+                                np.nansum(data[:, start_x:xlength - 1,
+                                          y:y + ybin],
+                                          axis=1), axis=1)
 
                         elif interp == 'mean':
                             # print 'Mean interpolation chosen'
-                            new_spaxel = np.nanmean(\
-                                         np.nanmean(data[:, start_x:xlength - 1,\
-                                         y:y + ybin], axis=1), axis=1)
-                                                                                             
+                            new_spaxel = np.nanmean(
+                                np.nanmean(data[:, start_x:xlength - 1,
+                                           y:y + ybin],
+                                           axis=1), axis=1)
+
                         # default value of median
-                        else: 
-                            new_spaxel = np.nanmedian(\
-                                         np.nanmedian(data[:, start_x:xlength - 1,\
-                                         y:y + ybin], axis=1), axis=1)
-                        
+                        else:
+                            new_spaxel = np.nanmedian(
+                                np.nanmedian(data[:, start_x:xlength - 1,
+                                             y:y + ybin],
+                                             axis=1), axis=1)
+
                     # add the new spaxel to the new_data
                     # cube in the correct position
                     new_data[:, x_cube_counter, y_cube_counter] = new_spaxel
@@ -1388,53 +1403,59 @@ class cubeOps(object):
                 # everything is okay and the xlimit has not been reached
                 for y in range(0, ylength, ybin):
 
-                    # this configuration means we will first 
-                    # be looping down the way, for each row 
+                    # this configuration means we will first
+                    # be looping down the way, for each row
                     if y + ybin >= ylength:
 
-                        # we've exceeded the original spaxel limit 
+                        # we've exceeded the original spaxel limit
                         # meaning that indicing will fail. create the final bin
                         modulus_y = ylength % ybin
                         start_y = (ylength - modulus_y) + 1
 
                         if interp == 'sum':
-                            # print 'Sum interpolation chosen' 
-                            new_spaxel = np.nansum(\
-                                         np.nansum(data[:, x:x + xbin,\
-                                         start_y:ylength - 1], axis=1), axis=1)
+                            # print 'Sum interpolation chosen'
+                            new_spaxel = np.nansum(
+                                np.nansum(data[:, x:x + xbin,
+                                          start_y:ylength - 1],
+                                          axis=1), axis=1)
 
                         elif interp == 'mean':
                             # print 'Mean interpolation chosen'
-                            new_spaxel = np.nanmean(\
-                                         np.nanmean(data[:, x:x + xbin,\
-                                         start_y:ylength - 1], axis=1), axis=1)
+                            new_spaxel = np.nanmean(
+                                np.nanmean(data[:, x:x + xbin,
+                                           start_y:ylength - 1],
+                                           axis=1), axis=1)
 
                         # default value of median
                         else:
-                            new_spaxel = np.nanmedian(\
-                                         np.nanmedian(data[:, x:x + xbin,\
-                                         start_y:ylength - 1], axis=1), axis=1)
+                            new_spaxel = np.nanmedian(
+                                np.nanmedian(data[:, x:x + xbin,
+                                             start_y:ylength - 1],
+                                             axis=1), axis=1)
 
                     # everything is okay, limit not exceeded
                     else:
 
                         if interp == 'sum':
                             # print 'Sum interpolation chosen'
-                            new_spaxel = np.nansum(\
-                                         np.nansum(data[:, x:x + xbin,\
-                                         y:y + ybin], axis=1), axis=1)
+                            new_spaxel = np.nansum(
+                                np.nansum(data[:, x:x + xbin,
+                                          y:y + ybin],
+                                          axis=1), axis=1)
 
                         elif interp == 'mean':
                             # print 'Mean interpolation chosen'
-                            new_spaxel = np.nanmean(\
-                                         np.nanmean(data[:, x:x + xbin,\
-                                         y:y + ybin], axis=1), axis=1)
+                            new_spaxel = np.nanmean(
+                                np.nanmean(data[:, x:x + xbin,
+                                           y:y + ybin],
+                                           axis=1), axis=1)
 
                         # default value of median
                         else:
-                            new_spaxel = np.nanmedian(\
-                                         np.nanmedian(data[:, x:x + xbin,\
-                                         y:y + ybin], axis=1), axis=1)
+                            new_spaxel = np.nanmedian(
+                                np.nanmedian(data[:, x:x + xbin,
+                                             y:y + ybin],
+                                             axis=1), axis=1)
 
                     # add the new spaxel to the new_data
                     # cube in the correct position
@@ -1446,7 +1467,6 @@ class cubeOps(object):
 
         # return the new_data
         return new_data
-
 
     def OIII_vel_map(self,
                      redshift,
@@ -1472,10 +1492,10 @@ class cubeOps(object):
                         this is the number of ypixels to combine together
                       interp - type of interpolation. Either sum, median or
                         mean this is set to median by default
-                      params - initial parameters for the gaussian fit. Note 
-                        it is intended that these paramters should be found 
-                        by using the galExtact method in pipelineClass. This is 
-                        a dictionary containing the entries centre, sigma and 
+                      params - initial parameters for the gaussian fit. Note
+                        it is intended that these paramters should be found
+                        by using the galExtact method in pipelineClass. This is
+                        a dictionary containing the entries centre, sigma and
                         amplitude
 
         Output: arrays containing both the OIII velocity measured in each
@@ -1512,9 +1532,9 @@ class cubeOps(object):
             # check that both bins are integers less than 10
 
             if (np.equal(np.mod(kwargs['xbin'], 1), 0)
-                and kwargs['xbin'] < 10.0
-                and np.equal(np.mod(kwargs['ybin'], 1), 0)
-                and kwargs['ybin'] < 10.0):
+                    and kwargs['xbin'] < 10.0
+                    and np.equal(np.mod(kwargs['ybin'], 1), 0)
+                    and kwargs['ybin'] < 10.0):
 
                 xbin = kwargs['xbin']
                 ybin = kwargs['ybin']
@@ -1528,17 +1548,32 @@ class cubeOps(object):
 
                 if kwargs['interp'] == 'sum':
 
-                    data = self.spaxel_binning(data, xbin, ybin, interp='sum')
-                    noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
+                    data = self.spaxel_binning(data,
+                                               xbin,
+                                               ybin,
+                                               interp='sum')
+
+                    noise = self.spaxel_binning(noise,
+                                                xbin,
+                                                ybin,
+                                                interp='sum')
 
                 elif kwargs['interp'] == 'mean':
 
-                    data = self.spaxel_binning(data, xbin, ybin, interp='mean')
-                    noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+                    data = self.spaxel_binning(data,
+                                               xbin,
+                                               ybin,
+                                               interp='mean')
+
+                    noise = self.spaxel_binning(noise,
+                                                xbin,
+                                                ybin,
+                                                interp='mean')
 
                 # default median value chosen
                 else:
-                # important that the data and noise have the same binning
+
+                    # important that the data and noise have the same binning
                     data = self.spaxel_binning(data, xbin, ybin)
                     noise = self.spaxel_binning(noise, xbin, ybin)
 
@@ -1547,8 +1582,6 @@ class cubeOps(object):
                 print 'No interpolation keyword - using median'
                 data = self.spaxel_binning(data, xbin, ybin)
                 noise = self.spaxel_binning(noise, xbin, ybin)
-
-
 
         # the shape of the data is (spectrum, xpixel, ypixel)
         # loop through each x and y pixel and get the OIII5007 S/N
@@ -1562,8 +1595,8 @@ class cubeOps(object):
         OIII_vel_array = np.empty(shape=(xpixs, ypixs))
         OIII_sigma_array = np.empty(shape=(xpixs, ypixs))
 
-        # look for the gaussian parameters 
-        gauss_centre = kwargs.get('centre_oiii',  oiii5007_wl)
+        # look for the gaussian parameters
+        gauss_centre = kwargs.get('centre_oiii', oiii5007_wl)
         gauss_sigma = kwargs.get('sigma_oiii', 0.0004)
         gauss_amp = kwargs.get('amplitude_oiii', 0.001)
 
@@ -1596,7 +1629,7 @@ class cubeOps(object):
                     OIII_vel_array[i, j] = np.nan
                     OIII_sigma_array[i, j] = np.nan
 
-                elif line_sn < 2.0:
+                elif line_sn < 1.8:
                     OIII_vel_array[i, j] = np.nan
                     OIII_sigma_array[i, j] = np.nan
 
@@ -1623,15 +1656,15 @@ class cubeOps(object):
                                        max=gauss_centre + 0.0015)
 
                     pars['sigma'].set(value=gauss_sigma,
-                                      min=gauss_sigma - (0.5*gauss_sigma), 
-                                      max=gauss_sigma + (0.5*gauss_sigma))
+                                      min=gauss_sigma - (0.5 * gauss_sigma),
+                                      max=gauss_sigma + (0.5 * gauss_sigma))
 
                     pars['amplitude'].set(value=gauss_amp)
 
                     # perform the fit
                     out = gmod.fit(fit_flux, pars, x=fit_wl)
 
-                    # print the fit report 
+                    # print the fit report
                     # print out.fit_report()
 
                     # plot to make sure things are working
@@ -1645,8 +1678,12 @@ class cubeOps(object):
                     # correct one - subtract the fitted centre and convert
                     # to kms-1
                     c = 2.99792458E5
-                    OIII_vel = c * ((out.best_values['center'] - oiii5007_wl) / oiii5007_wl)
+
+                    OIII_vel = c * ((out.best_values['center']
+                                    - oiii5007_wl) / oiii5007_wl)
+
                     OIII_sig = c * ((out.best_values['sigma']) / oiii5007_wl)
+
                     # add this result to the velocity array
                     OIII_vel_array[i, j] = OIII_vel
                     OIII_sigma_array[i, j] = OIII_sig
@@ -1670,12 +1707,12 @@ class cubeOps(object):
 
         vel_ax[0].set_title('[OIII] velocity')
 
-        # add colourbar to each plot 
+        # add colourbar to each plot
         divider_vel = make_axes_locatable(vel_ax[0])
         cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
         plt.colorbar(im_vel, cax=cax_vel)
 
-        im_sig = vel_ax[1].imshow(OIII_sigma_array, aspect='auto', 
+        im_sig = vel_ax[1].imshow(OIII_sigma_array, aspect='auto',
                                   vmin=sig_min,
                                   vmax=sig_max,
                                   interpolation='nearest',
@@ -1683,11 +1720,10 @@ class cubeOps(object):
 
         vel_ax[1].set_title('[OIII] Dispersion')
 
-        # add colourbar to each plot 
+        # add colourbar to each plot
         divider_sig = make_axes_locatable(vel_ax[1])
         cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
         plt.colorbar(im_sig, cax=cax_sig)
-
 
         # vel_fig.colorbar(im)
 
@@ -1695,22 +1731,21 @@ class cubeOps(object):
         # plt.show()
         if savefig:
             if binning:
-                vel_fig.savefig('%s_velocity_OIII_binned.pdf'\
+                vel_fig.savefig('%s_velocity_OIII_binned.pdf'
                                 % self.fileName[:-5])
             else:
                 vel_fig.savefig('%s_velocity_OIII.pdf' % self.fileName[:-5])
         plt.close('all')
 
-        # also write out the velocity array to a fits image file 
-        # will use a very simple format now with no header and 
-        # only a single primary extension 
+        # also write out the velocity array to a fits image file
+        # will use a very simple format now with no header and
+        # only a single primary extension
 
         hdu = fits.PrimaryHDU(OIII_vel_array)
         hdu.writeto('%s_velocity_map.fits' % self.fileName[:-5], clobber=True)
 
-        # return the velocity array  
+        # return the velocity array
         return OIII_vel_array, OIII_sigma_array
-
 
     def OII_vel_map(self, redshift, savefig=False, binning=False, **kwargs):
         """
@@ -1732,10 +1767,10 @@ class cubeOps(object):
                         this is the number of ypixels to combine together
                       interp - type of interpolation. Either sum, median or
                         mean this is set to median by default
-                      params - initial parameters for the gaussian fit. Note 
-                        it is intended that these paramters should be found 
-                        by using the galExtact method in pipelineClass. This is 
-                        a dictionary containing the entries centre, sigma and 
+                      params - initial parameters for the gaussian fit. Note
+                        it is intended that these paramters should be found
+                        by using the galExtact method in pipelineClass. This is
+                        a dictionary containing the entries centre, sigma and
                         amplitude
 
         Output: arrays containing both the OII velocity measured in each
@@ -1753,8 +1788,8 @@ class cubeOps(object):
         wl = np.linspace(wl_0, wl_n, data.shape[0])
 
         # if binning is true, take the median of adjacent spaxels
-        # this uses the spaxel_binning method which can bin in any 
-        # different combination of shapes 
+        # this uses the spaxel_binning method which can bin in any
+        # different combination of shapes
         if binning:
 
             # check to see if the bins have been defined
@@ -1771,9 +1806,285 @@ class cubeOps(object):
             # check that both bins are integers less than 10
 
             if (np.equal(np.mod(kwargs['xbin'], 1), 0)
-                and kwargs['xbin'] < 10.0
-                and np.equal(np.mod(kwargs['ybin'], 1), 0)
-                and kwargs['ybin'] < 10.0):
+                    and kwargs['xbin'] < 10.0
+                    and np.equal(np.mod(kwargs['ybin'], 1), 0)
+                    and kwargs['ybin'] < 10.0):
+
+                xbin = kwargs['xbin']
+                ybin = kwargs['ybin']
+
+            else:
+                raise ValueError("Non-integer or binsize too large")
+
+            # check for an interpolation keyword
+            try:
+                kwargs['interp']
+
+                if kwargs['interp'] == 'sum':
+
+                    data = self.spaxel_binning(data,
+                                               xbin,
+                                               ybin,
+                                               interp='sum')
+
+                    noise = self.spaxel_binning(noise,
+                                                xbin,
+                                                ybin,
+                                                interp='sum')
+
+                elif kwargs['interp'] == 'mean':
+
+                    data = self.spaxel_binning(data,
+                                               xbin,
+                                               ybin,
+                                               interp='mean')
+
+                    noise = self.spaxel_binning(noise,
+                                                xbin,
+                                                ybin,
+                                                interp='mean')
+
+                # default median value chosen
+                else:
+
+                    # important that the data and noise have the same binning
+                    data = self.spaxel_binning(data, xbin, ybin)
+                    noise = self.spaxel_binning(noise, xbin, ybin)
+
+            # case where no interpolation keyword is supplied
+            except KeyError:
+
+                print 'No interpolation keyword - using median'
+                data = self.spaxel_binning(data, xbin, ybin)
+                noise = self.spaxel_binning(noise, xbin, ybin)
+
+        # the shape of the data is (spectrum, xpixel, ypixel)
+        # loop through each x and y pixel and get the OIII5007 S/N
+        xpixs = data.shape[1]
+        ypixs = data.shape[2]
+
+        # set the central wavelength of the OIII line
+        oii_wl = 0.3729875 * (1. + redshift)
+
+        # initialise the empty velocity array
+        OII_vel_array = np.empty(shape=(xpixs, ypixs))
+        OII_sigma_array = np.empty(shape=(xpixs, ypixs))
+
+        # look for the gaussian parameters
+        gauss_centre = kwargs.get('centre_oii', oii_wl)
+        gauss_sigma = kwargs.get('sigma_oii', 0.0008)
+        gauss_amp = kwargs.get('amplitude_oii', 0.001)
+
+        # associate the central wavelength with a line index
+        line_idx = np.argmin(np.abs(wl - gauss_centre))
+
+        print gauss_centre, oii_wl, gauss_sigma, gauss_amp
+
+        for i, xpix in enumerate(np.arange(0, xpixs, 1)):
+
+            for j, ypix in enumerate(np.arange(0, ypixs, 1)):
+
+                spaxel_spec = data[:, i, j]
+                spaxel_noise = noise[:, i, j]
+
+                line_counts = np.median(spaxel_spec[line_idx - 3:
+                                                    line_idx + 3])
+
+                line_noise = np.median(spaxel_noise[line_idx - 3:
+                                                    line_idx + 3])
+
+                line_sn = line_counts / line_noise
+
+                # check for nan, inf, poor s/n
+                if np.isnan(line_sn):
+                    OII_vel_array[i, j] = np.nan
+                    OII_sigma_array[i, j] = np.nan
+
+                elif np.isinf(line_sn):
+                    OII_vel_array[i, j] = np.nan
+                    OII_sigma_array[i, j] = np.nan
+
+                elif line_sn < 1.8:
+                    OII_vel_array[i, j] = np.nan
+                    OII_sigma_array[i, j] = np.nan
+
+                # now the condition where we have good s/n
+                # can fit a gaussian to the data in each spaxel
+
+                else:
+
+                    # print 'Passed with S/N of: %s' % line_sn
+                    # isolate the flux and wavelength data
+                    # to be used in the gaussian fit
+                    # print 'Gaussian fitting spaxel [%s,%s]' % (i, j)
+
+                    fit_wl = wl[line_idx - 10: line_idx + 10]
+                    fit_flux = spaxel_spec[line_idx - 10: line_idx + 10]
+                    fit_noise = spaxel_noise[line_idx - 10: line_idx + 10]
+
+                    # construct gaussian model using lmfit
+                    gmod = GaussianModel()
+                    # set the initial parameter values
+                    pars = gmod.make_params()
+                    pars['center'].set(value=gauss_centre,
+                                       min=gauss_centre - 0.0015,
+                                       max=gauss_centre + 0.0015)
+
+                    pars['sigma'].set(value=gauss_sigma,
+                                      min=gauss_sigma - (0.5 * gauss_sigma),
+                                      max=gauss_sigma + (0.5 * gauss_sigma))
+
+                    pars['amplitude'].set(value=gauss_amp)
+
+                    # perform the fit
+                    out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+                    # assuming that the redshift measured in qfits is the
+                    # correct one - subtract the fitted centre and convert
+                    # to kms-1
+                    c = 2.99792458E5
+                    OII_vel = c * ((out.best_values['center']
+                                   - oii_wl) / oii_wl)
+
+                    OII_sig = c * ((out.best_values['sigma'])
+                                   / oii_wl)
+
+                    # add this result to the velocity array
+                    OII_vel_array[i, j] = OII_vel
+                    OII_sigma_array[i, j] = OII_sig
+
+        # create a plot of the velocity field
+
+        vel_fig, vel_ax = plt.subplots(figsize=(14, 6), nrows=1, ncols=2)
+        # vel_fig.subplots_adjust(right=0.83)
+        # cbar_ax = vel_fig.add_axes([0.85, 0.15, 0.02, 0.7])
+        vel_ax[0].minorticks_on()
+        vel_ax[1].minorticks_on()
+
+        # sometimes this throws a TypeError if hardly any data points
+        try:
+
+            vel_min, vel_max = np.nanpercentile(OII_vel_array, [2.5, 97.5])
+            sig_min, sig_max = np.nanpercentile(OII_sigma_array, [2.5, 97.5])
+
+        except TypeError:
+
+            # origin of the error is lack of good S/N data
+            # can set the max and min at whatever
+            vel_min, vel_max = [-100, 100]
+            sig_min, sig_max = [0, 100]
+
+        im_vel = vel_ax[0].imshow(OII_vel_array, aspect='auto',
+                                  vmin=vel_min,
+                                  vmax=vel_max,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+        vel_ax[0].set_title('[OII] velocity')
+
+        # add colourbar to each plot
+        divider_vel = make_axes_locatable(vel_ax[0])
+        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_vel, cax=cax_vel)
+
+        im_sig = vel_ax[1].imshow(OII_sigma_array,
+                                  aspect='auto',
+                                  vmin=sig_min,
+                                  vmax=sig_max,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+        vel_ax[1].set_title('[OII] Dispersion')
+
+        # add colourbar to each plot
+        divider_sig = make_axes_locatable(vel_ax[1])
+        cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_sig, cax=cax_sig)
+
+        # vel_fig.colorbar(im)
+
+        # plt.tight_layout()
+        # plt.show()
+        if savefig:
+            if binning:
+                vel_fig.savefig('%s_velocity_OII_binned.pdf'
+                                % self.fileName[:-5])
+            else:
+                vel_fig.savefig('%s_velocity_OII.pdf' % self.fileName[:-5])
+        plt.close('all')
+
+        # also write out the velocity array to a fits image file
+        # will use a very simple format now with no header and
+        # only a single primary extension
+
+        hdu = fits.PrimaryHDU(OII_vel_array)
+        hdu.writeto('%s_velocity_map.fits' % self.fileName[:-5], clobber=True)
+
+        # return the velocity array
+        return OII_vel_array, OII_sigma_array
+
+    def Hb_vel_map(self, redshift, savefig=False, binning=False, **kwargs):
+        """
+        Def:
+        given the redshift of the galaxy, compute the associated
+        velocity field, taking into account which pixels
+        have appropriate signal to noise for the measurements.
+
+        Guess the initial parameters using a gaussian fit to the
+        integrated spectrum.
+
+        Input: redshift - redshift of the galaxy
+               savefig - option to save plot or not
+               binning - choosing to combine the 0.1'' pixels or not
+               **kwargs
+                      xbin - must be specified if binning
+                        this is the number of xpixels to combine together
+                      ybin - must be specified if binning
+                        this is the number of ypixels to combine together
+                      interp - type of interpolation. Either sum, median or
+                        mean this is set to median by default
+                      params - initial parameters for the gaussian fit. Note
+                        it is intended that these paramters should be found
+                        by using the galExtact method in pipelineClass. This is
+                        a dictionary containing the entries centre, sigma and
+                        amplitude
+
+        Output: arrays containing both the Hb velocity measured in each
+        (possibly binned) spaxel and the Hb velocity dispersion
+        """
+        # open the data
+        data = self.data
+        noise = self.Table[2].data
+
+        # get the wavelegnth index of the oiii5007 line:
+        wl_0 = self.Table[1].header['CRVAL3']
+        dwl = self.Table[1].header['CDELT3']
+        wl_n = wl_0 + (data.shape[0] * dwl)
+
+        wl = np.linspace(wl_0, wl_n, data.shape[0])
+
+        # if binning is true, take the median of adjacent spaxels
+        # this uses the spaxel_binning method which can bin in any
+        # different combination of shapes
+        if binning:
+
+            # check to see if the bins have been defined
+            try:
+                kwargs['xbin']
+            except KeyError:
+                raise KeyError('xbin argument not supplied to function')
+
+            try:
+                kwargs['ybin']
+            except KeyError:
+                raise KeyError('ybin argument not supplied to function')
+
+            # check that both bins are integers less than 10
+
+            if (np.equal(np.mod(kwargs['xbin'], 1), 0)
+                    and kwargs['xbin'] < 10.0
+                    and np.equal(np.mod(kwargs['ybin'], 1), 0)
+                    and kwargs['ybin'] < 10.0):
 
                 xbin = kwargs['xbin']
                 ybin = kwargs['ybin']
@@ -1813,265 +2124,6 @@ class cubeOps(object):
         ypixs = data.shape[2]
 
         # set the central wavelength of the OIII line
-        oii_wl = 0.3729875 * (1. + redshift)
-
-        # initialise the empty velocity array
-        OII_vel_array = np.empty(shape=(xpixs, ypixs))
-        OII_sigma_array = np.empty(shape=(xpixs, ypixs))
-
-        # look for the gaussian parameters 
-        gauss_centre = kwargs.get('centre_oii',  oii_wl)
-        gauss_sigma = kwargs.get('sigma_oii', 0.0008)
-        gauss_amp = kwargs.get('amplitude_oii', 0.001)
-
-        # associate the central wavelength with a line index
-        line_idx = np.argmin(np.abs(wl - gauss_centre))
-
-        print gauss_centre, oii_wl, gauss_sigma, gauss_amp
-
-        for i, xpix in enumerate(np.arange(0, xpixs, 1)):
-
-            for j, ypix in enumerate(np.arange(0, ypixs, 1)):
-
-                spaxel_spec = data[:, i, j]
-                spaxel_noise = noise[:, i, j]
-
-                line_counts = np.median(spaxel_spec[line_idx - 3:
-                                                    line_idx + 3])
-
-                line_noise = np.median(spaxel_noise[line_idx - 3:
-                                                    line_idx + 3])
-
-                line_sn = line_counts / line_noise
-
-                # check for nan, inf, poor s/n
-                if np.isnan(line_sn):
-                    OII_vel_array[i, j] = np.nan
-                    OII_sigma_array[i, j] = np.nan
-
-                elif np.isinf(line_sn):
-                    OII_vel_array[i, j] = np.nan
-                    OII_sigma_array[i, j] = np.nan
-
-                elif line_sn < 2.0:
-                    OII_vel_array[i, j] = np.nan
-                    OII_sigma_array[i, j] = np.nan
-
-                # now the condition where we have good s/n
-                # can fit a gaussian to the data in each spaxel
-
-                else:
-
-                    # print 'Passed with S/N of: %s' % line_sn
-                    # isolate the flux and wavelength data
-                    # to be used in the gaussian fit
-                    # print 'Gaussian fitting spaxel [%s,%s]' % (i, j)
-
-                    fit_wl = wl[line_idx - 10: line_idx + 10]
-                    fit_flux = spaxel_spec[line_idx - 10: line_idx + 10]
-                    fit_noise = spaxel_noise[line_idx - 10: line_idx + 10]
-
-                    # construct gaussian model using lmfit
-                    gmod = GaussianModel()
-                    # set the initial parameter values
-                    pars = gmod.make_params()
-                    pars['center'].set(value=gauss_centre,
-                                       min=gauss_centre - 0.0015,
-                                       max=gauss_centre + 0.0015)
-
-                    pars['sigma'].set(value=gauss_sigma,
-                                      min=gauss_sigma - (0.5*gauss_sigma), 
-                                      max=gauss_sigma + (0.5*gauss_sigma))
-
-                    pars['amplitude'].set(value=gauss_amp)
-
-                    # perform the fit
-                    out = gmod.fit(fit_flux, pars, x=fit_wl)
-
-                    # assuming that the redshift measured in qfits is the
-                    # correct one - subtract the fitted centre and convert
-                    # to kms-1
-                    c = 2.99792458E5
-                    OII_vel = c * ((out.best_values['center'] - oii_wl) / oii_wl)
-                    OII_sig = c * ((out.best_values['sigma']) / oii_wl)
-                    # add this result to the velocity array
-                    OII_vel_array[i, j] = OII_vel
-                    OII_sigma_array[i, j] = OII_sig
-
-        # create a plot of the velocity field
-
-        vel_fig, vel_ax = plt.subplots(figsize=(14, 6), nrows=1, ncols=2)
-        # vel_fig.subplots_adjust(right=0.83)
-        # cbar_ax = vel_fig.add_axes([0.85, 0.15, 0.02, 0.7])
-        vel_ax[0].minorticks_on()
-        vel_ax[1].minorticks_on()
-
-        # sometimes this throws a TypeError if hardly any data points
-        try:
-
-            vel_min, vel_max = np.nanpercentile(OII_vel_array, [2.5, 97.5])
-            sig_min, sig_max = np.nanpercentile(OII_sigma_array, [2.5, 97.5])
-
-        except TypeError:
-
-            # origin of the error is lack of good S/N data 
-            # can set the max and min at whatever
-            vel_min, vel_max = [-100, 100]
-            sig_min, sig_max = [0, 100]
-
-
-
-        im_vel = vel_ax[0].imshow(OII_vel_array, aspect='auto',
-                                  vmin=vel_min,
-                                  vmax=vel_max,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
-
-        vel_ax[0].set_title('[OII] velocity')
-
-        # add colourbar to each plot
-        divider_vel = make_axes_locatable(vel_ax[0])
-        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
-        plt.colorbar(im_vel, cax=cax_vel)
-
-        im_sig = vel_ax[1].imshow(OII_sigma_array,
-                                  aspect='auto',
-                                  vmin=sig_min,
-                                  vmax=sig_max,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
-
-        vel_ax[1].set_title('[OII] Dispersion')
-
-        # add colourbar to each plot 
-        divider_sig = make_axes_locatable(vel_ax[1])
-        cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
-        plt.colorbar(im_sig, cax=cax_sig)
-
-
-        # vel_fig.colorbar(im)
-
-        # plt.tight_layout()
-        # plt.show()
-        if savefig:
-            if binning:
-                vel_fig.savefig('%s_velocity_OII_binned.pdf'\
-                                % self.fileName[:-5])
-            else:
-                vel_fig.savefig('%s_velocity_OII.pdf' % self.fileName[:-5])
-        plt.close('all')
-
-        # also write out the velocity array to a fits image file 
-        # will use a very simple format now with no header and 
-        # only a single primary extension 
-
-        hdu = fits.PrimaryHDU(OII_vel_array)
-        hdu.writeto('%s_velocity_map.fits' % self.fileName[:-5], clobber=True)
-
-        # return the velocity array  
-        return OII_vel_array, OII_sigma_array
-
-    def Hb_vel_map(self, redshift, savefig=False, binning=False, **kwargs):
-        """
-        Def:
-        given the redshift of the galaxy, compute the associated
-        velocity field, taking into account which pixels
-        have appropriate signal to noise for the measurements.
-
-        Guess the initial parameters using a gaussian fit to the
-        integrated spectrum.
-
-        Input: redshift - redshift of the galaxy
-               savefig - option to save plot or not
-               binning - choosing to combine the 0.1'' pixels or not
-               **kwargs
-                      xbin - must be specified if binning
-                        this is the number of xpixels to combine together
-                      ybin - must be specified if binning
-                        this is the number of ypixels to combine together
-                      interp - type of interpolation. Either sum, median or
-                        mean this is set to median by default
-                      params - initial parameters for the gaussian fit. Note 
-                        it is intended that these paramters should be found 
-                        by using the galExtact method in pipelineClass. This is 
-                        a dictionary containing the entries centre, sigma and 
-                        amplitude
-
-        Output: arrays containing both the Hb velocity measured in each
-        (possibly binned) spaxel and the Hb velocity dispersion
-        """
-        # open the data
-        data = self.data
-        noise = self.Table[2].data
-
-        # get the wavelegnth index of the oiii5007 line:
-        wl_0 = self.Table[1].header['CRVAL3']
-        dwl = self.Table[1].header['CDELT3']
-        wl_n = wl_0 + (data.shape[0] * dwl)
-
-        wl = np.linspace(wl_0, wl_n, data.shape[0])
-
-        # if binning is true, take the median of adjacent spaxels
-        # this uses the spaxel_binning method which can bin in any
-        # different combination of shapes
-        if binning:
-
-            # check to see if the bins have been defined
-            try:
-                kwargs['xbin']
-            except KeyError:
-                raise KeyError('xbin argument not supplied to function')
-
-            try:
-                kwargs['ybin']
-            except KeyError:
-                raise KeyError('ybin argument not supplied to function')
-
-            # check that both bins are integers less than 10
-
-            if (np.equal(np.mod(kwargs['xbin'], 1), 0)
-                and kwargs['xbin'] < 10.0
-                and np.equal(np.mod(kwargs['ybin'], 1), 0)
-                and kwargs['ybin'] < 10.0):
-
-                xbin = kwargs['xbin']
-                ybin = kwargs['ybin']
-
-            else:
-                raise ValueError("Non-integer or binsize too large")
-
-            # check for an interpolation keyword
-            try:
-                kwargs['interp']
-
-                if kwargs['interp'] == 'sum':
-
-                    data = self.spaxel_binning(data, xbin, ybin, interp='sum')
-                    noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
-
-                elif kwargs['interp'] == 'mean':
-
-                    data = self.spaxel_binning(data, xbin, ybin, interp='mean')
-                    noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
-
-                # default median value chosen
-                else:
-                # important that the data and noise have the same binning
-                    data = self.spaxel_binning(data, xbin, ybin)
-                    noise = self.spaxel_binning(noise, xbin, ybin)
-
-            # case where no interpolation keyword is supplied
-            except KeyError:
-                print 'No interpolation keyword - using median'
-                data = self.spaxel_binning(data, xbin, ybin)
-                noise = self.spaxel_binning(noise, xbin, ybin)
-
-        # the shape of the data is (spectrum, xpixel, ypixel)
-        # loop through each x and y pixel and get the OIII5007 S/N
-        xpixs = data.shape[1]
-        ypixs = data.shape[2]
-
-        # set the central wavelength of the OIII line
         hb_wl = 0.486268 * (1. + redshift)
         line_idx = np.argmin(np.abs(wl - hb_wl))
 
@@ -2079,8 +2131,8 @@ class cubeOps(object):
         Hb_vel_array = np.empty(shape=(xpixs, ypixs))
         Hb_sigma_array = np.empty(shape=(xpixs, ypixs))
 
-        # look for the gaussian parameters 
-        gauss_centre = kwargs.get('centre_hb',  hb_wl)
+        # look for the gaussian parameters
+        gauss_centre = kwargs.get('centre_hb', hb_wl)
         gauss_sigma = kwargs.get('sigma_hb', 0.0008)
         gauss_amp = kwargs.get('amplitude_hb', 0.001)
 
@@ -2113,7 +2165,7 @@ class cubeOps(object):
                     Hb_vel_array[i, j] = np.nan
                     Hb_sigma_array[i, j] = np.nan
 
-                elif line_sn < 2.0:
+                elif line_sn < 1.8:
                     Hb_vel_array[i, j] = np.nan
                     Hb_sigma_array[i, j] = np.nan
 
@@ -2140,8 +2192,8 @@ class cubeOps(object):
                                        max=gauss_centre + 0.0015)
 
                     pars['sigma'].set(value=gauss_sigma,
-                                      min=gauss_sigma - (0.5*gauss_sigma), 
-                                      max=gauss_sigma + (0.5*gauss_sigma))
+                                      min=gauss_sigma - (0.5 * gauss_sigma),
+                                      max=gauss_sigma + (0.5 * gauss_sigma))
 
                     pars['amplitude'].set(value=gauss_amp)
 
@@ -2152,8 +2204,12 @@ class cubeOps(object):
                     # correct one - subtract the fitted centre and convert
                     # to kms-1
                     c = 2.99792458E5
-                    Hb_vel = c * ((out.best_values['center'] - hb_wl) / hb_wl)
-                    Hb_sig = c * ((out.best_values['sigma']) / hb_wl)
+                    Hb_vel = c * ((out.best_values['center']
+                                  - hb_wl) / hb_wl)
+
+                    Hb_sig = c * ((out.best_values['sigma'])
+                                  / hb_wl)
+
                     # add this result to the velocity array
                     Hb_vel_array[i, j] = Hb_vel
                     Hb_sigma_array[i, j] = Hb_sig
@@ -2174,7 +2230,7 @@ class cubeOps(object):
 
         except TypeError:
 
-            # origin of the error is lack of good S/N data 
+            # origin of the error is lack of good S/N data
             # can set the max and min at whatever
             vel_min = -100
             vel_max = 100

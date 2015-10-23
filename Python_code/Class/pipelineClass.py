@@ -5115,100 +5115,156 @@ class pipelineOps(object):
         ax1.set_ylabel(r'Flux', fontsize=24)
         f.tight_layout()
         plt.savefig('/disk1/turner/DATA/Gals2/comb/Science/OII_overplots/gals1_lbg105_OII.png')
-        plt.show()      
+        plt.show()
 
-    def stackSpectra(self, fitsList, dL):
+    def stackSpectra(self,
+                     fitsList,
+                     dL):
+
         """
         Def:
-        Takes a collection of spectra of objects in a similar redshift range, 
-        blueshifts back to rest wavelength and then stacks these to create a composite 
-        spectrum. 
-        Input: fitsList - file containing the names of the .fits files housing the spectra 
-                dL - the wavelength separation between adjacent points in the spectra       
-        Output: compSpec.fits - composite spectrum, spanning the full range of rest frame wavelengths the observations have probed
+        Takes a collection of spectra of objects
+        in a similar redshift range,
+        blueshifts back to rest wavelength and
+        then stacks these to create a composite
+        spectrum.
+
+        Input: fitsList - file containing the names of
+                 the .fits files housing the spectra
+               dL - the wavelength separation between
+                 adjacent points in the spectra
+        Output: compSpec.fits - composite spectrum, spanning the full range of
+                 rest frame wavelengths the observations have probed
         """
-        #Read in the fitsList filenames and redshift values  
+
+        # Read in the fitsList filenames and redshift values
         data = np.genfromtxt(fitsList, dtype='str')
-        #Save the names and types as lists 
-        fileNames = data[:,0]
-        redshifts = data[:,1]
+
+        # Save the names and types as lists
+        fileNames = data[:, 0]
+
+        redshifts = data[:, 1]
+
         for item in zip(fileNames, redshifts):
             print item
-        # Working up to here. Now read in the first spectrum and set this as the composite 
+
+        # initialise a table and define this as the composite
         initTable = fits.open(fileNames[0])
-        # Set the Wavelength and flux, blueshifting the initial wavelength values
-        compWavelength = initTable[1].data['Wavelength'] / (1 + float(redshifts[0]))
+
+        # Set the Wavelength and flux, blueshifting
+        # the initial wavelength values
+        compWavelength = initTable[1].data['Wavelength'] \
+            / (1 + float(redshifts[0]))
+
         compFlux = initTable[1].data['Flux']
-        # Start loop over the other files and redshift values 
+
+        # Start loop over the other files and redshift values
         for i in range(1, len(fileNames)):
-            # Open each fits file separately and define the blueshifted wavelength / flux values 
+
+            # Open each fits file separately and define
+            # the blueshifted wavelength / flux values
             fitsTable = fits.open(fileNames[i])
-            fitsWavelength = fitsTable[1].data['Wavelength'] / (1 + float(redshifts[i]))
+
+            fitsWavelength = fitsTable[1].data['Wavelength'] \
+                / (1 + float(redshifts[i]))
+
             fitsFlux = fitsTable[1].data['Flux']
 
-            ### IS THE LOWEST WAVELENGTH LOWER###
+            # IS THE LOWEST WAVELENGTH LOWER
             if fitsWavelength[0] < compWavelength[0]:
-                print '[INFO]: The lowest new array wavelength is lower than the lowest composite array wavelength: %s ' % (compWavelength[0])
 
-                #The lowest wavelength is lower (meaning the redshift is higher than the maximum in the composite)  
-                #Find the highest wavelength index at which this is still the case 
+                print '[INFO]: The lowest new array wavelength is lower than' \
+                    + ' the lowest composite array wavelength: %s ' \
+                    % (compWavelength[0])
+
+                # The lowest wavelength is lower
+                # (meaning the redshift is higher
+                # than the maximum in the composite)
+                # Find the highest wavelength index
+                # at which this is still the case
 
                 low_counter = 0
-                while fitsWavelength[low_counter] < compWavelength[0]:      
-                    low_counter += 1
-                    #print 'This is the wavelength and the counter: %s %s' % (fitsWavelength[low_counter], low_counter)
-                    #print compWavelength[0]
 
-                #low_counter is the correct index to clip until. Do so and delete from both the fitsWavelength and fitsFlux arrays
+                while fitsWavelength[low_counter] < compWavelength[0]:
+                    low_counter += 1
+
+                # low_counter is the correct index to clip until.
+                # Do so and delete from both the
+                # fitsWavelength and fitsFlux arrays
                 lowFitsWavelength = fitsWavelength[:low_counter]
                 lowFitsFlux = fitsFlux[:low_counter]
                 fitsWavelength = fitsWavelength[low_counter:]
                 fitsFlux = fitsFlux[low_counter:]
 
-                #Append the lowFitsWavelength and flux arrays to the beginning of the composite spectrum
+                # Append the lowFitsWavelength and flux
+                # arrays to the beginning of the composite spectrum
                 compWavelength = np.hstack([lowFitsWavelength, compWavelength])
                 compFlux = np.hstack([lowFitsFlux, compFlux])
 
-                #Working up to here
-            ###IS THE HIGHEST WAVELENGTH LOWER###
-            if fitsWavelength[len(fitsWavelength) - 1] > compWavelength[len(compWavelength) - 1]:
-                print '[INFO]: The highest new array wavelength is higher than the highest composite array wavelength: %s ' % (compWavelength[len(compWavelength) - 1])
+            # IS THE HIGHEST WAVELENGTH LOWER
 
-                #The highest wavelength is higher (meaning the redshift is lower than the minimum in the composite)  
-                #Find the lowest wavelength index at which this is still the case 
+            if fitsWavelength[len(fitsWavelength) - 1] > \
+                    compWavelength[len(compWavelength) - 1]:
+
+                print '[INFO]: The highest new array wavelength' \
+                    + ' is higher than the highest composite array' \
+                    + ' wavelength: %s ' \
+                    % (compWavelength[len(compWavelength) - 1])
+
+                # The highest wavelength is higher
+                # (meaning the redshift is lower
+                # than the minimum in the composite)
+                # Find the lowest wavelength index
+                # at which this is still the case
 
                 high_counter = len(fitsWavelength) - 1
-                while fitsWavelength[high_counter] > compWavelength[len(compWavelength) - 1]:       
-                    high_counter -= 1
-                    #print 'This is the wavelength and the counter: %s %s' % (fitsWavelength[high_counter], high_counter)
-                    #print compWavelength[len(compWavelength) - 1]
 
-                #high_counter is the correct index to clip until. Do so and delete from both the fitsWavelength and fitsFlux arrays
+                while fitsWavelength[high_counter] > \
+                        compWavelength[len(compWavelength) - 1]:
+
+                    high_counter -= 1
+
+                # high_counter is the correct index to clip until
+                # Do so and delete from both the
+                # fitsWavelength and fitsFlux arrays
+
                 highFitsWavelength = fitsWavelength[high_counter + 1:]
                 highFitsFlux = fitsFlux[high_counter + 1:]
                 fitsWavelength = fitsWavelength[:high_counter + 1]
                 fitsFlux = fitsFlux[:high_counter + 1]
 
-                #Append the highFitsWavelength and flux arrays to the end of the composite spectrum
-                compWavelength = np.hstack([compWavelength, highFitsWavelength])
+                # Append the highFitsWavelength and
+                # flux arrays to the end of the composite spectrum
+                compWavelength = np.hstack([compWavelength,
+                                            highFitsWavelength])
+
                 compFlux = np.hstack([compFlux, highFitsFlux])
 
-            #Stage 1 done - maximum and minimum sections added. 
-            #Remaining stage is to evaluate the points remaining in fitsWavelength and fitsFlux 1 by 1
-            #and stack the fluxes together in bins 
+            # Stage 1 done - maximum and minimum sections added.
+            # Remaining stage is to evaluate
+            # the points remaining in fitsWavelength and fitsFlux 1 by 1
+            # and stack the fluxes together in bins
 
-            #Check all the remaining wavelength values
+            # Check all the remaining wavelength values
             print 'Stacking remaining wavelengths'
+
             for i in range(len(fitsWavelength)):
+
                 counter = -1
+
                 for j in range(len(compWavelength)):
+
                     counter += 1
-                    if compWavelength[j] - dL <= fitsWavelength[i] <= compWavelength[j]:
+
+                    if compWavelength[j] - dL <= \
+                       fitsWavelength[i] <= \
+                       compWavelength[j]:
+
                         break
-                compFlux[j] = compFlux[j] + fitsFlux[i]     
 
+                compFlux[j] = compFlux[j] + fitsFlux[i]
 
-        #plot an initial evaluation of the spectrum 
+        # plot an initial evaluation of the spectrum
         f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
         ax1.plot(compWavelength, compFlux, color='b')
         ax1.set_title('Composite Spectrum', fontsize=30)
@@ -5216,68 +5272,101 @@ class pipelineOps(object):
         ax1.tick_params(axis='y', which='major', labelsize=15)
         ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
         ax1.set_ylabel(r'Flux', fontsize=24)
-        f.tight_layout()    
-        plt.savefig('/Users/owenturner/DATA/test_HK/Science/compSpectrum.png')
-        plt.show()  
+        f.tight_layout()
+        plt.savefig('/disk1/turner/DATA/comp_spectrum.png')
+        plt.show()
 
+        # Isolate the Hbeta and OIII lines and save to a new spectrum
+        index = np.where(np.logical_and(compWavelength > 0.485,
+                                        compWavelength < 0.510))[0]
 
-        #Isolate the Hbeta and OIII lines and save to a new spectrum
-        index = np.where(np.logical_and(compWavelength > 0.485, compWavelength < 0.510))[0]
         saveWavelength = compWavelength[index]
-        saveFlux = compFlux[index]
-        tbhdu = fits.new_table(fits.ColDefs(\
-            [fits.Column(name='Wavelength', format='E', array=saveWavelength),\
-             fits.Column(name='Flux', format='E', array=saveFlux)]))
-        prihdu = fits.PrimaryHDU(header=initTable[0].header)
-        thdulist = fits.HDUList([prihdu, tbhdu])
-        thdulist.writeto('comp_spectrum.fits', clobber=True)
 
-    def av_seeing(self, inFile):
+        saveFlux = compFlux[index]
+
+        tbhdu = fits.new_table(fits.ColDefs(
+            [fits.Column(name='Wavelength', format='E', array=saveWavelength),
+             fits.Column(name='Flux', format='E', array=saveFlux)]))
+
+        prihdu = fits.PrimaryHDU(header=initTable[0].header)
+
+        thdulist = fits.HDUList([prihdu, tbhdu])
+
+        thdulist.writeto('/disk1/turner/DATA/comp_spectrum.fits', clobber=True)
+
+    def av_seeing(self,
+                  inFile):
+
         """
         Def:
         Compute the average seeing from the combine_input.txt file.
-        Input: inFile - the combine_input.txt file  
-        """
-        # Read in the infile 
-        data = np.genfromtxt(inFile, dtype='str')
-        #Save the names and types as lists 
-        av_seeing = data[:,5]
-        ar = []
-        for item in av_seeing:
-            ar.append(float(item))
-        print np.nanmedian(ar)
-        
-    def seeing_better_than(self, inFile, seeing_value):
-        """
-        Def: 
-        Print how many objects in a sample have seeing better than a chosen value
         Input: inFile - the combine_input.txt file
-                seeing_value - the value the seeing must exceed 
-
-            
         """
-        # Read in the infile 
+
+        # Read in the infile
         data = np.genfromtxt(inFile, dtype='str')
-        # assign the seeing column 
-        av_seeing = data[:,5]
-        print 'This is the length of the seeing array: %s' % len(np.unique(av_seeing))
+
+        # Save the names and types as lists
+        av_seeing = data[:, 5]
+
         ar = []
+
+        for item in av_seeing:
+
+            ar.append(float(item))
+
+        print np.nanmedian(ar)
+
+    def seeing_better_than(self,
+                           inFile,
+                           seeing_value):
+
+        """
+        Def:
+        Print how many objects in a sample have seeing
+        better than a chosen value
+        Input: inFile - the combine_input.txt file
+                seeing_value - the value the seeing must exceed
+
+        """
+
+        # Read in the infile
+        data = np.genfromtxt(inFile, dtype='str')
+
+        # assign the seeing column
+        av_seeing = data[:, 5]
+
+        print 'This is the length of the seeing array: %s' \
+              % len(np.unique(av_seeing))
+
+        # create an array to store the results
+        ar = []
+
         # loop through and if better than seeing value, store it
         for item in av_seeing:
+
             if float(item) < seeing_value and float(item) > 0:
+
                 ar.append(float(item))
-        # now search for unique values in the list 
-        print 'These are the unique seeing values better than: %s %s' % (seeing_value, np.unique(ar))
-        print 'We have lost %f objects' % (len(np.unique(av_seeing)) - len(np.unique(ar)))
-        print 'Therefore the total on source time is: %.2f hours' % ((5 * (len(np.unique(av_seeing)) - (len(np.unique(av_seeing)) - len(np.unique(ar))))) / 60.0)
+
+        # now search for unique values in the list
+        print 'These are the unique seeing values better than: %s %s' \
+              % (seeing_value, np.unique(ar))
+
+        print 'We have lost %f objects' \
+              % (len(np.unique(av_seeing)) - len(np.unique(ar)))
+
+        print 'Therefore the total on source time is: %.2f hours' \
+              % ((5 * (len(np.unique(av_seeing)) - (len(np.unique(av_seeing))
+                 - len(np.unique(ar))))) / 60.0)
 
     def multi_plot_HK_sn_map(self, infile):
         """
-        Def: 
+        Def:
         Plot the sn maps for lots of cubes together
         Input: infile - file listing the redshifts and cubenames
         """
-        # read in the table of cube names 
+        # read in the table of cube names
         Table = ascii.read(infile)
 
         for entry in Table:
@@ -5294,11 +5383,11 @@ class pipelineOps(object):
 
     def multi_plot_K_sn_map(self, infile):
         """
-        Def: 
+        Def:
         Plot the sn maps for lots of cubes together
         Input: infile - file listing the redshifts and cubenames
         """
-        # read in the table of cube names 
+        # read in the table of cube names
         Table = ascii.read(infile)
 
         for entry in Table:
@@ -5313,14 +5402,13 @@ class pipelineOps(object):
 
             cube.plot_K_sn_map(redshift, savefig=True)
 
-
     def multi_plot_HK_image(self, infile):
         """
-        Def: 
+        Def:
         Plot the sn maps for lots of cubes together
         Input: infile - file listing the redshifts and cubenames
         """
-        # read in the table of cube names 
+        # read in the table of cube names
         Table = ascii.read(infile)
 
         for entry in Table:
@@ -5337,11 +5425,11 @@ class pipelineOps(object):
 
     def multi_plot_K_image(self, infile):
         """
-        Def: 
+        Def:
         Plot the sn maps for lots of cubes together
         Input: infile - file listing the redshifts and cubenames
         """
-        # read in the table of cube names 
+        # read in the table of cube names
         Table = ascii.read(infile)
 
         for entry in Table:
@@ -5356,13 +5444,15 @@ class pipelineOps(object):
 
             cube.plot_K_image(redshift, savefig=True)
 
-    def multi_plot_OIII_vel_map(self, infile):
+    def multi_plot_OIII_vel_map(self,
+                                infile):
+
         """
-        Def: 
+        Def:
         Plot the velocity maps for lots of cubes together
         Input: infile - file listing the redshifts and cubenames
         """
-        # read in the table of cube names 
+        # read in the table of cube names
         Table = ascii.read(infile)
 
         for entry in Table:
@@ -5778,12 +5868,15 @@ class pipelineOps(object):
                 fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
                 plt.close('all')
 
-    def fit_lines_K(self, spectrum, wl, redshift):
+    def fit_lines_K(self,
+                    spectrum,
+                    wl,
+                    redshift):
         """
-        Def: 
-        Takes the 1D spectrum output from galExtract and fits the two 
-        K-band emission lines, returning their parameters in a dict 
-        Input: spectrum - from galExtract 
+        Def:
+        Takes the 1D spectrum output from galExtract and fits the two
+        K-band emission lines, returning their parameters in a dict
+        Input: spectrum - from galExtract
                redshift - the redshift of the galaxy being fitted
                wl - corresponding 1D wavelength array
         output: Dictionaries containing the gaussian parameters
@@ -5794,7 +5887,7 @@ class pipelineOps(object):
         oiii_central = 0.500824 * (1. + redshift)
         hb_central = 0.486268 * (1. + redshift)
 
-        # first dealing with OIII 
+        # first dealing with OIII
         # trying to isolate the wavelength region around the emission line
 
         line_idx = np.argmin(np.abs(wl - oiii_central))
@@ -5814,7 +5907,7 @@ class pipelineOps(object):
         # perform the fit
         out = gmod.fit(fit_flux, pars, x=fit_wl)
 
-#        # plot the results 
+#        # plot the results
 #        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
 #        ax1.plot(fit_wl, fit_flux, color='b')
 #        ax1.plot(fit_wl, out.best_fit, 'r-')
@@ -5826,12 +5919,12 @@ class pipelineOps(object):
 #        f.tight_layout()
 #        plt.show()
 
-        # create an oiii dictionary to house the best parameters 
-        oiii_values = {'centre_oiii': out.best_values['center'], 
-                       'sigma_oiii': out.best_values['sigma'], 
-                       'amplitude_oiii' : out.best_values['amplitude']}
+        # create an oiii dictionary to house the best parameters
+        oiii_values = {'centre_oiii': out.best_values['center'],
+                       'sigma_oiii': out.best_values['sigma'],
+                       'amplitude_oiii': out.best_values['amplitude']}
 
-        # now dealing with hb 
+        # now dealing with hb
         # trying to isolate the wavelength region around the emission line
 
         line_idx = np.argmin(np.abs(wl - hb_central))
@@ -5851,7 +5944,7 @@ class pipelineOps(object):
         # perform the fit
         out = gmod.fit(fit_flux, pars, x=fit_wl)
 
-#        # plot the results 
+#        # plot the results
 #        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
 #        ax1.plot(fit_wl, fit_flux, color='b')
 #        ax1.plot(fit_wl, out.best_fit, 'r-')
@@ -5863,23 +5956,27 @@ class pipelineOps(object):
 #        f.tight_layout()
 #        plt.show()
 
-        # create an oiii dictionary to house the best parameters 
-        hb_values = {'centre_hb': out.best_values['center'], 
-                       'sigma_hb': out.best_values['sigma'], 
-                       'amplitude_hb' : out.best_values['amplitude']}
+        # create an oiii dictionary to house the best parameters
+        hb_values = {'centre_hb': out.best_values['center'],
+                     'sigma_hb': out.best_values['sigma'],
+                     'amplitude_hb': out.best_values['amplitude']}
 
-        # simply return both of these dictionaries as a good 
-        # indication for what the initial gaussian 
+        # simply return both of these dictionaries as a good
+        # indication for what the initial gaussian
         # parameters / wavelength values should be
 
         return oiii_values, hb_values
 
-    def fit_lines_HK(self, spectrum, wl, redshift):
+    def fit_lines_HK(self,
+                     spectrum,
+                     wl,
+                     redshift):
+
         """
-        Def: 
-        Takes the 1D spectrum output from galExtract and fits the three 
-        HK-band emission lines, returning their parameters in a dict 
-        Input: spectrum - from galExtract 
+        Def:
+        Takes the 1D spectrum output from galExtract and fits the three
+        HK-band emission lines, returning their parameters in a dict
+        Input: spectrum - from galExtract
                redshift - the redshift of the galaxy being fitted
                wl - corresponding 1D wavelength array
         output: Dictionaries containing the gaussian parameters
@@ -5891,7 +5988,7 @@ class pipelineOps(object):
         hb_central = 0.486268 * (1. + redshift)
         oii_central = 0.3729875 * (1. + redshift)
 
-        # first dealing with OIII 
+        # first dealing with OIII
         # trying to isolate the wavelength region around the emission line
 
         line_idx = np.argmin(np.abs(wl - oiii_central))
@@ -5911,7 +6008,7 @@ class pipelineOps(object):
         # perform the fit
         out = gmod.fit(fit_flux, pars, x=fit_wl)
 
-#        # plot the results 
+#        # plot the results
 #        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
 #        ax1.plot(fit_wl, fit_flux, color='b')
 #        ax1.plot(fit_wl, out.best_fit, 'r-')
@@ -5923,12 +6020,12 @@ class pipelineOps(object):
 #        f.tight_layout()
 #        plt.show()
 
-        # create an oiii dictionary to house the best parameters 
-        oiii_values = {'centre_oiii': out.best_values['center'], 
-                       'sigma_oiii': out.best_values['sigma'], 
-                       'amplitude_oiii' : out.best_values['amplitude']}
+        # create an oiii dictionary to house the best parameters
+        oiii_values = {'centre_oiii': out.best_values['center'],
+                       'sigma_oiii': out.best_values['sigma'],
+                       'amplitude_oiii': out.best_values['amplitude']}
 
-        # now dealing with hb 
+        # now dealing with hb
         # trying to isolate the wavelength region around the emission line
 
         line_idx = np.argmin(np.abs(wl - hb_central))
@@ -5948,7 +6045,7 @@ class pipelineOps(object):
         # perform the fit
         out = gmod.fit(fit_flux, pars, x=fit_wl)
 
-#        # plot the results 
+#        # plot the results
 #        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
 #        ax1.plot(fit_wl, fit_flux, color='b')
 #        ax1.plot(fit_wl, out.best_fit, 'r-')
@@ -5960,13 +6057,13 @@ class pipelineOps(object):
 #        f.tight_layout()
 #        plt.show()
 
-        # create an oiii dictionary to house the best parameters 
-        hb_values = {'centre_hb': out.best_values['center'], 
-                       'sigma_hb': out.best_values['sigma'], 
-                       'amplitude_hb' : out.best_values['amplitude']}
+        # create an oiii dictionary to house the best parameters
+        hb_values = {'centre_hb': out.best_values['center'],
+                     'sigma_hb': out.best_values['sigma'],
+                     'amplitude_hb': out.best_values['amplitude']}
 
-        # simply return both of these dictionaries as a good 
-        # indication for what the initial gaussian 
+        # simply return both of these dictionaries as a good
+        # indication for what the initial gaussian
         # parameters / wavelength values should be
 
         # finally dealing with OII
@@ -5989,7 +6086,7 @@ class pipelineOps(object):
         # perform the fit
         out = gmod.fit(fit_flux, pars, x=fit_wl)
 
-#        # plot the results 
+#        # plot the results
 #        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
 #        ax1.plot(fit_wl, fit_flux, color='b')
 #        ax1.plot(fit_wl, out.best_fit, 'r-')
@@ -6001,9 +6098,9 @@ class pipelineOps(object):
 #        f.tight_layout()
 #        plt.show()
 
-        # create an oiii dictionary to house the best parameters 
-        oii_values = {'centre_oii': out.best_values['center'], 
-                       'sigma_oii': out.best_values['sigma'], 
-                       'amplitude_oii' : out.best_values['amplitude']}
+        # create an oiii dictionary to house the best parameters
+        oii_values = {'centre_oii': out.best_values['center'],
+                      'sigma_oii': out.best_values['sigma'],
+                      'amplitude_oii': out.best_values['amplitude']}
 
         return oiii_values, hb_values, oii_values
