@@ -27,124 +27,183 @@ class cubeOps(object):
     # Initialiser creates an instance of the cube object
     # Input must be a combined data cube with two extensions - data and noise
     def __init__(self, fileName):
+
         self.self = self
+
         self.fileName = fileName
-        #Variable containing all the fits extensions 
+
+        # Variable containing all the fits extensions
         self.Table = fits.open(fileName)
-        #Variable housing the primary data cube
+
+        # Variable housing the primary data cube
         self.data = self.Table[1].data
-        #Collapse over the wavelength axis to get an image
+
+        # Collapse over the wavelength axis to get an image
         self.imData = np.nanmedian(self.data, axis=0)
+
         try:
+
             self.total_spec = np.nanmedian(np.nanmedian
                                            (self.data[:, 4:len(self.data[0]),
-                                           4:len(self.data[1])],
-                                           axis=1),
+                                            4:len(self.data[1])],
+                                            axis=1),
                                            axis=1)
         except:
+
             print 'Cannot extract the total spectrum'
+
         # Create a plot of the image
         # Variable housing the noise data cube
         # self.noise = self.Table[2].data
         # Primary Header
         self.primHeader = self.Table[0].header
+
         # data Header
         self.dataHeader = self.Table[1].header
+
         # noise Header
         # self.noiseHeader = self.Table[2].header
         # Extract the wavelength calibration info
         try:
+
             self.start_L = self.dataHeader["CRVAL3"]
+
             self.dL = self.dataHeader["CDELT3"]
+
         except KeyError:
+
             print '[INFO]: This is a raw image'
+
         # Extract the IFU number from the data
         # Cube may not have this keyword, try statement
         # Not sure if this is good practice - conditional attribute.
         try:
+
             self.IFUNR = self.dataHeader["HIERARCH ESO PRO IFUNR"]
+
             key = 'HIERARCH ESO OCS ARM' + str(self.IFUNR) + ' NAME'
+
             # print key
             self.IFUName = self.dataHeader[key]
+
         except KeyError:
+
             try:
+
                 self.noise_header = self.Table[2].header
+
                 self.IFUNR = self.noise_header["HIERARCH ESO PRO IFUNR"]
+
                 key = 'HIERARCH ESO OCS ARM' + str(self.IFUNR) + ' NAME'
+
                 # print key
                 self.IFUName = self.noise_header[key]
+
             except:
 
-                print '[INFO]: This is not a combined Frame, setting arm name...'
+                print '[INFO]: This is not a combined Frame' \
+                    + ', setting arm name...'
+
                 try:
+
                     ext_name = self.dataHeader['EXTNAME']
+
                     num_string = ''
+
                     for s in ext_name:
+
                         if s.isdigit():
+
                             num_string += s
+
                     num_string = int(num_string)
+
                     self.IFUNR = copy(num_string)
-                    self.IFUName = self.primHeader["HIERARCH ESO OCS ARM" + str(self.IFUNR) + " NAME"]
+
+                    self.IFUName = self.primHeader["HIERARCH ESO OCS ARM"
+                                                   + str(self.IFUNR)
+                                                   + " NAME"]
+
                     print '[INFO]: You have specified a reconstructed type'
+
                 except KeyError:
+
                     print "[Warning]: not a datacube"
 
-        # Set the RA and DEC positions of all the arms. These are in 
-        # sexagesimal format - convert to degrees for the plot 
+        # Set the RA and DEC positions of all the arms. These are in
+        # sexagesimal format - convert to degrees for the plot
         self.raDict = {}
         self.decDict = {}
         self.combDict = {}
         self.offList = []
+
         for i in range(1, 25):
-            # print "HIERARCH ESO OCS ARM" + str(i) + " NAME"
-            # print "ARM" + str(i) + "_SCI"
 
             # if statement to cover the possibility of operational IFUs
             # assigned to sky
-            if (self.primHeader["HIERARCH ESO OCS ARM" + str(i) + " NAME"]) == ("ARM" + str(i) + "_SCI"):
+            if (self.primHeader["HIERARCH ESO OCS ARM" + str(i) + " NAME"]) \
+                    == ("ARM" + str(i) + "_SCI"):
+
                 # Add the IFU to the offlist
                 print 'ARM%s is operational but on sky' % str(i)
+
                 self.offList.append(i)
+
             else:
+
                 # Construct the list of combined science frames that will
                 # be thrown out by the science pipeline
                 try:
+
                     nuName = "HIERARCH ESO OCS ARM" + str(i) + " NOTUSED"
                     temp = self.primHeader[nuName]
+
                 except KeyError:
+
                     combKey = "HIERARCH ESO OCS ARM" + str(i) + " ORIGARM"
                     combName = "HIERARCH ESO OCS ARM" + str(i) + " NAME"
-                    self.combDict[self.primHeader[combName]] = self.primHeader[combKey]
 
-                try:      
+                    self.combDict[self.primHeader[combName]] = \
+                        self.primHeader[combKey]
+
+                try:
+
                     raName = "HIERARCH ESO OCS ARM" + str(i) + " ALPHA"
+
                     DictName = 'Arm' + str(i)
+
                     decName = "HIERARCH ESO OCS ARM" + str(i) + " DELTA"
-                    #print raName, decName
-                    self.raDict[DictName] = self.raToDeg(self.primHeader[raName])
-                    self.decDict[DictName] = self.decToDeg(self.primHeader[decName])
+
+                    # print raName, decName
+                    self.raDict[DictName] = \
+                        self.raToDeg(self.primHeader[raName])
+
+                    self.decDict[DictName] = \
+                        self.decToDeg(self.primHeader[decName])
 
                 except KeyError:
-                    print '[INFO]: IFU %s Not in Use, or not pointing at at object' % DictName
+                    print DictName
+                    print '[INFO]: IFU %s Not in Use,' % DictName \
+                          + ' or not pointing at an object'
+
                     self.offList.append(i)
 
-
-
-
-        #Construct the list of combined science names separately
-        #This is now in order of the IFU
+        # Construct the list of combined science names separately
+        # This is now in order of the IFU
         self.combNames = []
+
         for entry in self.combDict.keys():
+
             combinedName = 'sci_combined_' + entry + '__telluric_skytweak.fits'
             self.combNames.append(combinedName)
 
-        #Also construct the list of kmo_combine recipe combined names 
+        # Also construct the list of kmo_combine recipe combined names
         self.rec_combNames = []
+
         for entry in self.combDict.keys():
+
             combinedName = 'combine_sci_reconstructed_' + entry + '.fits'
             self.rec_combNames.append(combinedName)
-
-
 
         self.offList = np.array(self.offList)
         self.offList = self.offList - 1
@@ -154,135 +213,171 @@ class cubeOps(object):
         self.xDit = self.primHeader['HIERARCH ESO OCS TARG DITHA']
         self.yDit = self.primHeader['HIERARCH ESO OCS TARG DITHD']
 
-        #Find the pixel scale if this is a combined cube 
+        # Find the pixel scale if this is a combined cube
         try:
-            self.pix_scale = self.primHeader['HIERARCH ESO PRO REC1 PARAM7 VALUE']
+
+            self.pix_scale = \
+                self.primHeader['HIERARCH ESO PRO REC1 PARAM7 VALUE']
+
         except KeyError:
+
             print '[INFO]: Could not set pixel scale - not a datacube'
+
             self.pix_scale = 0
 
-        #Create the wavelength array if this is a combined data type
+        # Create the wavelength array if this is a combined data type
         try:
-            self.wave_array = self.start_L + np.arange(0, 2048*(self.dL), self.dL)
+
+            self.wave_array = self.start_L \
+                + np.arange(0, 2048 * (self.dL), self.dL)
         except:
+
             print '[INFO]: cannot set wavelength array'
-        #Can define all kinds of statistics from the data common to the methods
-        #Find the brightest median pixel in the array 
+
+        # Can define all kinds of statistics
+        # from the data common to the methods
+        # Find the brightest median pixel in the array
         self.med_array = np.nanmedian(self.data, axis=0)
         self.num = np.nanargmax(self.med_array)
         self.ind1 = self.num / len(self.med_array)
         self.ind2 = self.num - (len(self.med_array) * self.ind1)
 
-
-
     def raToDeg(self, ra):
         """
         Def:
-        Helper function - convert sexagesimal RA to degrees. 
-        Needs to check number digits before the decimal point, 
-        because the fits files doesn't always give 6 
+        Helper function - convert sexagesimal RA to degrees.
+        Needs to check number digits before the decimal point,
+        because the fits files doesn't always give 6
 
         Input: Sexagesimal RA (HH:MM:SS.SS)
-        Output: Ra in degrees 
+        Output: Ra in degrees
 
         """
         ra = str(ra)
-        #Figure out how many characters before the decimal point
+
+        # Figure out how many characters before the decimal point
         i = 0
+
         for char in ra:
+
             if char == '.':
+
                 break
+
             else:
+
                 i += 1
-        #Conditionally convert, depending on whether i is 4 or 6
-        #Also conditionally execute depending on number decimal places
+
+        # Conditionally convert, depending on whether i is 4 or 6
+        # Also conditionally execute depending on number decimal places
         if i == 6:
+
             hours = int(ra[0:2])
             mins = int(ra[2:4])
             secs = float(ra[4:])
-            raDeg = (hours * 15) + (mins * 0.25) + (secs * 1.0/240)
+            raDeg = (hours * 15) + (mins * 0.25) + (secs * 1.0 / 240)
+
         elif i == 4:
+
             mins = int(ra[0:2])
             secs = float(ra[2:])
-            raDeg = (mins * 0.25) + (secs * 1.0/240)            
-        else:
-            secs = float(ra)
-            raDeg = (secs * 1.0/240)
-        return raDeg
+            raDeg = (mins * 0.25) + (secs * 1.0 / 240)
 
+        else:
+
+            secs = float(ra)
+            raDeg = (secs * 1.0 / 240)
+
+        return raDeg
 
     def decToDeg(self, dec):
         """
         Def:
-        Helper function - convert sexagesimal dec to degrees. 
-        Needs to check number digits before the decimal point, 
-        because the fits files doesn't always give 6 
+        Helper function - convert sexagesimal dec to degrees.
+        Needs to check number digits before the decimal point,
+        because the fits files doesn't always give 6
 
         Input: Sexagesimal dec (DD:MM:SS.SS)
-        Output: Dec in degrees 
+        Output: Dec in degrees
 
-        """     
+        """
         dec = str(dec)
-        #Figure out how many characters before the decimal point
+        # Figure out how many characters before the decimal point
         i = 0
         if dec[0] == '-':
 
             for char in dec:
+
                 if char == '.':
+
                     break
+
                 else:
+
                     i += 1
-            #Conditionally convert, depending on whether i is 4 or 6
-            #Also conditionally execute depending on number decimal places
+
+            # Conditionally convert, depending on whether i is 4 or 6
+            # Also conditionally execute depending on number decimal places
             if i == 7:
+
                 deg = float(dec[1:3])
                 mins = float(dec[3:5])
                 secs = float(dec[5:])
-                #Careful whether deg is negative or not
-                #Becoming more positive if > 0
-                decDeg = (deg * -1) - (mins * 1.0/60) - (secs * 1.0/3600)
-            
+
+                # Careful whether deg is negative or not
+                # Becoming more positive if > 0
+                decDeg = (deg * -1) - (mins * 1.0 / 60) - (secs * 1.0 / 3600)
+
             elif i == 5:
+
                 mins = float(dec[1:3])
                 secs = float(dec[3:])
-                decDeg = (mins * -1.0/60) - (secs * 1.0/3600)                       
+                decDeg = (mins * -1.0 / 60) - (secs * 1.0 / 3600)
+
             else:
+
                 secs = float(dec)
-                decDeg = (secs * 1.0/3600)
+                decDeg = (secs * 1.0 / 3600)
+
             return decDeg
 
         else:
-            
+
             for char in dec:
                 if char == '.':
                     break
                 else:
                     i += 1
-            #Conditionally convert, depending on whether i is 4 or 6
-            #Also conditionally execute depending on number decimal places
-            #print i
+
+            # Conditionally convert, depending on whether i is 4 or 6
+            # Also conditionally execute depending on number decimal places
+            # print i
             if i == 6:
                 deg = float(dec[0:2])
                 mins = float(dec[2:4])
                 secs = float(dec[4:])
-                #Careful whether deg is negative or not
-                #Becoming more positive if > 0
-                decDeg = deg + (mins * 1.0/60) + (secs * 1.0/3600)
-            
+
+                # Careful whether deg is negative or not
+                # Becoming more positive if > 0
+                decDeg = deg + (mins * 1.0 / 60) + (secs * 1.0 / 3600)
+
             elif i == 4:
+
                 mins = float(dec[0:2])
                 secs = float(dec[2:])
-                decDeg = (mins * 1.0/60) + (secs * 1.0/3600)                        
-            else:
-                secs = float(dec)
-                decDeg = (secs * 1.0/3600)
-            return decDeg
+                decDeg = (mins * 1.0 / 60) + (secs * 1.0 / 3600)
 
+            else:
+
+                secs = float(dec)
+                decDeg = (secs * 1.0 / 3600)
+
+            return decDeg
 
     def ifuCoordsPlot(self):
         """
         Def:
-        Plots the already recorded IFU Positions on the sky 
+        Plots the already recorded IFU Positions on the sky
 
         Inputs: None
         Output: Matplotlib plot of coordinates
@@ -293,46 +388,59 @@ class cubeOps(object):
         plt.show()
         plt.close('all')
 
-
-
-    def specPlot(self, gridSize):
+    def specPlot(self,
+                 gridSize):
         """
         Def:
         Takes a data cube and creates a median stacked 1-D
-        spectrum around the brightest pixel, with the size 
+        spectrum around the brightest pixel, with the size
         of the median stack defined by gridSize
 
-        Input: 
-        gridSize - must be a positive int less than the number of 
-        spatial pixels in the cube. 
+        Input:
+        gridSize - must be a positive int less than the number of
+        spatial pixels in the cube.
 
-        Output: 
-        matplotlib plot of the 1D stacked spectrum 
+        Output:
+        matplotlib plot of the 1D stacked spectrum
 
 
         """
-        #If choosing to construct the 1D spectrum from a single pixel:
-        print '[INFO]: The Brightest Pixel is at: (%s, %s)' % (self.ind1, self.ind2)
+        # If choosing to construct the 1D spectrum from a single pixel:
+        print '[INFO]: The Brightest Pixel is at: (%s, %s)' \
+              % (self.ind1, self.ind2)
+
         print self.IFUName
+
         print self.IFUNR
+
         if gridSize == 1:
-            flux_array = self.data[:,self.ind1, self.ind2]
+
+            flux_array = self.data[:, self.ind1, self.ind2]
+
         else:
+
             lst = []
-            for i in range(self.ind1 - (gridSize / 2), self.ind1 + (gridSize / 2)):
-                for j in range(self.ind2 - (gridSize / 2), self.ind2 + (gridSize / 2)):
-                    lst.append(self.data[:,i,j])
+
+            for i in range(self.ind1 - (gridSize / 2),
+                           self.ind1 + (gridSize / 2)):
+
+                for j in range(self.ind2 - (gridSize / 2),
+                               self.ind2 + (gridSize / 2)):
+
+                    lst.append(self.data[:, i, j])
+
             flux_array = np.nanmedian(lst, axis=0)
 
-        #Now make very basic plot at the moment 
-        fig, ax = plt.subplots(1, 1, figsize=(18.0,12.0))
+        # Now make very basic plot at the moment
+        fig, ax = plt.subplots(1, 1, figsize=(18.0, 12.0))
         ax.plot(self.wave_array, flux_array)
         ax.set_title('Flux vs. Wavelength')
         ax.set_xlabel('Wavelength ($\mu m$)')
-        ax.set_ylim(0,100)
+        ax.set_ylim(0, 100)
+
         saveName = (self.fileName)[:-5] + '.png'
         fig.savefig(saveName)
-        #plt.show()     
+        # plt.show()
         plt.close('all')
         return flux_array
 
@@ -340,134 +448,180 @@ class cubeOps(object):
         """
         Def:
         Takes a data cube and creates a median stacked 1-D
-        spectrum in a 3x3 grid around the central pixel 
+        spectrum in a 3x3 grid around the central pixel
 
-        Output: 
-        matplotlib plot of the 1D stacked spectrum 
+        Output:
+        matplotlib plot of the 1D stacked spectrum
 
 
         """
         lst = []
-        for i in range((len(self.data[0]) / 2) - 1, (len(self.data[0]) / 2) + 1):
-            for j in range((len(self.data[0]) / 2) - 1, (len(self.data[0]) / 2) + 1):
-                lst.append(self.data[:,i,j])
+
+        for i in range((len(self.data[0]) / 2) - 1,
+                       (len(self.data[0]) / 2) + 1):
+
+            for j in range((len(self.data[0]) / 2) - 1,
+                           (len(self.data[0]) / 2) + 1):
+
+                lst.append(self.data[:, i, j])
+
         flux_array = np.nanmedian(lst, axis=0)
-        return flux_array               
 
-    def singlePixelExtract(self, centre_x, centre_y):
+        return flux_array
+
+    def singlePixelExtract(self,
+                           centre_x,
+                           centre_y):
         """
-        Def: 
+        Def:
         Extracts a 1-D spectrum at the central x and y locations provided
-        Input - centre_x: the central location of the galaxy on the 2D image in the x direction 
-                centre_y: the central location of the galaxy on the 2D image in the y direction
-        Output - FluxArray: Extracted 1D flux spectrum from the object at the chosen location 
+        Input - centre_x: the central location of the
+                    galaxy on the 2D image in the x direction
+                centre_y: the central location of the
+                    galaxy on the 2D image in the y direction
+        Output - FluxArray: Extracted 1D flux spectrum
+                    from the object at the chosen location
         """
-        #Already have Data defined - want to collapse this down to a 1D array at the chosen x-y location 
-        return self.data[:,centre_y, centre_x]
 
-    def specPlot2D(self, orientation):
+        # Already have Data defined - want to collapse this
+        # down to a 1D array at the chosen x-y location
+        return self.data[:, centre_y, centre_x]
+
+    def specPlot2D(self,
+                   orientation):
         """
         Def:
         Takes a data cube and creates a median stacked 2-D
         spectrum across either the horizontal row or vertical column
 
-        Input: 
+        Input:
         orientation - either 'vertical' or 'horizontal' (default down)
 
-        Output: 
-        2D array specifying the 2D spectrum 
+        Output:
+        2D array specifying the 2D spectrum
 
 
         """
 
-        #Check the orientation input to see what has been specified#
+        # Check the orientation input to see what has been specified#
         try:
-            #If 'up' median stack across the rows
-            if orientation == 'vertical':
-                plot_vec = np.nanmedian(self.data, axis=1)
-            elif orientation == 'horizontal':
-                plot_vec = np.nanmedian(self.data, axis=2)
-            else:
-                raise ValueError('Choose either vertical or horizontal for the orientation')
-        except ValueError:
-            print 'check input for Orientation'
-            raise   
 
-        #Now have the plot vector, plot it.
+            # If 'up' median stack across the rows
+            if orientation == 'vertical':
+
+                plot_vec = np.nanmedian(self.data, axis=1)
+
+            elif orientation == 'horizontal':
+
+                plot_vec = np.nanmedian(self.data, axis=2)
+
+            else:
+
+                raise ValueError('Choose either vertical'
+                                 + ' or horizontal for the orientation')
+
+        except ValueError:
+
+            print 'check input for Orientation'
+
+            raise
+
+        # Now have the plot vector, plot it.
         plt.imshow(plot_vec)
-        plt.savefig('test.png')     
+        plt.savefig('test.png')
         plt.close('all')
 
     def optimalSpec(self):
 
         """
-        Def: 
-        Optimally extract the spectrum of the object from the whole image. 
-        Use the PSF of the object to get the weighting for the extraction. 
-        Do I just sum over the axis? 
+        Def:
+        Optimally extract the spectrum of the object from the whole image.
+        Use the PSF of the object to get the weighting for the extraction.
+        Do I just sum over the axis?
         Input: None - everything already defined
         """
-        #Fit a gaussian to the fully combined science cube
-        #to determine the optimal extraction profile
-        print '[INFO]: Fitting the optimal spectrum for object: %s' % self.IFUName
+        # Fit a gaussian to the fully combined science cube
+        # to determine the optimal extraction profile
+        print '[INFO]: Fitting the optimal' \
+            + ' spectrum for object: %s' % self.IFUName
+
         params, psfMask, fwhm, offList = self.psfMask()
 
-        #Multiply the cube data by the psfMask
+        # Multiply the cube data by the psfMask
         modCube = psfMask * self.data
 
-        #Recover the width of the gaussian 
+        # Recover the width of the gaussian
         width = fwhm / 2.3548
         width = int(np.round(width))
-        #Recover the central value
+
+        # Recover the central value
         x = params[2]
         y = params[1]
 
-        #Set the upper and lower limits for optimal spectrum extraction
-        x_upper = int(x + (1.5*width))
-        if x_upper > len(self.data[0]):
-            x_upper = len(self.data[0])
-        x_lower = int(x - (1.5*width))
-        if x_lower < 0:
-            x_lower = 0 
+        # Set the upper and lower limits for optimal spectrum extraction
+        x_upper = int(x + (1.5 * width))
 
-        y_upper = int(y + (1.5*width))
+        if x_upper > len(self.data[0]):
+
+            x_upper = len(self.data[0])
+
+        x_lower = int(x - (1.5 * width))
+
+        if x_lower < 0:
+
+            x_lower = 0
+
+        y_upper = int(y + (1.5 * width))
+
         if y_upper > len(self.data[0]):
+
             y_upper = len(self.data[0])
-        y_lower = int(y - (1.5*width))
+
+        y_lower = int(y - (1.5 * width))
+
         if y_lower < 0:
+
             y_lower = 0
 
-        print x_lower, x_upper, y_lower, y_upper        
+        print x_lower, x_upper, y_lower, y_upper
 
-        #Set all values greater than 2sigma from the centre = 0 
-        #Don't want to include these in the final spectrum 
-        modCube[:,0:y_lower, :] = 0 
-        modCube[:,y_upper:len(self.data[0]), :] = 0
-        modCube[:,: , 0:x_lower] = 0
+        # Set all values greater than 2sigma from the centre = 0
+        # Don't want to include these in the final spectrum
+        modCube[:, 0:y_lower, :] = 0
+        modCube[:, y_upper:len(self.data[0]), :] = 0
+        modCube[:, :, 0:x_lower] = 0
         modCube[:, :, x_upper: len(self.data[0])] = 0
-        #Sum over each spatial dimension to get the spectrum 
+
+        # Sum over each spatial dimension to get the spectrum
         first_sum = np.nansum(modCube, axis=1)
         spectrum = np.nansum(first_sum, axis=1)
         return spectrum
 
-    def optimalSpecFromProfile(self, profile, fwhm, centre_x, centre_y):
+    def optimalSpecFromProfile(self,
+                               profile,
+                               fwhm,
+                               centre_x,
+                               centre_y):
 
         """
-        Def: 
-        Optimally extract the spectrum of the object from the whole image. 
-        Use the PSF of the object to get the weighting for the extraction. 
-        Do I just sum over the axis? 
+        Def:
+        Optimally extract the spectrum of the object from the whole image.
+        Use the PSF of the object to get the weighting for the extraction.
         Input: Profile - a specified 2D normalised profile for extraction
-                fwhm - the fwhm of the tracked star
+               fwhm - the fwhm of the tracked star
         """
         try:
-            print '[INFO]: Fitting the optimal spectrum for object: %s' % self.IFUName
+            print '[INFO]: Fitting the optimal ' \
+                + 'spectrum for object: %s' % self.IFUName
+
         except AttributeError:
+
             print '[INFO]: Fitting the optimal spectrum'
+
         # Multiply the cube data by the psfMask
         modCube = profile * self.data
 
-        # Recover the width of the gaussian 
+        # Recover the width of the gaussian
         width = fwhm / 2.3548
         # Recover the central value
         x = copy(centre_x)
@@ -476,65 +630,103 @@ class cubeOps(object):
         print '[INFO]: And the width is: %s' % width
 
         # Set the upper and lower limits for optimal spectrum extraction
-        x_upper = int(np.round((x + (2.0*width))))
-        if x_upper > len(self.data[0]):
-            x_upper = len(self.data[0])
-        x_lower = int(np.round((x - (2.0*width))))
-        if x_lower < 0:
-            x_lower = 0 
+        x_upper = int(np.round((x + (2.0 * width))))
 
-        y_upper = int(np.round((y + (2.0*width))))
+        if x_upper > len(self.data[0]):
+
+            x_upper = len(self.data[0])
+
+        x_lower = int(np.round((x - (2.0 * width))))
+
+        if x_lower < 0:
+
+            x_lower = 0
+
+        y_upper = int(np.round((y + (2.0 * width))))
+
         if y_upper > len(self.data[0]):
+
             y_upper = len(self.data[0])
-        y_lower = int(np.round((y - (2.0*width))))
+
+        y_lower = int(np.round((y - (2.0 * width))))
+
         if y_lower < 0:
+
             y_lower = 0
 
-        print x_lower, x_upper, y_lower, y_upper        
+        print x_lower, x_upper, y_lower, y_upper
 
-        # Set all values greater than 2sigma from the centre = 0 
-        # Don't want to include these in the final spectrum 
-        modCube[:,0:y_lower, :] = 0 
-        modCube[:,y_upper:len(self.data[0]), :] = 0
-        modCube[:,: , 0:x_lower] = 0
-        modCube[:, :, x_upper: len(self.data[0])] = 0   
+        # Set all values greater than 2sigma from the centre = 0
+        # Don't want to include these in the final spectrum
+        modCube[:, 0:y_lower, :] = 0
+        modCube[:, y_upper:len(self.data[0]), :] = 0
+        modCube[:, :, 0:x_lower] = 0
+        modCube[:, :, x_upper: len(self.data[0])] = 0
 
         imModCube = copy(modCube)
         imModCube = np.nanmedian(modCube, axis=0)
+
         # Check to see that the gaussian and shifted profile align
-        colFig, colAx = plt.subplots(1,1, figsize=(12.0,12.0))
+        colFig, colAx = plt.subplots(1, 1, figsize=(12.0, 12.0))
         colCax = colAx.imshow(imModCube, interpolation='bicubic')
         colFig.colorbar(colCax)
+
         # plt.show()
         plt.close('all')
 
-        # Sum over each spatial dimension to get the spectrum 
+        # Sum over each spatial dimension to get the spectrum
         first_sum = np.nansum(modCube, axis=1)
         spectrum = np.nansum(first_sum, axis=1)
 
-        # for the purposes of the velocity map it will be useful 
+        # for the purposes of the velocity map it will be useful
         # to extract the gaussian parameters from this 1D spectrum
-        # first need to check if we're K or HK 
+        # first need to check if we're K or HK
 
         return spectrum
 
+    # Create a gaussian function for use with lmfit
+    def gaussian(self,
+                 x1,
+                 x2,
+                 pedastal,
+                 height,
+                 center_x,
+                 center_y,
+                 width_x,
+                 width_y):
+        """
+        Def: Return a two dimensional gaussian function
+        """
 
-    # Create a gaussian function for use with lmfit  
-    def gaussian(self, x1, x2, pedastal, height, center_x, center_y, width_x, width_y):
-        # make sure we have floating point values 
+        # make sure we have floating point values
         width_x = float(width_x)
         width_y = float(width_y)
-        # Specify the gaussian function here 
-        func = pedastal + height*exp(-(((center_x-x1)/width_x)**2+((center_y-x2)/width_y)**2)/2)
+
+        # Specify the gaussian function here
+        func = pedastal + height * exp(
+            -(((center_x - x1) / width_x)
+                ** 2 + ((center_y - x2) / width_y) ** 2) / 2)
         return func
 
-    #Create a gaussian function for use with the integral
-    def gaussianLam(self, pedastal, height, center_x, center_y, width_x, width_y):
-        """Returns a gaussian function with the given parameters"""
+    # Create a gaussian function for use with the integral
+    def gaussianLam(self,
+                    pedastal,
+                    height,
+                    center_x,
+                    center_y,
+                    width_x,
+                    width_y):
+
+        """
+        Def: Returns a gaussian function with the given parameters
+        """
+        # make sure we have floating point values
         width_x = float(width_x)
         width_y = float(width_y)
-        return lambda x,y: pedastal + height*exp(
-                    -(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
+
+        return lambda x, y: pedastal + height * exp(
+            -(((center_x - x) / width_x)
+                ** 2 + ((center_y - y) / width_y) ** 2) / 2)
 
     def gauss2dMod(self):
 
@@ -555,10 +747,12 @@ class cubeOps(object):
 
     def moments(self,
                 data):
-    
-        """Returns (pedastal, height, center_x, center_y, width_x, width_y)
+
+        """
+        Def: Returns (pedastal, height, center_x, center_y, width_x, width_y)
         the gaussian parameters of a 2D distribution by calculating its
-        moments """
+        moments
+        """
 
         pedastal = np.nanmedian(data)
 
@@ -581,10 +775,13 @@ class cubeOps(object):
 
         return [height, center_x, center_y, width_x, width_y, pedastal]
 
-    def fitgaussian(self, data):
+    def fitgaussian(self,
+                    data):
 
-        """Returns (height, x, y, width_x, width_y)
-        the gaussian parameters of a 2D distribution found by a fit"""
+        """
+        Def: Returns (height, x, y, width_x, width_y)
+        the gaussian parameters of a 2D distribution found by a fit
+        """
 
         # At the moment will assume that the data
         # is imagedata which needs flattened
@@ -599,10 +796,15 @@ class cubeOps(object):
 
         # Set the parameter hints from the initialPars method
         mod.set_param_hint('height', value=pars[0])
+
         mod.set_param_hint('center_x', value=pars[1])
+
         mod.set_param_hint('center_y', value=pars[2])
+
         mod.set_param_hint('width_x', value=pars[3])
+
         mod.set_param_hint('width_y', value=pars[4])
+
         mod.set_param_hint('pedastal', value=pars[5])
 
         # Initialise a parameters object to use in the fit
@@ -698,7 +900,9 @@ class cubeOps(object):
         # return the FWHM and the masked profile
         return params, (gEval / integral[0]), FWHM, self.offList
 
-    def plot_HK_sn_map(self, redshift, savefig=False):
+    def plot_HK_sn_map(self,
+                       redshift,
+                       savefig=False):
         """
         Def:
         Check the signal to noise of the emission lines over the face of a cube
@@ -787,7 +991,9 @@ class cubeOps(object):
         # return the dictionary containing the noise values
         return sn_dict
 
-    def plot_K_sn_map(self, redshift, savefig=False):
+    def plot_K_sn_map(self,
+                      redshift,
+                      savefig=False):
 
         fig, axes = plt.subplots(figsize=(10, 4), nrows=1, ncols=2)
         fig.subplots_adjust(right=0.83)
@@ -864,7 +1070,10 @@ class cubeOps(object):
             fig.savefig('%s_sn_map.pdf' % self.fileName[:-5])
         return sn_dict
 
-    def plot_HK_image(self, redshift, savefig=False):
+    def plot_HK_image(self,
+                      redshift,
+                      savefig=False):
+
         """
         Def:
         Check the signal to noise of the emission lines over the face of a cube
@@ -902,10 +1111,12 @@ class cubeOps(object):
                 oiii5007_wl = 0.500824 * (1. + redshift)
                 line_idx = np.argmin(np.abs(wl - oiii5007_wl))
                 met_array_OIII = np.empty(shape=(xpixs, ypixs))
+
             elif line == 'Hb':
                 hb_wl = 0.486268 * (1. + redshift)
                 line_idx = np.argmin(np.abs(wl - hb_wl))
                 met_array_Hb = np.empty(shape=(xpixs, ypixs))
+
             elif line == '[OII]':
                 oii_wl = 0.3729875 * (1. + redshift)
                 line_idx = np.argmin(np.abs(wl - oii_wl))
@@ -967,37 +1178,6 @@ class cubeOps(object):
             fig.savefig('%s_images.pdf' % self.fileName[:-5])
         plt.close('all')
 
-#        # before creating the three plots create plots for each graph
-#        fig, ax = plt.subplots(1, figsize=(10, 10))
-#        im = ax.imshow(met_array_OIII, aspect='auto', vmin=0.,
-#                       vmax=3.,
-#                       cmap=plt.get_cmap('hot'))
-#        ax.set_title('[OIII]')
-#        fig.colorbar(im)#
-
-#        plt.show()
-#        plt.close('all')#
-
-#        fig, ax = plt.subplots(1, figsize=(10, 10))
-#        im = ax.imshow(met_array_Hb, aspect='auto', vmin=0.,
-#                       vmax=3.,
-#                       cmap=plt.get_cmap('hot'))
-#        ax.set_title('Hb')
-#        fig.colorbar(im)#
-
-#        plt.show()
-#        plt.close('all')#
-
-#        fig, ax = plt.subplots(1, figsize=(10, 10))
-#        im = ax.imshow(met_array_OII, aspect='auto', vmin=-3.0,
-#                       vmax=3.,
-#                       cmap=plt.get_cmap('hot'))
-#        ax.set_title('[OII]')
-#        fig.colorbar(im)#
-
-#        plt.show()
-#        plt.close('all')
-
         # now should also have the Hb and OIII metallicity maps
         # divide the two and plot the result
         overall_met = met_array_OIII / met_array_Hb
@@ -1014,7 +1194,7 @@ class cubeOps(object):
 
         Hb_met_array = np.empty(shape=(x_shape, y_shape))
 
-        # initialise the coefficients, given in Maiolino 2008 
+        # initialise the coefficients, given in Maiolino 2008
         c_0_Hb = 0.1549
         c_1_Hb = -1.5031
         c_2_Hb = -0.9790
@@ -1119,7 +1299,9 @@ class cubeOps(object):
         plt.close('all')
         return Hb_met_array, OII_met_array
 
-    def plot_K_image(self, redshift, savefig=False):
+    def plot_K_image(self,
+                     redshift,
+                     savefig=False):
 
         fig, axes = plt.subplots(figsize=(10, 4), nrows=1, ncols=2)
         fig.subplots_adjust(right=0.83)
@@ -1269,7 +1451,11 @@ class cubeOps(object):
         plt.close('all')
         return Hb_met_array
 
-    def spaxel_binning(self, data, xbin, ybin, interp='median'):
+    def spaxel_binning(self,
+                       data,
+                       xbin,
+                       ybin,
+                       interp='median'):
 
         """
         Def: bins spaxels in xbin and ybin shaped chunks. Sticking with the
@@ -1471,7 +1657,8 @@ class cubeOps(object):
     def OIII_vel_map(self,
                      redshift,
                      savefig=False,
-                     binning=False, **kwargs):
+                     binning=False,
+                     **kwargs):
 
         """
         Def:
@@ -1696,8 +1883,19 @@ class cubeOps(object):
         vel_ax[0].minorticks_on()
         vel_ax[1].minorticks_on()
 
-        vel_min, vel_max = np.nanpercentile(OIII_vel_array, [2.5, 97.5])
-        sig_min, sig_max = np.nanpercentile(OIII_sigma_array, [2.5, 97.5])
+        # sometimes this throws a TypeError if hardly any data points
+        try:
+
+            vel_min, vel_max = np.nanpercentile(OIII_vel_array, [10.0, 90.0])
+            sig_min, sig_max = np.nanpercentile(OIII_sigma_array, [10.0, 90.0])
+
+        except TypeError:
+
+            # origin of the error is lack of good S/N data
+            # can set the max and min at whatever
+            vel_min, vel_max = [-100, 100]
+            sig_min, sig_max = [0, 100]
+
 
         im_vel = vel_ax[0].imshow(OIII_vel_array, aspect='auto',
                                   vmin=vel_min,
@@ -1747,7 +1945,11 @@ class cubeOps(object):
         # return the velocity array
         return OIII_vel_array, OIII_sigma_array
 
-    def OII_vel_map(self, redshift, savefig=False, binning=False, **kwargs):
+    def OII_vel_map(self,
+                    redshift,
+                    savefig=False,
+                    binning=False,
+                    **kwargs):
         """
         Def:
         given the redshift of the galaxy, compute the associated
@@ -2023,7 +2225,11 @@ class cubeOps(object):
         # return the velocity array
         return OII_vel_array, OII_sigma_array
 
-    def Hb_vel_map(self, redshift, savefig=False, binning=False, **kwargs):
+    def Hb_vel_map(self,
+                   redshift,
+                   savefig=False,
+                   binning=False,
+                   **kwargs):
         """
         Def:
         given the redshift of the galaxy, compute the associated
@@ -2098,16 +2304,31 @@ class cubeOps(object):
 
                 if kwargs['interp'] == 'sum':
 
-                    data = self.spaxel_binning(data, xbin, ybin, interp='sum')
-                    noise = self.spaxel_binning(noise, xbin, ybin, interp='sum')
+                    data = self.spaxel_binning(data,
+                                               xbin,
+                                               ybin,
+                                               interp='sum')
+
+                    noise = self.spaxel_binning(noise,
+                                                xbin,
+                                                ybin,
+                                                interp='sum')
 
                 elif kwargs['interp'] == 'mean':
 
-                    data = self.spaxel_binning(data, xbin, ybin, interp='mean')
-                    noise = self.spaxel_binning(noise, xbin, ybin, interp='mean')
+                    data = self.spaxel_binning(data,
+                                               xbin,
+                                               ybin,
+                                               interp='mean')
+
+                    noise = self.spaxel_binning(noise,
+                                                xbin,
+                                                ybin,
+                                                interp='mean')
 
                 # default median value chosen
                 else:
+
                     # important that the data and noise have the same binning
                     data = self.spaxel_binning(data, xbin, ybin)
                     noise = self.spaxel_binning(noise, xbin, ybin)
@@ -2204,6 +2425,7 @@ class cubeOps(object):
                     # correct one - subtract the fitted centre and convert
                     # to kms-1
                     c = 2.99792458E5
+
                     Hb_vel = c * ((out.best_values['center']
                                   - hb_wl) / hb_wl)
 
