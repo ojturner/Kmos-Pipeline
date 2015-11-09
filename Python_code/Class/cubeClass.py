@@ -194,7 +194,7 @@ class cubeOps(object):
 
         for entry in self.combDict.keys():
 
-            combinedName = 'sci_combined_' + entry + '__telluric_skytweak.fits'
+            combinedName = 'sci_combined_' + entry + '__skytweak.fits'
             self.combNames.append(combinedName)
 
         # Also construct the list of kmo_combine recipe combined names
@@ -217,7 +217,7 @@ class cubeOps(object):
         try:
 
             self.pix_scale = \
-                self.primHeader['HIERARCH ESO PRO REC1 PARAM7 VALUE']
+                self.primHeader['HIERARCH ESO PRO REC1 PARAM8 VALUE']
 
         except KeyError:
 

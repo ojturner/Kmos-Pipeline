@@ -23,24 +23,23 @@ from scipy import stats
 
 
 # add the class file to the PYTHONPATH
-sys.path.append('/disk1/turner/Documents/PhD'
+sys.path.append('/disk1/turner/PhD'
                 + '/KMOS/Analysis_Pipeline/Python_code/Class')
 
 from cubeClass import cubeOps
 from galPhysClass import galPhys
 
 
-
-
-
-
 class pipelineOps(object):
 
     # Initialiser creates an instance of the spectrumFit object
     def __init__(self):
+
         self.self = self
 
-    def compute_offset_top_four(self, rawSubFile, objectFile):
+    def compute_offset_top_four(self,
+                                rawSubFile,
+                                objectFile):
 
         """
         Def:
@@ -81,54 +80,79 @@ class pipelineOps(object):
 
         # Loop over the fits image extensions, do the same each time
         for count in range(1, 4):
+
             data_o = table_o[count].data
+
             data_s = table_s[count].data
 
             # Counters for the slicing
             x = 0
+
             y = 64
 
             # 1D arrays to host the data
             sub_array = []
+
             obj_array = []
 
             for i in range(32):
-               
-               # Slice each of the data files into 32 columns of 64 pixels width
-               newObjectArray = data_o[:,x:y]
-               new_sub_array = data_s[2044:2048,x:y]
 
-               obj_array.append(newObjectArray)
-               sub_array.append(new_sub_array)
+                # Slice each of the data files into
+                # 32 columns of 64 pixels width
+                newObjectArray = data_o[:, x:y]
 
-               # Add 64 to the counters each time to create the slices
-               x += 64
-               y += 64      
+                new_sub_array = data_s[2044:2048, x:y]
+
+                obj_array.append(newObjectArray)
+
+                sub_array.append(new_sub_array)
+
+                # Add 64 to the counters each time to create the slices
+                x += 64
+                y += 64
 
             # testData = np.hstack(sub_array)
             # fileName = 'testTopFour' + str(count) + '.fits'
-            # fits.writeto(fileName, data=testData, clobber=True)   
+            # fits.writeto(fileName, data=testData, clobber=True)
 
             for num in range(len(obj_array)):
+
                 correctionMedian = np.median(sub_array[num])
                 obj_array[num] -= correctionMedian
                 print correctionMedian
-                print sub_array[num][:,0:1]
-            # Have now made the correction to all 32 of the 64 pixel width columns.
-            # All that is left to do is stitch the obj_array arrays back together to 
+                print sub_array[num][:, 0:1]
+
+            # Have now made the correction to all
+            # 32 of the 64 pixel width columns.
+            # All that is left to do is stitch
+            # the obj_array arrays back together to
             # give a single 2048x2048 array.
+
             newObjData = np.hstack(obj_array)
+
             corrected_extensions.append(newObjData)
+
             if count == 1:
+
                 print 'Computed First Correction'
+
             elif count == 2:
+
                 print 'Computed Second Correction'
-            elif count == 3: 
-                print 'Computed Third Correction'           
-        #  Create the object fits file with the three corrected extensions
-        fileName = raw_input('Enter a name for the corrected fits file: ') + '.fits'
-        #  Note that the readout complained about the header not being 
+
+            elif count == 3:
+
+                print 'Computed Third Correction'
+
+        # Create the object fits file with the
+        # three corrected extensions
+
+        fileName = raw_input('Enter a name for the'
+                             + ' corrected fits file: ') + '.fits'
+
+        #  Note that the readout complained about the header not being
         #  in the correct fits format
+
         hdu = fits.PrimaryHDU(header=fits_header)
 
         hdu.writeto(fileName,
@@ -146,7 +170,11 @@ class pipelineOps(object):
                     data=corrected_extensions[2],
                     header=header_three)
 
-    def computeOffsetSegments(self, objectFile, skyFile, badPMap, lcalMap):
+    def computeOffsetSegments(self,
+                              objectFile,
+                              skyFile,
+                              badPMap,
+                              lcalMap):
         """
         Def:
         Take the object image after calibration,
@@ -364,15 +392,22 @@ class pipelineOps(object):
 
                     # newTestArray = test_array[:,x:y]
                     # testArray.append(newTestArray)
+
                     objArray.append(newObjectArray)
+
                     skyArray.append(newSkyArray)
+
                     manObjArray.append(newManObjArray)
+
                     manSkyArray.append(newManSkyArray)
+
                     badPArray.append(newPArray)
+
                     lcalArray.append(newCalArray)
 
                     # Add 64 to the counters each time to create the slices
                     x += 64
+
                     y += 64
 
                     # Have sliced each matrix into 2048x64.
@@ -380,538 +415,1025 @@ class pipelineOps(object):
                     # Each of these into 8 chunks of 256x64,
                     # 16 chunks of 128x64 and 32 chunks of 64x64
 
-                print objArray[1].shape   
-                # Start the loop for all the columns in the Array vectors 
+                print objArray[1].shape
+
+                # Start the loop for all the columns in the Array vectors
+
                 for num in range(len(objArray)):
 
-                    # Now all the pixels that 
+                    # Now all the pixels that
                     # shouldn't be included in the median
                     # have value nan. Can then just
                     # do np.nanmean(objTemp) which will ignore nan's
-                    # then repeat the process for the sky, compare the mean's, compute and apply the offset.
+                    # then repeat the process for the sky,
+                    # compare the mean's, compute and apply the offset.
 
                     obj_mean = np.nanmedian(manObjArray[num])
+
                     sky_mean = np.nanmedian(manSkyArray[num])
+
                     # print sky_mean
                     # print obj_mean
 
-                    # Need to compare the two medians to see how to apply the offset.
-                    # If the sky is brighter, add the difference to the object image
+                    # Need to compare the two medians
+                    # to see how to apply the offset.
+                    # If the sky is brighter, add
+                    # the difference to the object image
 
                     if sky_mean > obj_mean:
+
                         objArray[num] += abs(sky_mean - obj_mean)
+
                     elif obj_mean > sky_mean:
-                        objArray[num] -= abs(obj_mean - sky_mean)   
 
-                # Have now made the correction to all 32 of the 64 pixel width columns.
-                # Previously would stack the data here, but the loop goes back to the beginning
-                # So need to save to a different object, and then vstack at the end. 
-                vStackArray.append(np.hstack(objArray))     
+                        objArray[num] -= abs(obj_mean - sky_mean)
+
+                # Have now made the correction to all
+                # 32 of the 64 pixel width columns.
+                # Previously would stack the data here,
+                # but the loop goes back to the beginning
+                # So need to save to a different object,
+                # and then vstack at the end.
+
+                vStackArray.append(np.hstack(objArray))
+
                 hor1 += 128
-                hor2 += 128 
 
-            # Now just need to vstack all of these arrays and will have a 2048x2048 corrected array
-            newObjData = np.vstack(vStackArray) 
+                hor2 += 128
+
+            # Now just need to vstack all of these
+            # arrays and will have a 2048x2048 corrected array
+
+            newObjData = np.vstack(vStackArray)
+
             print newObjData.shape
 
             correctedExtensions.append(newObjData)
+
             if count == 1:
+
                 print 'Computed First Correction'
+
             elif count == 2:
+
                 print 'Computed Second Correction'
-            elif count == 3: 
-                print 'Computed Third Correction'           
-            val += 1                
+
+            elif count == 3:
+
+                print 'Computed Third Correction'
+
+            val += 1
+
         # Create the object fits file with the three corrected extensions
-        fileName = objectFile[0:-5] + '_Corrected'  + '.fits'
-        # Note that the readout complained about the header not being 
+
+        fileName = objectFile[0:-5] + '_Corrected' + '.fits'
+
+        # Note that the readout complained about the header not being
         # in the correct fits format
+
         hdu = fits.PrimaryHDU(header=fits_header)
-        hdu.writeto(fileName, clobber=True)
-        fits.append(fileName, data=correctedExtensions[0], header=header_one)   
-        fits.append(fileName, data=correctedExtensions[1], header=header_two)   
-        fits.append(fileName, data=correctedExtensions[2], header=header_three)
 
+        hdu.writeto(fileName,
+                    clobber=True)
 
+        fits.append(fileName,
+                    data=correctedExtensions[0],
+                    header=header_one)
 
+        fits.append(fileName,
+                    data=correctedExtensions[1],
+                    header=header_two)
 
-    def subFrames(self, objectFile, skyFile):   
+        fits.append(fileName,
+                    data=correctedExtensions[2],
+                    header=header_three)
 
-        # Read in the object and sky files 
+    def subFrames(self,
+                  objectFile,
+                  skyFile):
+
+        """
+        Def: Subtract all extensions of a skyfile from
+             an object file
+
+        Input:
+                objectFile - KMOS object fits file
+                skyFile - KMOS object sky file
+
+        Output:
+                objectFile_Subtracted.fits
+        """
+
+        # Read in the object and sky files
         objData = fits.open(objectFile)
+
         skyData = fits.open(skyFile)
 
         # Find the header and extensions of the new fits file
         header = objData[0].header
+
         headerOne = objData[1].header
+
         headerTwo = objData[2].header
+
         headerThree = objData[3].header
 
-
-
         temp = sys.stdout
+
         sys.stdout = open('log.txt', 'w')
+
         print header
         print headerOne
         print headerTwo
         print headerThree
+
         sys.stdout.close()
+
         sys.stdout = temp
 
-
         ext1 = objData[1].data - skyData[1].data
+
         ext2 = objData[2].data - skyData[2].data
+
         ext3 = objData[3].data - skyData[3].data
 
         # Write out to a different fits file, with name user specified
-        nameOfFile = objectFile[:-5] + '_Subtracted.fits'  
+
+        nameOfFile = objectFile[:-5] + '_Subtracted.fits'
+
         hdu = fits.PrimaryHDU(header=header)
-        hdu.writeto(nameOfFile, clobber=True)
-        fits.append(nameOfFile, data=ext1, header=headerOne)    
-        fits.append(nameOfFile, data=ext2, header=headerTwo)    
-        fits.append(nameOfFile, data=ext3, header=headerThree)
+
+        hdu.writeto(nameOfFile,
+                    clobber=True)
+
+        fits.append(nameOfFile,
+                    data=ext1,
+                    header=headerOne)
+
+        fits.append(nameOfFile,
+                    data=ext2,
+                    header=headerTwo)
+
+        fits.append(nameOfFile,
+                    data=ext3,
+                    header=headerThree)
 
         os.system('rm log.txt')
 
-    def pixelHistogram(self, subFile, subCorFile, x1, x2):
+    def applySubtraction(self,
+                         fileList):
 
-        # Create a histogram of pixel values on the 
-        # subtracted frame before and after correction   
+        """
+        Def:
+        Apply the subframes method to a list of files
 
-        # First read in the files 
+        Input:
+                fileList - list of files, where the top line is
+                            the name and type, the two columns
+                             and the name of the file
+                              and either O for object and S for sky.
+
+        Output: List of subtracted files saved in the object directory
+        """
+
+        # Read in the data from the fileList
+        data = np.genfromtxt(fileList, dtype='str')
+
+        # Save the names and types as lists
+        names = data[0:, 0]
+
+        # print names
+        types = data[0:, 1]
+
+        # Loop round all names and apply the computeOffsetSegments method
+        for i in range(1, len(names)):
+
+            if types[i] == 'O':
+
+                objFile = names[i]
+
+                if i == 1:
+
+                    skyFile = names[i + 1]
+
+                elif types[i - 1] == 'S':
+
+                    skyFile = names[i - 1]
+
+                else:
+
+                    skyFile = names[i + 1]
+
+                print '[INFO]: Subbing file: %s : ' % objFile
+
+                # Now use the method defined within this class
+
+                self.subFrames(objFile, skyFile)
+
+    def pixelHistogram(self,
+                       subFile,
+                       subCorFile,
+                       x1,
+                       x2):
+
+        """
+        Def: Created a histogram of pixel values
+        before and after correction.
+
+        Input:
+                subFile - raw subtracted file
+                subCorFile - subtracted file post correction
+                x1 - starting x pixel number
+                x2 - finishing x pixel number
+
+        Output:
+                Plot showing the histograms
+
+
+        """
+
+        # First read in the files
+
         subData = fits.open(subFile)
+
         subCorData = fits.open(subCorFile)
 
         # At the moment we'll just consider the first extension for our data
+
         subData = subData[1].data
+
         subCorData = subCorData[1].data
 
-        # The input numbers define the left and right edges of the pixel section
-        subData = subData[:,x1:x2]
-        subCorData = subCorData[:,x1:x2]
-        
-        # This gives an array of arrays, we just care about the numbers, not spatial info
+        # The input numbers define the left and
+        # right edges of the pixel section
+
+        subData = subData[:, x1:x2]
+
+        subCorData = subCorData[:, x1:x2]
+
+        # This gives an array of arrays,
+        # we just care about the numbers, not spatial info
         # Use ravel() to convert these into lists for the histogram
+
         subData = subData.ravel()
-        subCorData = subCorData.ravel() 
+
+        subCorData = subCorData.ravel()
+
         print len(subData)
         print subData
         print np.median(subData)
         print np.median(subCorData)
 
-        # Create the bins array for both histograms 
+        # Create the bins array for both histograms
+
         bins = np.arange(-15, 15, 1)
 
         plt.close('all')
-        fig, ax = plt.subplots(1, 1, figsize=(12,12))
-        # Plot the histograms 
-        n1, bins1, patches1 = ax.hist(subData, bins=bins, histtype='step',\
-         color='green', linewidth=3, label='Before Correction') 
 
-        n2, bins2, patches2 = ax.hist(subCorData, bins=bins, histtype='step',\
-         color='blue', linewidth=3, alpha=0.5, label='After Correction')
+        fig, ax = plt.subplots(1, 1, figsize=(12, 12))
 
-        # Now want to fit the gaussians to the histograms using lmfit gaussian models 
+        # Plot the histograms
+
+        n1, bins1, patches1 = ax.hist(subData,
+                                      bins=bins,
+                                      histtype='step',
+                                      color='green',
+                                      linewidth=3,
+                                      label='Before Correction')
+
+        n2, bins2, patches2 = ax.hist(subCorData,
+                                      bins=bins,
+                                      histtype='step',
+                                      color='blue',
+                                      linewidth=3,
+                                      alpha=0.5,
+                                      label='After Correction')
+
+        # Now want to fit the gaussians to the
+        # histograms using lmfit gaussian models
         # gaussian model number 1
+
         mod1 = GaussianModel()
 
-        # Create a new bins vector for the fit 
+        # Create a new bins vector for the fit
+
         fitBins = np.arange(-14.5, 14.5, 1)
+
         print len(fitBins)
 
-        # Take an initial guess at what the model parameters are 
-        # In this case the gaussian model has three parameters, 
+        # Take an initial guess at what the model parameters are
+        # In this case the gaussian model has three parameters,
         # Which are amplitude, center and sigma
+
         pars1 = mod1.guess(n1, x=fitBins)
-        # Perform the actual fit 
-        out1  = mod1.fit(n1, pars1, x=fitBins)
-        # Now want to add this curve to our plot 
-        ax.plot(fitBins, out1.best_fit, linewidth=2.0, label='b.c. model', color='green')
+
+        # Perform the actual fit
+
+        out1 = mod1.fit(n1, pars1, x=fitBins)
+
+        # Now want to add this curve to our plot
+        ax.plot(fitBins,
+                out1.best_fit,
+                linewidth=2.0,
+                label='b.c. model',
+                color='green')
 
         # Repeat for the corrected data
+
         mod2 = GaussianModel()
+
         pars2 = mod2.guess(n2, x=fitBins)
-        out2  = mod2.fit(n2, pars2, x=fitBins)
-        ax.plot(fitBins, out2.best_fit, linewidth=2.0, label='a.c. model', color='blue')
+
+        out2 = mod2.fit(n2, pars2, x=fitBins)
+
+        ax.plot(fitBins,
+                out2.best_fit,
+                linewidth=2.0,
+                label='a.c. model',
+                color='blue')
+
         ax.set_xlabel('Counts per pixel', fontsize=24)
+
         ax.set_ylabel('Number per bin', fontsize=24)
-        ax.set_title('Sub Frame, Improvement After Correction', fontsize=28)
-        ax.tick_params(axis='both', which='major', labelsize=15)
+
+        ax.set_title('Sub Frame, Improvement After Correction',
+                     fontsize=28)
+
+        ax.tick_params(axis='both',
+                       which='major',
+                       labelsize=15)
+
         ax.legend(loc='upper left', fontsize=10)
+
         fig.savefig(raw_input('Enter the plot name: '))
+
         plt.show()
+
         plt.close('all')
 
-        # Print out the fit reports to look at the centre at S.D. of each model
-        print out1.fit_report() 
-        print out2.fit_report() 
+        # Print out the fit reports to look
+        # at the centre at S.D. of each model
 
-    # def topFourCorrection()    
-    def stackLcal(self, lcalFile):
-        # Read in the file 
+        print out1.fit_report()
+
+        print out2.fit_report()
+
+    def stackLcal(self,
+                  lcalFile):
+        """
+        Def:
+        Stack all the lcal files in the different rotator angles
+        to get an overall average
+
+        Input:
+                lcalXXX.fits produced by the pipeline
+
+        Output:
+                lcal1.fits - rotator angle averaged for det. 1
+                lcal2.fits - rotator angle averaged for det. 2
+                lcal3.fits - rotator angle averaged for det. 3
+        """
+
+        # Read in the file
+
         lcal = fits.open(lcalFile)
-        # Want to have it so that only nan values survive. Can do this 
-        # By substituting 'False' values for the numbers and true values for nan
-        # So that when multiplied only True * True all the way will survive 
 
-        # Loop round all the extensions and change the np.nan values to True 
-        # and the pixels with values to False 
+        # Want to have it so that only nan values survive. Can do this
+        # By substituting 'False' values for
+        # the numbers and true values for nan
+        # So that when multiplied only True * True
+        # all the way will survive
+
+        # Loop round all the extensions and change the np.nan values to True
+        # and the pixels with values to False
+
         d = {}
-        for i in range(1, 19):
-            data = lcal[i].data 
 
-            # Define the coordinates where there is a value 
+        for i in range(1, 19):
+
+            data = lcal[i].data
+
+            # Define the coordinates where there is a value
+
             value_coords = np.where(data > 0)
 
             # Define where there is np.nan
+
             nan_coords = np.where(np.isnan(data))
-            temp = np.empty(shape=[2048,2048], dtype=float)
-            # loop over the pixel values in data and change to either True or False 
+
+            temp = np.empty(shape=[2048, 2048], dtype=float)
+
+            # loop over the pixel values in data and
+            # change to either True or False
+
             for j in range(len(value_coords[0])):
+
                 xcoord = value_coords[0][j]
+
                 ycoord = value_coords[1][j]
+
                 temp[xcoord][ycoord] = 0
 
             for j in range(len(nan_coords[0])):
+
                 xcoord = nan_coords[0][j]
+
                 ycoord = nan_coords[1][j]
+
                 temp[xcoord][ycoord] = 1
 
             d[i] = temp
-            print 'done' + str(i)
-        print len(d)
-        # Check to see if we're creating the right array, which we are   
-        # fits.writeto(filename='test.fits', data=d[1], clobber=True)    
 
-        # Now create the individual lcal frames by stacking the extensions together
-        # This gives a more conservative estimate of the pixels we should and should 
-        # not be using throughout the data analysis stage 
+            print 'done' + str(i)
+
+        print len(d)
+
+        # Now create the individual lcal frames
+        # by stacking the extensions together
+        # This gives a more conservative estimate
+        # of the pixels we should and should
+        # not be using throughout the data analysis stage
 
         lcal1 = d[1] * d[4] * d[7] * d[10] * d[13] * d[16]
+
         lcal2 = d[2] * d[5] * d[8] * d[11] * d[14] * d[17]
+
         lcal3 = d[3] * d[6] * d[9] * d[12] * d[15] * d[18]
 
         fits.writeto(filename='lcal1.fits', data=lcal1, clobber=True)
+
         fits.writeto(filename='lcal2.fits', data=lcal2, clobber=True)
+
         fits.writeto(filename='lcal3.fits', data=lcal3, clobber=True)
 
-    def applyCorrection(self, fileList, badPMap, lcalMap):
+    def applyCorrection(self,
+                        fileList,
+                        badPMap,
+                        lcalMap):
+
+        """
+        Def:
+        Apply the computeOffsetSegments method to lots of files
+
+        Input:
+                fileList - txt file containing the names of files
+                            to be corrected
+                badPMap - the bad_pixel_Added file produced by
+                            the pipeline and addons
+                lcalMap - the wavelength calibration image produced
+                            by the pipeline
+
+        Output:
+                the input list as corrected files _Corrected.fits
+        """
+
         # Read in the data from the fileList
+
         data = np.genfromtxt(fileList, dtype='str')
-        # Save the names and types as lists 
-        names = data[0:,0]
-        types = data[0:,1]
+
+        # Save the names and types as lists
+
+        names = data[0:, 0]
+
+        types = data[0:, 1]
+
         # Loop round all names and apply the computeOffsetSegments method
+
         for i in range(1, len(names)):
+
             if types[i] == 'O':
+
                 objFile = names[i]
+
                 if i == 1:
+
                     skyFile = names[i + 1]
+
                 elif types[i - 1] == 'S':
+
                     skyFile = names[i - 1]
+
                 else:
+
                     skyFile = names[i + 1]
-                # Now use the method defined within this class 
-                self.computeOffsetSegments(objFile, skyFile, badPMap, lcalMap)
-                # Which will loop through all and save the corrected object file 
-                # as objectFile_Corrected.fits. These are then fed through the pipeline.     
 
-    def rowMedian(self, subFile, y1, y2, x1, x2):
+                # Now use the method defined within this class
 
-        # Create a histogram of pixel values on the 
-        # subtracted frame before and after correction   
+                self.computeOffsetSegments(objFile,
+                                           skyFile,
+                                           badPMap,
+                                           lcalMap)
 
-        # First read in the files 
+    def rowMedian(self,
+                  subFile,
+                  y1,
+                  y2,
+                  x1,
+                  x2):
+
+        """
+        Def:
+        Create a histogram of pixel values on the
+        subtracted frame before and after correction
+
+        Input:
+                subFile - any subtracted image
+                y1, y2, x1, x2 - the x and y pixel ranges for median
+
+        Output:
+                return the median array of pixel values
+        """
+        # First read in the files
+
         subData = fits.open(subFile)
 
         # At the moment we'll just consider the first extension for our data
+
         subData = subData[1].data
 
-        # The input numbers define the left and right edges of the pixel section
-        subData = subData[y1:y2,x1:x2]
+        # The input numbers define the left
+        # and right edges of the pixel section
 
-        # What we have now is an array of 500 entries, each of which contains 500 entries.
+        subData = subData[y1:y2, x1:x2]
+
+        # What we have now is an array
+        # of 500 entries, each of which contains 500 entries.
         # These are the columns of the fits file, the pixel count values
-        # Now need to compute the median of each and store in an array and return
+        # Now need to compute the median
+        # of each and store in an array and return
 
         medArray = np.median(subData, axis=0)
+
         return medArray
 
-        
+    def plotMedian(self,
+                   rawSubFile,
+                   subFile,
+                   segmentsSubFile,
+                   top4SubFile,
+                   y1,
+                   y2,
+                   x1,
+                   x2):
 
-    def plotMedian(self, rawSubFile, subFile, segmentsSubFile, top4SubFile, y1, y2, x1, x2):
-        """ 
-        Def: 
-        Plots the median values of different subtracted frames 
-        together on the same axes. Gives an indication for which 
+        """
+        Def:
+        Plots the median values of different subtracted frames
+        together on the same axes. Gives an indication for which
         column correction method produces the smoothest results
 
+        Input:
+                rawSubFile - the raw subtracted file pre-correction
+                subFile - the subtracte file post-correction
+                segmentssubfile - subtracted using segments method
+                top4subfile - subtracted using segments method
+                x1, x2, y1, y2 - the x and y pixel ranges
+
+        Output:
+                plot of the comparison
+
         """
-        # Find the medians of the different subtracted frames and plot 
-        rawMed = self.rowMedian(rawSubFile, y1, y2, x1, x2)     
-        normMed = self.rowMedian(subFile, y1, y2, x1, x2)
-        segmentsMed = self.rowMedian(segmentsSubFile, y1, y2, x1, x2)
-        top4Med = self.rowMedian(top4SubFile, y1, y2, x1, x2)
 
-        # print type(rawMed)
-        # print len(normMed)
-        # print segmentsMed
-        # print top4Med
+        # Find the medians of the different subtracted frames and plot
 
-        # Generate the x-axis vector, which is just the number of pixels 
+        rawMed = self.rowMedian(rawSubFile,
+                                y1,
+                                y2,
+                                x1,
+                                x2)
+
+        normMed = self.rowMedian(subFile,
+                                 y1,
+                                 y2,
+                                 x1,
+                                 x2)
+
+        segmentsMed = self.rowMedian(segmentsSubFile,
+                                     y1,
+                                     y2,
+                                     x1,
+                                     x2)
+
+        top4Med = self.rowMedian(top4SubFile,
+                                 y1,
+                                 y2,
+                                 x1,
+                                 x2)
+
+        # Generate the x-axis vector, which is just the number of pixels
+
         xVec = range(len(rawMed))
+
         xVec = np.array(xVec)
 
-        # Plot everything against this xVec in turn 
-        fig, ax = plt.subplots(1,1, figsize=(18, 10))
+        # Plot everything against this xVec in turn
+
+        fig, ax = plt.subplots(1, 1, figsize=(18, 10))
 
         ax.plot(xVec, segmentsMed, label='Segments')
+
         ax.plot(xVec, normMed, label='Cor')
-        ax.plot(xVec, top4Med, label='top') 
+
+        ax.plot(xVec, top4Med, label='top')
+
         ax.plot(xVec, rawMed, label='raw')
+
         ax.set_xlabel('Pixel Number', fontsize=24)
+
         ax.set_ylabel('Median', fontsize=24)
+
         ax.set_title('Pixel Medians for Different Methods', fontsize=30)
+
         ax.tick_params(axis='both', which='major', labelsize=15)
+
         ax.legend(loc='upper left', fontsize=10)
+
         fig.savefig(raw_input('Enter the File name: ') + '.png')
+
         plt.show()
+
         plt.close('all')
 
-    def badPixelextend(self, badpmap): 
-        """
-        Def: 
-        Take an arbitary bad pixel mask and mask off the pixels in a ring around 
-        the original bad pixel location. Good for determining the pixel shift location
-        as by inspection many of the pixels around the bad pixel locations are also 
-        pretty rubbish 
-
-        Inputs: 
-        badpmap - any bad pixel mask with 0 as bad and 1 as good 
-
-        Outputs: 
-        newbadpmap - remasked bad pixel. 
+    def badPixelextend(self,
+                       badpmap):
 
         """
-        # Read in data 
+        Def:
+        Take an arbitary bad pixel mask and mask
+        off the pixels in a ring around
+        the original bad pixel location.
+
+        Inputs:
+                badpmap - any bad pixel mask with 0 as bad and 1 as good
+
+        Outputs:
+                badpmap_Added.fits - remasked bad pixel
+
+        """
+
+        # Read in data
+
         badpTable = fits.open(badpmap)
+
         extArray = []
 
         primHeader = badpTable[0].header
+
         ext1Header = badpTable[1].header
+
         ext2Header = badpTable[2].header
+
         ext3Header = badpTable[3].header
 
         temp = sys.stdout
-        sys.stdout = open('log.txt', 'w')       
+
+        sys.stdout = open('log.txt', 'w')
+
         print primHeader
         print ext1Header
         print ext2Header
         print ext3Header
+
         sys.stdout.close()
+
         sys.stdout = temp
 
-        # Loop around the extensions and make ammendments  
-        for i in range(1,4):
+        # Loop around the extensions and make ammendments
+
+        for i in range(1, 4):
+
             badpData = badpTable[i].data
 
-            # Now have the 2048x2048 data array. Want to find all the 0 values 
-            # And make the points surrounding this zero also 
+            # Now have the 2048x2048 data array.
+            # Want to find all the 0 values
+            # And make the points surrounding this zero also
+
             badpCoords = np.where(badpData == 0)
 
-            # Loop around the bad pixel locations and mask off 
+            # Loop around the bad pixel locations and mask off
+
             for i in range(len(badpCoords[0])):
-                # Because of the way np.where works, need to define the x and y coords in this way
+
+                # Because of the way np.where works,
+                # need to define the x and y coords in this way
 
                 if (badpCoords[0][i] < 2047) and (badpCoords[1][i] < 2047):
-                    # print badpCoords[0][i], badpCoords[1][i]
-                    xcoord = badpCoords[0][i]
-                    ycoord = badpCoords[1][i]
-                    # Now set all positions where there is a dead pixel to np.nan in the object and sky
-                    badpData[xcoord][ycoord + 1] = 0
-                    badpData[xcoord][ycoord - 1] = 0
-                    badpData[xcoord + 1][ycoord] = 0                                
-                    badpData[xcoord - 1][ycoord] = 0
-                    # badpData[xcoord + 1][ycoord + 1] = 0
-                    # badpData[xcoord - 1][ycoord + 1] = 0
-                    # badpData[xcoord + 1][ycoord - 1] = 0
-                    # badpData[xcoord - 1][ycoord - 1] = 0
 
+                    xcoord = badpCoords[0][i]
+
+                    ycoord = badpCoords[1][i]
+
+                    # Now set all positions where there
+                    # is a dead pixel to np.nan in the object and sky
+
+                    badpData[xcoord][ycoord + 1] = 0
+
+                    badpData[xcoord][ycoord - 1] = 0
+
+                    badpData[xcoord + 1][ycoord] = 0
+
+                    badpData[xcoord - 1][ycoord] = 0
 
             extArray.append(badpData)
 
-        # Now write out to a new fits file 
-        badpName = badpmap[:-5] + '_Added.fits' 
+        # Now write out to a new fits file
+
+        badpName = badpmap[:-5] + '_Added.fits'
+
         hdu = fits.PrimaryHDU(header=primHeader)
-        hdu.writeto(badpName, clobber=True)
-        fits.append(badpName, data=extArray[0], header=ext1Header)  
-        fits.append(badpName, data=extArray[1], header=ext2Header)  
-        fits.append(badpName, data=extArray[2], header=ext3Header)
+
+        hdu.writeto(badpName,
+                    clobber=True)
+
+        fits.append(badpName,
+                    data=extArray[0],
+                    header=ext1Header)
+
+        fits.append(badpName,
+                    data=extArray[1],
+                    header=ext2Header)
+
+        fits.append(badpName,
+                    data=extArray[2],
+                    header=ext3Header)
 
         os.system('rm log.txt')
 
-    def extensionMedians(self, subbedFile):
+    def extensionMedians(self,
+                         subbedFile):
+
         """
         Def:
-        Take the masked subtracted file and compute the median and standard deviation of each extension 
+        Take the masked subtracted file and compute
+        the median and standard deviation of each extension
         then print out these values to the terminal
 
-        """ 
+        Input:
+                subbedFile - sky subtracted fits image
+
+        Output:
+                print of the SD and Median
+
+        """
 
         dataTable = fits.open(subbedFile)
+
         for i in range(1, 4):
-            print i
+
             data = dataTable[i].data
+
             med = np.nanmedian(data)
+
             st = np.nanstd(data)
-            print 'The median of extension %s is: %s \n The standard Deviation of extension %s is: %s' % (i, med, i, st)
 
+            print 'The median of extension %s is: %s \n' % (i,
+                                                            med) \
+                + ' The standard Deviation of extension %s is: %s' % (i,
+                                                                      st)
 
+    def maskFile(self,
+                 inFile,
+                 badpFile):
 
-    def maskFile(self, inFile, badpFile):
-        """ 
+        """
         Def:
-        Take the badPixelMap and apply it to any inFile 
-        to mask off the bad pixels. Particularly useful 
+        Take the badPixelMap and apply it to any inFile
+        to mask off the bad pixels. Particularly useful
         for applying to skyFiles before subtraction
 
-        """ 
+        Input:
+                inFile - KMOS object fits file
+                badpFile - bad pixel mask from pipeline
+
+        """
 
         dataTable = fits.open(inFile)
+
         badPTable = fits.open(badpFile)
+
         extArray = []
 
         primHeader = dataTable[0].header
+
         ext1Header = dataTable[1].header
+
         ext2Header = dataTable[2].header
+
         ext3Header = dataTable[3].header
 
-
         temp = sys.stdout
+
         sys.stdout = open('log.txt', 'w')
+
         print primHeader
         print ext1Header
         print ext2Header
         print ext3Header
+
         sys.stdout.close()
+
         sys.stdout = temp
 
         for i in range(1, 4):
 
             data = dataTable[i].data
+
             badpData = badPTable[i].data
 
-            # Now find the bad pixel locations and mask off the data appropriately
+            # Now find the bad pixel locations
+            # and mask off the data appropriately
 
             bad_pixel_coords = np.where(badpData == 0)
 
-            # Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+            # Loop around the bad pixel locations
+            # and mask off on the manObjData and manSkyData
+
             for i in range(len(bad_pixel_coords[0])):
-                # Because of the way np.where works, need to define the x and y coords in this way
+
+                # Because of the way np.where works,
+                # need to define the x and y coords in this way
+
                 xcoord = bad_pixel_coords[0][i]
+
                 ycoord = bad_pixel_coords[1][i]
-                # Now set all positions where there is a dead pixel to np.nan in the object and sky
+
+                # Now set all positions where there
+                # is a dead pixel to np.nan in the object and sky
+
                 data[xcoord][ycoord] = np.nan
 
             extArray.append(data)
+
         # Write out the new data
-        fileName = inFile[:-5] + '_masked.fits' 
+
+        fileName = inFile[:-5] + '_masked.fits'
+
         hdu = fits.PrimaryHDU(header=primHeader)
-        hdu.writeto(fileName, clobber=True)
-        fits.append(fileName, data=extArray[0], header=ext1Header)  
-        fits.append(fileName, data=extArray[1], header=ext2Header)  
-        fits.append(fileName, data=extArray[2], header=ext3Header)  
+
+        hdu.writeto(fileName,
+                    clobber=True)
+
+        fits.append(fileName,
+                    data=extArray[0],
+                    header=ext1Header)
+
+        fits.append(fileName,
+                    data=extArray[1],
+                    header=ext2Header)
+
+        fits.append(fileName,
+                    data=extArray[2],
+                    header=ext3Header)
+
         os.system('rm log.txt')
 
     def maskFilelcal(self, inFile, lcalFile):
-        """ 
+
+        """
         Def:
-        Take the badPixelMap and apply it to any inFile 
-        to mask off the bad pixels. Particularly useful 
+        Take the lcalFile and apply it to any inFile
+        to mask off the bad pixels. Particularly useful
         for applying to skyFiles before subtraction
 
-        """ 
+        Input:
+                 lcalFile - wavelength cal image from pipeline 
+        """
 
         dataTable = fits.open(inFile)
+
         badPTable = fits.open(lcalFile)
+
         extArray = []
 
         primHeader = dataTable[0].header
+
         ext1Header = dataTable[1].header
+
         ext2Header = dataTable[2].header
+
         ext3Header = dataTable[3].header
 
-
         temp = sys.stdout
+
         sys.stdout = open('log.txt', 'w')
+
         print primHeader
         print ext1Header
         print ext2Header
         print ext3Header
+
         sys.stdout.close()
+
         sys.stdout = temp
 
         for i in range(1, 4):
 
             data = dataTable[i].data
+
             badpData = badPTable[i].data
 
-            # Now find the bad pixel locations and mask off the data appropriately
+            # Now find the bad pixel locations
+            # and mask off the data appropriately
 
             bad_pixel_coords = np.where(np.isnan(badpData))
 
-            # Loop around the bad pixel locations and mask off on the manObjData and manSkyData
+            # Loop around the bad pixel locations and mask
+
+            # off on the manObjData and manSkyData
+
             for i in range(len(bad_pixel_coords[0])):
-                # Because of the way np.where works, need to define the x and y coords in this way
+
+                # Because of the way np.where works, need
+                # to define the x and y coords in this way
+
                 xcoord = bad_pixel_coords[0][i]
+
                 ycoord = bad_pixel_coords[1][i]
-                # Now set all positions where there is a dead pixel to np.nan in the object and sky
+
+                # Now set all positions where there is
+                # a dead pixel to np.nan in the object and sky
+
                 data[xcoord][ycoord] = np.nan
 
             extArray.append(data)
+
         # Write out the new data
-        fileName = inFile[:-5] + '_masked_lcal.fits'    
+
+        fileName = inFile[:-5] + '_masked_lcal.fits'
+
         hdu = fits.PrimaryHDU(header=primHeader)
-        hdu.writeto(fileName, clobber=True)
-        fits.append(fileName, data=extArray[0], header=ext1Header)  
-        fits.append(fileName, data=extArray[1], header=ext2Header)  
-        fits.append(fileName, data=extArray[2], header=ext3Header)  
+
+        hdu.writeto(fileName,
+                    clobber=True)
+
+        fits.append(fileName,
+                    data=extArray[0],
+                    header=ext1Header)
+
+        fits.append(fileName,
+                    data=extArray[1],
+                    header=ext2Header)
+
+        fits.append(fileName, data=extArray[2], header=ext3Header)
+
         os.system('rm log.txt')
 
+    def crossCorr(self,
+                  ext,
+                  objFile,
+                  skyFile,
+                  y1,
+                  y2,
+                  x1,
+                  x2):
 
-                                
-    def crossCorr(self, ext, objFile, skyFile, y1, y2, x1, x2):
         """
-        Def: 
-        Compute the cross-correlation coefficient for a given object 
-        and skyfile. Define the pixel range over which to compute the 
-        coefficient. 
+        Def:
+        Compute the cross-correlation coefficient for a given object
+        and skyfile. Define the pixel range over which to compute the
+        coefficient.
 
-        Inputs: 
-        ext - detector extension, must be either 1, 2, 3
-        objFile - Input object file to compute correlation 
-        skyFile - sky image to compare objFile with
-        y1, y2, x1, x2 - the range to compute rho over      
+        Inputs:
+                ext - detector extension, must be either 1, 2, 3
+                objFile - Input object file to compute correlation
+                skyFile - sky image to compare objFile with
+                y1, y2, x1, x2 - the range to compute rho over
+
+        Output: 
+                rho - the cross correlation coefficient
         """
-        # Trying to compute the similarity between a square grid of pixels 
-        # from the object file and from the skyfile. Do this using the correlation coeff. 
 
-        # First read in the full 2048x2048 data arrays from the object and sky files 
-        # Will first consider just the first detector and can expand on this later 
+        # Trying to compute the similarity
+        # between a square grid of pixels
+        # from the object file and from the skyfile.
+        # Do this using the correlation coeff.
+
+        # First read in the full 2048x2048 data
+        # arrays from the object and sky files
+        # Will first consider just the first detector
+        # and can expand on this later
+
         objData = fits.open(objFile)
+
         objData = objData[ext].data
 
         skyData = fits.open(skyFile)
+
         skyData = skyData[ext].data
 
         objData = np.array(objData[y1:y2, x1:x2])
+
         skyData = np.array(skyData[y1:y2, x1:x2])
 
         # first mask off the pixels with 0 value
         # from both the object and the sky
+
         objDataMedian = np.nanmedian(objData)
+
         skyDataMedian = np.nanmedian(skyData)
+
         skyDataStd = np.nanstd(skyData)
+
         objDataStd = np.nanstd(objData)
 
         # MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO
@@ -919,1005 +1441,1464 @@ class pipelineOps(object):
         # bigger than 1000 counts and less than 50
 
         objData[objData < 500] = np.nan
-        objData[objData > 2500] = np.nan
-        skyData[skyData < 500] = np.nan
-        skyData[skyData > 2500] = np.nan        
-        newobjDataMedian = np.nanmedian(objData)                
-        newskyDataMedian = np.nanmedian(skyData)            
 
-        firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
-        secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
+        objData[objData > 2500] = np.nan
+
+        skyData[skyData < 500] = np.nan
+
+        skyData[skyData > 2500] = np.nan
+
+        newobjDataMedian = np.nanmedian(objData)
+
+        newskyDataMedian = np.nanmedian(skyData)
+
+        firstPart = np.sqrt(np.nansum((objData - newobjDataMedian) ** 2))
+
+        secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian) ** 2))
+
         denom = firstPart * secondPart
-        #print denom
-        numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
+
+        # print denom
+
+        numer = np.nansum((objData - newobjDataMedian) *
+                          (skyData - newskyDataMedian))
+
         rho = numer / denom
-        #print rho
+
+        # print rho
+
         return rho
 
-    def crossCorrZeroth(self, objFile, skyFile, y1, y2, x1, x2):
-        """
-        Def: 
-        Compute the cross-correlation coefficient for a given object 
-        and skyfile. Define the pixel range over which to compute the 
-        coefficient. Zeroth because the zeroth and first extensions 
-        only are used.
+    def crossCorrZeroth(self,
+                        objFile,
+                        skyFile,
+                        y1,
+                        y2,
+                        x1,
+                        x2):
 
-        Inputs: 
-        ext - detector extension, must be either 1, 2, 3
-        objFile - Input object file to compute correlation 
-        skyFile - sky image to compare objFile with
-        y1, y2, x1, x2 - the range to compute rho over      
         """
-        #Trying to compute the similarity between a square grid of pixels 
-        #from the object file and from the skyfile. Do this using the correlation coeff. 
+        Def:
+        Compute the cross-correlation coefficient for a given object
+        and skyfile. Define the pixel range over which to compute the
+        coefficient.
 
-        #First read in the full 2048x2048 data arrays from the object and sky files 
-        #Will first consider just the first detector and can expand on this later 
+        Inputs:
+                ext - detector extension, must be either 1, 2, 3
+                objFile - Input object file to compute correlation
+                skyFile - sky image to compare objFile with
+                y1, y2, x1, x2 - the range to compute rho over
+
+        Output:
+                rho - the cross correlation coefficient
+        """
+
+        # Trying to compute the similarity
+        # between a square grid of pixels
+        # from the object file and from the skyfile.
+        # Do this using the correlation coeff.
+        # First read in the full 2048x2048
+        # data arrays from the object and sky files
+        # Will first consider just the first
+        # detector and can expand on this later
+
         objData = fits.open(objFile)
+
         objData = objData[0].data
 
         skyData = fits.open(skyFile)
+
         skyData = skyData[1].data
 
-        objData = np.array(objData[y1:y2,x1:x2])
-        skyData = np.array(skyData[y1:y2,x1:x2])
+        objData = np.array(objData[y1:y2, x1:x2])
 
-        ###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY###########
+        skyData = np.array(skyData[y1:y2, x1:x2])
+
+        # FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY
+
         objDataMedian = np.nanmedian(objData)
-        skyDataMedian = np.nanmedian(skyData)   
+
+        skyDataMedian = np.nanmedian(skyData)
+
         skyDataStd = np.nanstd(skyData)
+
         objDataStd = np.nanstd(objData)
 
-        ###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
-        #Let's try masking the pixels which are bigger than 1000 counts and less than 50
+        # MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO
+        # Let's try masking the pixels which are bigger than 1000
+        # counts and less than 50
 
-        #NOTE FOR FUTURE - THIS IS NOT A TOTALLY SECURE WAY OF COMPUTING THE CROSS CORR 
-        #I'VE HAD VERY SUCCESSFUL RUNS OF THE ALGORITHM HARD-CODING IN THESE LIMITS 
-        #BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
-        #BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
-        
+        # NOTE FOR FUTURE - THIS IS NOT A TOTALLY SECURE WAY OF
+        # COMPUTING THE CROSS CORR.
+
         objData[objData < 500] = np.nan
-        objData[objData > 2500] = np.nan
-        skyData[skyData < 500] = np.nan
-        skyData[skyData > 2500] = np.nan        
-        newobjDataMedian = np.nanmedian(objData)                
-        newskyDataMedian = np.nanmedian(skyData)        
 
-        firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
-        secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
+        objData[objData > 2500] = np.nan
+
+        skyData[skyData < 500] = np.nan
+
+        skyData[skyData > 2500] = np.nan
+
+        newobjDataMedian = np.nanmedian(objData)
+
+        newskyDataMedian = np.nanmedian(skyData)
+
+        firstPart = np.sqrt(np.nansum((objData - newobjDataMedian) ** 2))
+
+        secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian) ** 2))
+
         denom = firstPart * secondPart
-        #print denom
-        numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
+
+        # print denom
+
+        numer = np.nansum((objData - newobjDataMedian) *
+                          (skyData - newskyDataMedian))
+
         rho = numer / denom
-        #print rho
+
+        # print rho
+
         return rho
 
     def crossCorrFirst(self, objFile, skyFile, y1, y2, x1, x2):
-        """
-        Def: 
-        Compute the cross-correlation coefficient for a given object 
-        and skyfile. Define the pixel range over which to compute the 
-        coefficient. First because only the first extension is used
 
-        Inputs: 
-        ext - detector extension, must be either 1, 2, 3
-        objFile - Input object file to compute correlation 
-        skyFile - sky image to compare objFile with
-        y1, y2, x1, x2 - the range to compute rho over      
         """
-        #Trying to compute the similarity between a square grid of pixels 
-        #from the object file and from the skyfile. Do this using the correlation coeff. 
+        Def:
+        Compute the cross-correlation coefficient for a given object
+        and skyfile. Define the pixel range over which to compute the
+        coefficient.
 
-        #First read in the full 2048x2048 data arrays from the object and sky files 
-        #Will first consider just the first detector and can expand on this later 
+        Inputs:
+                ext - detector extension, must be either 1, 2, 3
+                objFile - Input object file to compute correlation
+                skyFile - sky image to compare objFile with
+                y1, y2, x1, x2 - the range to compute rho over
+
+        Output:
+                rho - the cross correlation coefficient
+        """
+
+        # Trying to compute the similarity between a square grid of pixels
+        # from the object file and from the skyfile.
+        # Do this using the correlation coeff.
+        # First read in the full 2048x2048 data
+        # arrays from the object and sky files
+        # Will first consider just the first
+        # detector and can expand on this later
+
         objData = fits.open(objFile)
+
         objData = objData[1].data
 
         skyData = fits.open(skyFile)
+
         skyData = skyData[1].data
 
-        objData = np.array(objData[y1:y2,x1:x2])
-        skyData = np.array(skyData[y1:y2,x1:x2])
+        objData = np.array(objData[y1:y2, x1:x2])
 
-        ###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY###########
+        skyData = np.array(skyData[y1:y2, x1:x2])
+
         objDataMedian = np.nanmedian(objData)
-        skyDataMedian = np.nanmedian(skyData)   
+
+        skyDataMedian = np.nanmedian(skyData)
+
         skyDataStd = np.nanstd(skyData)
+
         objDataStd = np.nanstd(objData)
 
-        ###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
-        #Let's try masking the pixels which are bigger than 1000 counts and less than 50
-
-
-
         x1 = np.percentile(objData, 94)
-        x2 = np.percentile(objData, 98)          
+
+        x2 = np.percentile(objData, 98)
+
         y1 = np.percentile(skyData, 94)
+
         y2 = np.percentile(skyData, 98)
 
-        print x1, x2, y1, y2        
-#
- #      print len(g)
-
-
-        #NOTE FOR FUTURE - THIS IS NOT A TOTALLY SECURE WAY OF COMPUTING THE CROSS CORR 
-        #I'VE HAD VERY SUCCESSFUL RUNS OF THE ALGORITHM HARD-CODING IN THESE LIMITS 
-        #BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
-        #BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
+        # print x1, x2, y1, y2
 
         objData[objData < 500] = np.nan
+
         objData[objData > 2500] = np.nan
+
         skyData[skyData < 500] = np.nan
-        skyData[skyData > 2500] = np.nan    
 
-        newobjDataMedian = np.nanmedian(objData)                
-        newskyDataMedian = np.nanmedian(skyData)        
+        skyData[skyData > 2500] = np.nan
 
-        firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
-        secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
+        newobjDataMedian = np.nanmedian(objData)
+
+        newskyDataMedian = np.nanmedian(skyData)
+
+        firstPart = np.sqrt(np.nansum((objData - newobjDataMedian) ** 2))
+
+        secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian) ** 2))
+
         denom = firstPart * secondPart
-        #print denom
-        numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
+
+        # print denom
+
+        numer = np.nansum((objData - newobjDataMedian) *
+                          (skyData - newskyDataMedian))
+
         rho = numer / denom
-        #print rho
+
+        # print rho
+
         return rho
 
-    def crossCorrOne(self, ext, objFile, skyFile, y1, y2, x1, x2):
-        """
-        Def: 
-        Compute the cross-correlation coefficient for a given object 
-        and skyfile. Define the pixel range over which to compute the 
-        coefficient. 
-
-        Inputs: 
-        ext - detector extension, must be either 1, 2, 3
-        objFile - Input object file to compute correlation 
-        skyFile - sky image to compare objFile with
-        y1, y2, x1, x2 - the range to compute rho over 
+    def crossCorrOne(self,
+                     ext,
+                     objFile,
+                     skyFile,
+                     y1,
+                     y2,
+                     x1,
+                     x2):
 
         """
-        #Trying to compute the similarity between a square grid of pixels 
-        #from the object file and from the skyfile. Do this using the correlation coeff. 
+        Def:
+        Compute the cross-correlation coefficient for a given object
+        and skyfile. Define the pixel range over which to compute the
+        coefficient.
 
-        #First read in the full 2048x2048 data arrays from the object and sky files 
-        #Will first consider just the first detector and can expand on this later 
+        Inputs:
+                ext - detector extension, must be either 1, 2, 3
+                objFile - Input object file to compute correlation
+                skyFile - sky image to compare objFile with
+                y1, y2, x1, x2 - the range to compute rho over
+
+        """
+
         objData = fits.open(objFile)
+
         objData = objData[0].data
 
         skyData = fits.open(skyFile)
+
         skyData = skyData[ext].data
 
-        objData = np.array(objData[y1:y2,x1:x2])
-        skyData = np.array(skyData[y1:y2,x1:x2])
+        objData = np.array(objData[y1:y2, x1:x2])
 
-        ###############FIRST MASK OFF THE PIXELS WITH 0 VALUE FROM BOTH OBJECT AND SKY###########
+        skyData = np.array(skyData[y1:y2, x1:x2])
+
         objDataMedian = np.nanmedian(objData)
-        skyDataMedian = np.nanmedian(skyData)   
+
+        skyDataMedian = np.nanmedian(skyData)
+
         skyDataStd = np.nanstd(skyData)
+
         objDataStd = np.nanstd(objData)
 
-        ###############MASKING THE HIGH SIGMA PIXELS FOR BETTER RHO##########################
-        #Let's try masking the pixels which are bigger than 1000 counts and less than 50
-
-        #NOTE FOR FUTURE - THIS IS NOT A TOTALLY SECURE WAY OF COMPUTING THE CROSS CORR 
-        #I'VE HAD VERY SUCCESSFUL RUNS OF THE ALGORITHM HARD-CODING IN THESE LIMITS 
-        #BUT FOUND THAT THE PERCENTILES GIVES ROUGHLY THE SAME NUMBERS, 
-        #BUT THESE CHANGE FROM DETECTOR TO DETECTOR.
-        
         objData[objData < 500] = np.nan
+
         objData[objData > 2500] = np.nan
+
         skyData[skyData < 500] = np.nan
-        skyData[skyData > 2500] = np.nan        
-        newobjDataMedian = np.nanmedian(objData)                
-        newskyDataMedian = np.nanmedian(skyData)    
 
-        firstPart = np.sqrt(np.nansum((objData - newobjDataMedian)**2))
-        secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian)**2))
+        skyData[skyData > 2500] = np.nan
+
+        newobjDataMedian = np.nanmedian(objData)
+
+        newskyDataMedian = np.nanmedian(skyData)
+
+        firstPart = np.sqrt(np.nansum((objData - newobjDataMedian) ** 2))
+
+        secondPart = np.sqrt(np.nansum((skyData - newskyDataMedian) ** 2))
+
         denom = firstPart * secondPart
-        #print denom
-        numer = np.nansum((objData - newobjDataMedian)*(skyData - newskyDataMedian))
-        rho = numer / denom
-        print rho
-        return rho      
 
-    def shiftImage(self, ext, infile, skyfile, badpmap, interp_type, stepsize, xmin, xmax, ymin, ymax):
+        # print denom
+
+        numer = np.nansum((objData - newobjDataMedian) *
+                          (skyData - newskyDataMedian))
+
+        rho = numer / denom
+
+        print rho
+
+        return rho
+
+    def shiftImage(self,
+                   ext,
+                   infile,
+                   skyfile,
+                   badpmap,
+                   interp_type,
+                   stepsize,
+                   xmin,
+                   xmax,
+                   ymin,
+                   ymax):
 
         """
         Def:
-        Compute the correlation coefficient for a grid of pixel shift values and 
-        decide which one is best (if better than the original) and apply this to 
-        the object image to align with the sky. First because we use only the 
-        first extension because of the way the shiftImageSegments function is 
-        defined. This function now applies the bad pixel map both before cross 
+        Compute the correlation coefficient for a
+        grid of pixel shift values and decide which one is best
+        (if better than the original) and apply this to
+        the object image to align with the sky. First because we use only the
+        first extension because of the way the shiftImageSegments function is
+        defined. This function now applies the bad pixel map both before cross
         correlating and before interpolation - need to ignore bad pixels.
 
-        Inputs: 
-        ext - detector extension, must be either 1, 2, 3
-        infile - Input object file to shift 
-        skyFile - sky image to compare objFile with
-        interp_type - type of interpolation function for the shift. 
+        Inputs:
+                ext - detector extension, must be either 1, 2, 3
+                infile - Input object file to shift
+                skyFile - sky image to compare objFile with
+                interp_type - type of interpolation function for the shift.
 
-            -'nearest': nearest neighbour
-            -'linear':bilinear x,y, interpolation
-            -'poly3':third order interior polynomial
-            -'poly5':fifth order interior polynomial
-            -'spline3':third order spline3
+                    -'nearest': nearest neighbour
+                    -'linear':bilinear x,y, interpolation
+                    -'poly3':third order interior polynomial
+                    -'poly5':fifth order interior polynomial
+                    -'spline3':third order spline3
 
-        stepsize - value to increment grid by each time, increasing 
-        this increases the time taken for the computation 
-        xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
+                stepsize - value to increment grid by each time, increasing
+                this increases the time taken for the computation
+                xmin, xmax, ymin, ymax - Grid extremes for brute force shift
 
         """
 
-        #We first want to apply the bad pixel map 
+        # We first want to apply the bad pixel map
+
         objTable = fits.open(infile)
+
         objData = objTable[ext].data
+
         skyTable = fits.open(skyfile)
+
         skyData = skyTable[ext].data
+
         badpTable = fits.open(badpmap)
+
         badpData = badpTable[ext].data
 
-        #Find the headers of the primary HDU and chosen extension 
+        # Find the headers of the primary HDU and chosen extension
+
         objPrimHeader = objTable[0].header
+
         objExtHeader = objTable[ext].header
+
         skyPrimHeader = skyTable[0].header
-        skyExtHeader = skyTable[ext].header     
+
+        skyExtHeader = skyTable[ext].header
+
         badpPrimHeader = badpTable[0].header
+
         badpExtHeader = badpTable[ext].header
 
-        print (objPrimHeader)
-        print (objExtHeader)
-        print (skyPrimHeader)
-        print (skyExtHeader)        
-        print (badpPrimHeader)
-        print (badpExtHeader) 
-
-        #Find the coordinates of the bad pixels and the slitlets 
-        bad_pixel_coords = np.where(badpData == 0)
-
-        #Loop around the bad pixel locations and mask off on the manObjData and manSkyData
-        for i in range(len(bad_pixel_coords[0])):
-            #Because of the way np.where works, need to define the x and y coords in this way
-            xcoord = bad_pixel_coords[0][i]
-            ycoord = bad_pixel_coords[1][i]
-            #Now set all positions where there is a dead pixel to np.nan in the object and sky
-            objData[xcoord][ycoord] = np.nan
-            skyData[xcoord][ycoord] = np.nan
-        #fits.writeto('pom.fits', data=objData, clobber=True)   
-
-        #Define the minimum and maximum ranges for the correlation 
-        xMinCorr = (1 * len(objData[0]))/4
-        xMaxCorr = (3 * len(objData[0]))/4
-        yMinCorr = (1 * len(objData))/4
-        yMaxCorr = (3 * len(objData))/4
-
-
-        #Write out to new temporary fits files - annoyingly need to have 
-        #the data in fits files to be able to use pyraf functions
-        #######OBJECT##########
-        objhdu = fits.PrimaryHDU(header=objPrimHeader)
-        objhdu.writeto('maskedObj.fits', clobber=True)
-        fits.append('maskedObj.fits', data=objData, header=objExtHeader)
-
-        #######Sky##########
-        skyhdu = fits.PrimaryHDU(header=skyPrimHeader)
-        skyhdu.writeto('maskedSky.fits', clobber=True)
-        fits.append('maskedSky.fits', data=skyData, header=skyExtHeader)        
-
-        #First compute the correlation coefficient with just the newly saved fits file 
-        rhoArray = []
-
-        rhoArray.append(self.crossCorrFirst('maskedObj.fits', 'maskedSky.fits', yMinCorr, yMaxCorr, xMinCorr, xMaxCorr))
-
-        print rhoArray
-
-        #Working. Now create grid of fractional shift values. 
-        xArray = np.arange(xmin, xmax, stepsize)
-        xArray = np.around(xArray, decimals = 4)
-        yArray = np.arange(ymin, ymax, stepsize)
-        yArray = np.around(yArray, decimals = 4)
-
-        #Set up mesh grid of rho values for contour plot 
-        rhoGrid = np.zeros(shape=(len(xArray), len(yArray)))
-
-        #Before attempting the interpolation, we want to mask the bad pixel values, 
-        #and save to a fresh temporary fits file. matty was here :) 
-
-        #Loop over all values in the grid, shift the image by this 
-        #amount each time and compute the correlation coefficient
-        successDict = {}
-        for i in range(len(xArray)):
-            for j in range(len(yArray)):
-                #Perform the shift 
-                infileName = 'maskedObj.fits[1]'
-                pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
-                    xshift=xArray[i], yshift=yArray[j], interp_type=interp_type)
-                #re-open the shifted file and compute rho
-
-                rho = self.crossCorrZeroth('temp_shift.fits', 'maskedSky.fits',\
-                  yMinCorr, yMaxCorr, xMinCorr, xMaxCorr)
-                rhoGrid[i][j] = rho 
-                #If the correlation coefficient improves, append to new array
-                if rho > rhoArray[0]:
-                    print 'SUCCESS, made improvement!'
-                    entryName = str(xArray[i]) + ' and ' + str(yArray[j])
-                    entryValue = [round(xArray[i], 3), round(yArray[j], 3)]
-                    successDict[str(round(rho, 4))] = entryValue
-                rhoArray.append(rho)
-                #Clean up by deleting the created temporary fits file
-                os.system('rm temp_shift.fits')
-                #Go back through loop, append next value of rho
-                print 'Finished shift: %s %s, rho = %s ' % (xArray[i], yArray[j], rho)
-                #sys.stdout.flush()
-        os.system('rm maskedObj.fits')
-        os.system('rm maskedSky.fits')
-        #print round(max(rhoArray), 4)
-        #print rhoArray[0]      
-        #print successDict
-        #Now we want to choose the best shift value and actually apply this 
-        #Need to find the x and y shift values which correspond to the maximum rho
-        #Only do this if the success dictionary is not empty, if it is empty return 0.0,0.0
-
-        print rhoGrid
-
-        plt.contour(xArray, yArray, rhoGrid, levels = [(np.max(rhoGrid) - (0.25 * np.std(rhoGrid))), \
-         (np.max(rhoGrid) - (1*np.std(rhoGrid))), (np.max(rhoGrid) - (1.5 * np.std(rhoGrid)))])
-        plt.xlabel('$\Delta x$')
-        plt.ylabel('$\Delta y$')
-        plt.title('Correlation Coefficient Grid')
-        plt.savefig('Correlation_coefficient.png')
-        plt.close('all')
-
-        print 'Made plot Successfully'
-
-        if successDict: 
-            print 'Finding Best Shift Value...'
-            rhoMax = str(round(max(rhoArray), 4))
-            #print rhoMax
-            shiftVector = successDict[rhoMax]
-            return shiftVector
-        
-        else:
-            print 'No Shift Value Found'
-            shiftVector = [0.0, 0.0]
-            return shiftVector
-
-        #We can also save a contour plot of the results to show where the best shift location is 
-        #This only works properly right now for a shift segment of 1, otherwise will 
-        #overwrite the filename each time. Could easily fix this.
-
-
-    def shiftImageFirst(self, ext, infile, skyfile, badpmap, interp_type, stepsize, xmin, xmax, ymin, ymax):
-
-        """
-        Def:
-        Compute the correlation coefficient for a grid of pixel shift values and 
-        decide which one is best (if better than the original) and apply this to 
-        the object image to align with the sky. First because we use only the 
-        first extension because of the way the shiftImageSegments function is 
-        defined. This function now applies the bad pixel map both before cross 
-        correlating and before interpolation - need to ignore bad pixels.
-
-        Inputs: 
-        ext - detector extension, must be either 1, 2, 3
-        infile - Input object file to shift 
-        skyFile - sky image to compare objFile with
-        interp_type - type of interpolation function for the shift. 
-
-            -'nearest': nearest neighbour
-            -'linear':bilinear x,y, interpolation
-            -'poly3':third order interior polynomial
-            -'poly5':fifth order interior polynomial
-            -'spline3':third order spline3
-
-        stepsize - value to increment grid by each time, increasing 
-        this increases the time taken for the computation 
-        xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
-
-        """
-        #We first want to apply the bad pixel map 
-        objTable = fits.open(infile)
-        objData = objTable[1].data
-        skyTable = fits.open(skyfile)
-        skyData = skyTable[1].data
-        badpTable = fits.open(badpmap)
-        badpData = badpTable[1].data
-
-        #Find the headers of the primary HDU and chosen extension 
-        objPrimHeader = objTable[0].header
-        objExtHeader = objTable[1].header
-        skyPrimHeader = skyTable[0].header
-        skyExtHeader = skyTable[1].header       
-        badpPrimHeader = badpTable[0].header
-        badpExtHeader = badpTable[1].header
-
-        temp = sys.stdout
-        sys.stdout = open('log.txt', 'w')
         print (objPrimHeader)
         print (objExtHeader)
         print (skyPrimHeader)
         print (skyExtHeader)
         print (badpPrimHeader)
         print (badpExtHeader)
-        sys.stdout.close()
-        sys.stdout = temp
-        
 
-        badpData[badpData == 0] = np.nan
-        objData = objData * badpData
-        skyData = skyData * badpData
-        #fits.writeto('pom.fits', data=objData, clobber=True)   
+        # Find the coordinates of the bad pixels and the slitlets
 
-        #Define the minimum and maximum ranges for the correlation 
-        xMinCorr = (1 * len(objData[0]))/4
-        xMaxCorr = (3 * len(objData[0]))/4
-        yMinCorr = (1 * len(objData))/4
-        yMaxCorr = (3 * len(objData))/4
+        bad_pixel_coords = np.where(badpData == 0)
 
-        #Write out to new temporary fits files - annoyingly need to have 
-        #the data in fits files to be able to use pyraf functions
-        #######OBJECT##########
+        # Loop around the bad pixel locations and mask off
+        # on the manObjData and manSkyData
+
+        for i in range(len(bad_pixel_coords[0])):
+
+            # Because of the way np.where works, need
+            # to define the x and y coords in this way
+
+            xcoord = bad_pixel_coords[0][i]
+
+            ycoord = bad_pixel_coords[1][i]
+
+            # Now set all positions where there is a
+            # dead pixel to np.nan in the object and sky
+
+            objData[xcoord][ycoord] = np.nan
+
+            skyData[xcoord][ycoord] = np.nan
+
+        # Define the minimum and maximum ranges for the correlation
+
+        xMinCorr = (1 * len(objData[0])) / 4
+
+        xMaxCorr = (3 * len(objData[0])) / 4
+
+        yMinCorr = (1 * len(objData)) / 4
+
+        yMaxCorr = (3 * len(objData)) / 4
+
+        # Write out to new temporary fits files - annoyingly need to have
+        # the data in fits files to be able to use pyraf functions
+
+        # OBJECT
         objhdu = fits.PrimaryHDU(header=objPrimHeader)
-        objhdu.writeto('maskedObj.fits', clobber=True)
-        fits.append('maskedObj.fits', data=objData, header=objExtHeader)
 
-        #######Sky##########
+        objhdu.writeto('maskedObj.fits',
+                       clobber=True)
+
+        fits.append('maskedObj.fits',
+                    data=objData,
+                    header=objExtHeader)
+
+        # SKY
         skyhdu = fits.PrimaryHDU(header=skyPrimHeader)
-        skyhdu.writeto('maskedSky.fits', clobber=True)
-        fits.append('maskedSky.fits', data=skyData, header=skyExtHeader)        
 
-        #First compute the correlation coefficient with just the newly saved fits file 
+        skyhdu.writeto('maskedSky.fits',
+                       clobber=True)
+
+        fits.append('maskedSky.fits',
+                    data=skyData,
+                    header=skyExtHeader)
+
+        # First compute the correlation coefficient
+        # with just the newly saved fits file
+
         rhoArray = []
 
-        rhoArray.append(self.crossCorrFirst('maskedObj.fits', 'maskedSky.fits', yMinCorr, yMaxCorr, xMinCorr, xMaxCorr))
+        rhoArray.append(self.crossCorrFirst('maskedObj.fits',
+                                            'maskedSky.fits',
+                                            yMinCorr,
+                                            yMaxCorr,
+                                            xMinCorr,
+                                            xMaxCorr))
 
         print rhoArray
 
-        #Working. Now create grid of fractional shift values. 
+        # Working. Now create grid of fractional shift values.
+
         xArray = np.arange(xmin, xmax, stepsize)
-        xArray = np.around(xArray, decimals = 4)
+
+        xArray = np.around(xArray, decimals=4)
+
         yArray = np.arange(ymin, ymax, stepsize)
-        yArray = np.around(yArray, decimals = 4)
+
+        yArray = np.around(yArray, decimals=4)
+
+        # Set up mesh grid of rho values for contour plot
+
+        rhoGrid = np.zeros(shape=(len(xArray), len(yArray)))
+
+        # Before attempting the interpolation, we
+        # want to mask the bad pixel values,
+        # and save to a fresh temporary fits file.
+        # Loop over all values in the grid, shift the image by this
+        # amount each time and compute the correlation coefficient
+
+        successDict = {}
+
+        for i in range(len(xArray)):
+
+            for j in range(len(yArray)):
+
+                # Perform the shift
+
+                infileName = 'maskedObj.fits[1]'
+
+                pyraf.iraf.imshift(input=infileName,
+                                   output='temp_shift.fits',
+                                   xshift=xArray[i],
+                                   yshift=yArray[j],
+                                   interp_type=interp_type)
+
+                # re-open the shifted file and compute rho
+
+                rho = self.crossCorrZeroth('temp_shift.fits',
+                                           'maskedSky.fits',
+                                           yMinCorr,
+                                           yMaxCorr,
+                                           xMinCorr,
+                                           xMaxCorr)
+
+                rhoGrid[i][j] = rho
+
+                # If the correlation coefficient improves, append to new array
+
+                if rho > rhoArray[0]:
+
+                    print 'SUCCESS, made improvement!'
+
+                    entryName = str(xArray[i]) + ' and ' + str(yArray[j])
+
+                    entryValue = [round(xArray[i], 3), round(yArray[j], 3)]
+
+                    successDict[str(round(rho, 4))] = entryValue
+
+                rhoArray.append(rho)
+
+                # Clean up by deleting the created temporary fits file
+
+                os.system('rm temp_shift.fits')
+
+                # Go back through loop, append next value of rho
+
+                print 'Finished shift: %s %s, rho = %s ' % (xArray[i],
+                                                            yArray[j],
+                                                            rho)
+
+        os.system('rm maskedObj.fits')
+
+        os.system('rm maskedSky.fits')
+
+        # Now we want to choose the best shift value and actually apply this
+        # Need to find the x and y shift values
+        # which correspond to the maximum rho
+        # Only do this if the success dictionary is not
+        # empty, if it is empty return 0.0,0.0
+
+        print rhoGrid
+
+        plt.contour(xArray,
+                    yArray,
+                    rhoGrid,
+                    levels=[(np.max(rhoGrid) - (0.25 * np.std(rhoGrid))),
+                            (np.max(rhoGrid) - (1 * np.std(rhoGrid))),
+                            (np.max(rhoGrid) - (1.5 * np.std(rhoGrid)))])
+
+        plt.xlabel('$\Delta x$')
+
+        plt.ylabel('$\Delta y$')
+
+        plt.title('Correlation Coefficient Grid')
+
+        plt.savefig('Correlation_coefficient.png')
+
+        plt.close('all')
+
+        print 'Made plot Successfully'
+
+        if successDict:
+
+            print 'Finding Best Shift Value...'
+
+            rhoMax = str(round(max(rhoArray), 4))
+
+            # print rhoMax
+
+            shiftVector = successDict[rhoMax]
+
+            return shiftVector
+
+        else:
+            print 'No Shift Value Found'
+
+            shiftVector = [0.0, 0.0]
+
+            return shiftVector
+
+    def shiftImageFirst(self,
+                        ext,
+                        infile,
+                        skyfile,
+                        badpmap,
+                        interp_type,
+                        stepsize,
+                        xmin,
+                        xmax,
+                        ymin,
+                        ymax):
+
+        """
+        Def:
+        Compute the correlation coefficient for a grid
+        of pixel shift values and decide which one is best
+        (if better than the original) and apply this to
+        the object image to align with the sky. First because we use only the
+        first extension because of the way the shiftImageSegments function is
+        defined. This function now applies the bad pixel map both before cross
+        correlating and before interpolation - need to ignore bad pixels.
+
+        Inputs:
+                ext - detector extension, must be either 1, 2, 3
+                infile - Input object file to shift
+                skyFile - sky image to compare objFile with
+                interp_type - type of interpolation function for the shift.
+
+                    -'nearest': nearest neighbour
+                    -'linear':bilinear x,y, interpolation
+                    -'poly3':third order interior polynomial
+                    -'poly5':fifth order interior polynomial
+                    - 'spline3':third order spline3
+
+                stepsize - value to increment grid by each time, increasing
+                this increases the time taken for the computation
+                xmin, xmax, ymin, ymax - Grid extremes for brute force shift
+
+        Output:
+                ShiftVector - list of shifts to apply to the infile
+        """
+        # We first want to apply the bad pixel map
+
+        objTable = fits.open(infile)
+
+        objData = objTable[1].data
+
+        skyTable = fits.open(skyfile)
+
+        skyData = skyTable[1].data
+
+        badpTable = fits.open(badpmap)
+
+        badpData = badpTable[1].data
+
+        # Find the headers of the primary HDU and chosen extension
+
+        objPrimHeader = objTable[0].header
+
+        objExtHeader = objTable[1].header
+
+        skyPrimHeader = skyTable[0].header
+
+        skyExtHeader = skyTable[1].header
+
+        badpPrimHeader = badpTable[0].header
+
+        badpExtHeader = badpTable[1].header
+
+        temp = sys.stdout
+
+        sys.stdout = open('log.txt', 'w')
+
+        print (objPrimHeader)
+        print (objExtHeader)
+        print (skyPrimHeader)
+        print (skyExtHeader)
+        print (badpPrimHeader)
+        print (badpExtHeader)
+
+        sys.stdout.close()
+
+        sys.stdout = temp
+
+        badpData[badpData == 0] = np.nan
+
+        objData = objData * badpData
+
+        skyData = skyData * badpData
+
+        # Define the minimum and maximum ranges for the correlation
+
+        xMinCorr = (1 * len(objData[0])) / 4
+
+        xMaxCorr = (3 * len(objData[0])) / 4
+
+        yMinCorr = (1 * len(objData)) / 4
+
+        yMaxCorr = (3 * len(objData)) / 4
+
+        # Write out to new temporary fits files - annoyingly need to have
+        # the data in fits files to be able to use pyraf functions
+
+        # OBJECT
+
+        objhdu = fits.PrimaryHDU(header=objPrimHeader)
+
+        objhdu.writeto('maskedObj.fits',
+                       clobber=True)
+
+        fits.append('maskedObj.fits',
+                    data=objData,
+                    header=objExtHeader)
+
+        # SKY
+
+        skyhdu = fits.PrimaryHDU(header=skyPrimHeader)
+
+        skyhdu.writeto('maskedSky.fits',
+                       clobber=True)
+
+        fits.append('maskedSky.fits',
+                    data=skyData,
+                    header=skyExtHeader)
+
+        # First compute the correlation coefficient
+        # with just the newly saved fits file
+
+        rhoArray = []
+
+        rhoArray.append(self.crossCorrFirst('maskedObj.fits',
+                                            'maskedSky.fits',
+                                            yMinCorr,
+                                            yMaxCorr,
+                                            xMinCorr,
+                                            xMaxCorr))
+
+        print rhoArray
+
+        # Working. Now create grid of fractional shift values.
+
+        xArray = np.arange(xmin, xmax, stepsize)
+
+        xArray = np.around(xArray, decimals=4)
+
+        yArray = np.arange(ymin, ymax, stepsize)
+
+        yArray = np.around(yArray, decimals=4)
+
         thArray = np.arange(-0.05, 0.05, 0.01)
-        thArray = np.around(thArray, decimals =4)
+
+        thArray = np.around(thArray, decimals=4)
 
         x, y = np.meshgrid(xArray, yArray)
 
-        #Set up mesh grid of rho values for contour plot 
+        # Set up mesh grid of rho values for contour plot
+
         rhoGrid = np.zeros(shape=(len(x), len(x[0])))
 
-        #Before attempting the interpolation, we want to mask the bad pixel values, 
-        #and save to a fresh temporary fits file. 
+        # Before attempting the interpolation,
+        # we want to mask the bad pixel values,
+        # and save to a fresh temporary fits file.
 
-        #Loop over all values in the grid, shift the image by this 
-        #amount each time and compute the correlation coefficient
+        # Loop over all values in the grid, shift the image by this
+        # amount each time and compute the correlation coefficient
+
         successDict = {}
+
         for i in range(len(xArray)):
+
             for j in range(len(yArray)):
-                #Perform the shift 
+
+                # Perform the shift
+
                 infileName = 'maskedObj.fits[1]'
-                pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
-                    xshift=xArray[i], yshift=yArray[j], interp_type=interp_type)
-                #re-open the shifted file and compute rho
 
-                rho = self.crossCorrZeroth('temp_shift.fits', 'maskedSky.fits',\
-                  yMinCorr, yMaxCorr, xMinCorr, xMaxCorr)
-                rhoGrid[j][i] = rho 
-                #If the correlation coefficient improves, append to new array
+                pyraf.iraf.imshift(input=infileName,
+                                   output='temp_shift.fits',
+                                   xshift=xArray[i],
+                                   yshift=yArray[j],
+                                   interp_type=interp_type)
+
+                # re-open the shifted file and compute rho
+
+                rho = self.crossCorrZeroth('temp_shift.fits',
+                                           'maskedSky.fits',
+                                           yMinCorr,
+                                           yMaxCorr,
+                                           xMinCorr,
+                                           xMaxCorr)
+
+                rhoGrid[j][i] = rho
+
+                # If the correlation coefficient improves, append to new array
+
                 if rho > rhoArray[0]:
+
                     print 'SUCCESS, made improvement!'
+
                     entryName = str(xArray[i]) + ' and ' + str(yArray[j])
+
                     entryValue = [round(xArray[i], 3), round(yArray[j], 3)]
+
                     successDict[str(round(rho, 4))] = entryValue
+
                 rhoArray.append(rho)
-                #Clean up by deleting the created temporary fits file
+
+                # Clean up by deleting the created temporary fits file
+
                 os.system('rm temp_shift.fits')
-                #Go back through loop, append next value of rho
-                print 'Finished shift: %s %s, rho = %s ' % (xArray[i], yArray[j], rho)
-                #sys.stdout.flush()
+
+                # Go back through loop, append next value of rho
+
+                print 'Finished shift: %s %s, rho = %s ' % (xArray[i],
+                                                            yArray[j],
+                                                            rho)
+
         os.system('rm maskedObj.fits')
+
         os.system('rm maskedSky.fits')
-        #print round(max(rhoArray), 4)
-        #print rhoArray[0]      
-        #print successDict
-        #Now we want to choose the best shift value and actually apply this 
-        #Need to find the x and y shift values which correspond to the maximum rho
-        #Only do this if the success dictionary is not empty, if it is empty return 0.0,0.0
 
-        #print rhoGrid
+        # Now we want to choose the best shift value and actually apply this
+        # Need to find the x and y shift values which
+        # correspond to the maximum rho
+        # Only do this if the success dictionary is not
+        # empty, if it is empty return 0.0,0.0
 
-        plt.contour(x, y, rhoGrid, levels = [(np.max(rhoGrid) - (0.25 * np.std(rhoGrid))), \
-         (np.max(rhoGrid) - (1*np.std(rhoGrid))), (np.max(rhoGrid) - (1.5 * np.std(rhoGrid)))])
+        plt.contour(x,
+                    y,
+                    rhoGrid,
+                    levels=[(np.max(rhoGrid) - (0.25 * np.std(rhoGrid))),
+                            (np.max(rhoGrid) - (1 * np.std(rhoGrid))),
+                            (np.max(rhoGrid) - (1.5 * np.std(rhoGrid)))])
+
         plt.xlabel('$\Delta x$')
+
         plt.ylabel('$\Delta y$')
+
         plt.title('Correlation Coefficient Grid')
-        plotName = infile[:-5]  + '_'  + str(ext)  + '_' + interp_type + '_CorrelationGraph.png'
+
+        plotName = infile[:-5] + '_' + str(ext) + '_' + \
+            interp_type + '_CorrelationGraph.png'
+
         plt.savefig(plotName)
         plt.close('all')
 
         print 'Made plot Successfully'
 
-        if successDict: 
+        if successDict:
+
             print 'Finding Best Shift Value...'
+
             rhoMax = str(round(max(rhoArray), 4))
-            #print rhoMax
+
+            # print rhoMax
+
             shiftVector = successDict[rhoMax]
+
             return shiftVector
-        
+
         else:
+
             print 'No Shift Value Found'
+
             shiftVector = [0.0, 0.0]
+
             return shiftVector
 
-        #We can also save a contour plot of the results to show where the best shift location is 
-        #This only works properly right now for a shift segment of 1, otherwise will 
-        #overwrite the filename each time. Could easily fix this.
-
-
-
-
-
-
-    def rotateImage(self, ext, infile, skyfile, interp_type, minAngle, maxAngle, stepsize):
+    def imSplit(self,
+                ext,
+                infile,
+                vertSegments,
+                horSegments):
 
         """
         Def:
-        Compute the correlation coefficient for a line of rotation angles and 
-        decide which one is best (if better than the original) and apply this to 
-        the object image to align with the sky.
-
-        Inputs: 
-        ext - detector extension, must be either 1, 2, 3
-        infile - Input object file to shift 
-        skyFile - sky image to compare objFile with
-        interp_type - type of interpolation function for the shift. 
-
-            -'nearest': nearest neighbour
-            -'linear':bilinear x,y, interpolation
-            -'poly3':third order interior polynomial
-            -'poly5':fifth order interior polynomial
-            -'spline3':third order spline3
-
-        stepsize - value to increment grid by each time, increasing 
-        this increases the time taken for the computation 
-        xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
-
-        """
-        #First compute the correlation coefficient with just infile 
-        rhoArray = []
-        rhoArray.append(self.crossCorr(ext, infile, skyfile, 1000, 1200, 1000, 1200))
-        print rhoArray
-
-        #Working. Now create grid of fractional shift values. 
-        rotArray = np.arange(minAngle, maxAngle, stepsize)
-        rotArray = np.around(rotArray, decimals = 4)
-
-
-        #Loop over all values in the grid, shift the image by this 
-        #amount each time and compute the correlation coefficient
-        successDict = {}
-
-        for number in rotArray:
-            #Perform the shift 
-            infileName = infile + '[' + str(ext) + ']'
-            pyraf.iraf.rotate(input=infileName, output='temp_rot.fits', \
-                rotation=number, interpolant=interp_type)
-            #re-open the shifted file and compute rho
-            rho = self.crossCorrOne(ext,'temp_rot.fits', skyfile,\
-             1000, 1200, 1000, 1200)
-            #If the correlation coefficient improves, append to new array
-            if rho > rhoArray[0]:
-                print 'SUCCESS, made improvement!'
-                entryName = str(number)
-                entryValue = [number, rho]
-                successDict[entryName] = entryValue
-            rhoArray.append(rho)
-            #Clean up by deleting the created temporary fits file
-            os.system('rm temp_rot.fits')
-            #Go back through loop, append next value of rho
-            print 'Finished shift: %s, rho = %s ' % (number, rho)
-            #sys.stdout.flush()
-
-        print max(rhoArray)
-        print rhoArray[0]       
-        print successDict       
-
-
-    def imSplit(self, ext, infile, vertSegments, horSegments):
-
-        """
-        Def: 
-        Take an input image file and split up into a series of squares 
+        Take an input image file and split up into a series of squares
         Main purpose is for use in the shiftImageSegments functino
 
-        Input: 
-        infile - file to be divided
-        vertSegments - number of vertical segments (2048 must be divisible by) 
-        horSegments - number of horizontal segments (2048 must be divisible by)
-        ext - extension number
+        Input:
+                infile - file to be divided
+                vertSegments - number of vertical segments
+                              (2048 must be divisible by)
+                horSegments - number of horizontal segments
+                             (2048 must be divisible by)
+                ext - extension number
 
-        Output: 
-        segmentArray - 1D array containing 2D square array segments
+        Output:
+                segmentArray - 1D array containing 2D square array segments
 
         """
-        #Read in the data file at the given extension
+
+        # Read in the data file at the given extension
+
         data = fits.open(infile)
+
         data = data[ext].data
 
-        #Initialise the empty array
+        # Initialise the empty array
+
         segmentArray = []
 
-        #We can't do this if 2048 isn't divisible by the segments 
-        #write an error function to check that this is the case 
-        #And exit if it isn't 
-        if ((2048 % vertSegments != 0) or  (2048 % horSegments != 0)):
-            raise ValueError('Please ensure that 2048 is divisible by your segment choice')
+        # We can't do this if 2048 isn't divisible by the segments
+        # write an error function to check that this is the case
+        # And exit if it isn't
 
-        #Counters for the horizontal slicing
+        if ((2048 % vertSegments != 0) or (2048 % horSegments != 0)):
+
+            raise ValueError('Please ensure that 2048 is'
+                             + ' divisible by your segment choice')
+
+        # Counters for the horizontal slicing
+
         hor1 = 0
+
         hor2 = (2048 / horSegments)
 
         for j in range(horSegments):
-            
 
-            #Counters for the vertical slicing
+            # Counters for the vertical slicing
+
             x = 0
+
             y = (2048 / vertSegments)
 
             for i in range(vertSegments):
 
-               
-               #Slice the data according to user selection
-               segmentArray.append(data[hor1:hor2,x:y])
-               x += (2048 / vertSegments)
-               y += (2048 / vertSegments)
+                # Slice the data according to user selection
+
+                segmentArray.append(data[hor1:hor2, x:y])
+
+                x += (2048 / vertSegments)
+
+                y += (2048 / vertSegments)
 
             hor1 += (2048 / horSegments)
-            hor2 += (2048 / horSegments)   
 
-        #print segmentArray 
-        return segmentArray 
+            hor2 += (2048 / horSegments)
 
+        # print segmentArray
 
+        return segmentArray
 
-
-
-
-    def shiftImageSegments(self, ext, infile, skyfile, badpmap,\
-     vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax):
-
-        """
-        Def: 
-        Lots of arguments because of using lots of different functions. 
-        This is taking an object and a sky image, splitting them into a specified 
-        number of segments, performing shifts to each of the segments and then 
-        computing the cross-correlation function to see if we can improve the 
-        alignment at all. Should give better results than a global shift 
-
-        Inputs: 
-        infile - file to be divided
-        skyFile - sky image to compare objFile with
-        vertSegments - number of vertical segments (2048 must be divisible by) 
-        horSegments - number of horizontal segments (2048 must be divisible by)
-        ext - extension number
-        interp_type - type of interpolation function for the shift. 
-
-            -'nearest': nearest neighbour
-            -'linear':bilinear x,y, interpolation
-            -'poly3':third order interior polynomial
-            -'poly5':fifth order interior polynomial
-            -'spline3':third order spline3
-
-        stepsize - value to increment grid by each time, increasing 
-        this increases the time taken for the computation 
-        xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
+    def shiftImageSegments(self,
+                           ext,
+                           infile,
+                           skyfile,
+                           badpmap,
+                           vertSegments,
+                           horSegments,
+                           interp_type,
+                           stepsize,
+                           xmin,
+                           xmax,
+                           ymin,
+                           ymax):
 
         """
-        ########################TO ADD###############################
-        #Make sure that 2048 is divisible by the segment numbers 
+        Def:
+        Lots of arguments because of using lots of different functions.
+        This is taking an object and a sky image,
+        splitting them into a specified
+        number of segments, performing shifts to each of the segments and then
+        computing the cross-correlation function to see if we can improve the
+        alignment at all. Should give better results than a global shift
 
+        Inputs:
+                infile - file to be divided
+                skyFile - sky image to compare objFile with
+                vertSegments - number of vertical segments
+                horSegments - number of horizontal segments
+                ext - extension number
+                interp_type - type of interpolation function for the shift.
 
+                    -'nearest': nearest neighbour
+                    -'linear':bilinear x,y, interpolation
+                    -'poly3':third order interior polynomial
+                    -'poly5':fifth order interior polynomial
+                    -'spline3':third order spline3
 
-        #Create arrays of the split files using the imSplit function 
+                stepsize - value to increment grid by each time, increasing
+                        this increases the time taken for the computation
+                xmin, xmax, ymin, ymax - Grid extremes for brute force shift
+
+        Output:
+                reconstructedData - array containing the shifted data
+
+        """
+
+        # Create arrays of the split files using the imSplit function
+
         objArray = self.imSplit(ext, infile, vertSegments, horSegments)
+
         skyArray = self.imSplit(ext, skyfile, vertSegments, horSegments)
+
         badpArray = self.imSplit(ext, badpmap, vertSegments, horSegments)
 
-        #Find the headers of the primary HDU and chosen extension 
+        # Find the headers of the primary HDU and chosen extension
+
         objTable = fits.open(infile)
+
         objPrimHeader = objTable[0].header
+
         objExtHeader = objTable[ext].header
+
         skyTable = fits.open(skyfile)
+
         skyPrimHeader = skyTable[0].header
+
         skyExtHeader = skyTable[ext].header
+
         badpTable = fits.open(badpmap)
+
         badpPrimHeader = badpTable[0].header
+
         badpExtHeader = badpTable[ext].header
 
         temp = sys.stdout
+
         sys.stdout = open('log.txt', 'w')
+
         print (objPrimHeader)
         print (objExtHeader)
         print (skyPrimHeader)
         print (skyExtHeader)
         print (badpPrimHeader)
         print (badpExtHeader)
+
         sys.stdout.close()
+
         sys.stdout = temp
 
-
         shiftArray = []
-        #Should now have two 1D arrays of 2D arrays of equal size
+
+        # Should now have two 1D arrays of 2D arrays of equal size
+
         for i in range(len(objArray)):
 
-            tempObjName = infile[:-5] + str(vertSegments) + str(horSegments) + str(i) + '_temp.fits'
-            #Write out to new temporary fits files - annoyingly need to have 
-            #the data in fits files to be able to use pyraf functions
-            #######OBJECT##########
+            tempObjName = infile[:-5] + str(vertSegments) + \
+                str(horSegments) + str(i) + '_temp.fits'
+
+            # Write out to new temporary fits files - annoyingly need to have
+            # the data in fits files to be able to use pyraf functions
+
+            # OBJECT
+
             objhdu = fits.PrimaryHDU(header=objPrimHeader)
-            objhdu.writeto(tempObjName, clobber=True)
-            fits.append(tempObjName, data=objArray[i], header=objExtHeader)
 
-            #######SKY#############
+            objhdu.writeto(tempObjName,
+                           clobber=True)
+
+            fits.append(tempObjName,
+                        data=objArray[i],
+                        header=objExtHeader)
+
+            # SKY
+
             skyhdu = fits.PrimaryHDU(header=skyPrimHeader)
-            skyhdu.writeto('tempSky.fits', clobber=True)
-            fits.append('tempSky.fits', data=skyArray[i], header=skyExtHeader)
 
-            #######BADPIXEL#############
+            skyhdu.writeto('tempSky.fits',
+                           clobber=True)
+
+            fits.append('tempSky.fits',
+                        data=skyArray[i],
+                        header=skyExtHeader)
+
+            # BADPIXEL
+
             badphdu = fits.PrimaryHDU(header=badpPrimHeader)
-            badphdu.writeto('tempbadp.fits', clobber=True)
-            fits.append('tempbadp.fits', data=badpArray[i], header=badpExtHeader)
 
-            #NOTES FOR RESUMING - I now have temporary files containing the object 
-            #and sky segments to be shifted and cross correlated. The shiftImage function 
-            #can be applied to each of these directly within the for loop!! - remember to 
-            # a) clean up the fits files after each loop 
-            # b) Find a way to look at the cross correlation results for each segment independently
-            # probably by returning the cross correlation arrays into a new array  
-            # c) find a way to search specifically for shift success and apply to each segment 
-            # d) find a way to recombine all segments together after the shift has happened 
-            # e) make sure to use the crossCorrFirst function here, otherwise it will break in 
-            # certain situations (i.e. when not using extension one )
+            badphdu.writeto('tempbadp.fits',
+                            clobber=True)
 
-            #Now need to apply the shiftImageFirst function, which compares the chosen 
-            #extension shifted object and sky files. 
-            #Create an array to hold the shift coordinates for each segment. This is defined 
-            #Outside the for loop so that I am not initialising it every time.
-            
+            fits.append('tempbadp.fits',
+                        data=badpArray[i],
+                        header=badpExtHeader)
+
+            # Now need to apply the shiftImageFirst
+            # function, which compares the chosen
+            # extension shifted object and sky files.
+            # Create an array to hold the shift coordinates
+            # for each segment. This is defined
+            # Outside the for loop so that I am not initialising it every time.
 
             print 'This is shift: %s' % i
-            shiftArray.append(self.shiftImageFirst(ext, tempObjName, 'tempSky.fits', 'tempbadp.fits', \
-             interp_type, stepsize, xmin, xmax, ymin, ymax))
 
+            shiftArray.append(self.shiftImageFirst(ext,
+                                                   tempObjName,
+                                                   'tempSky.fits',
+                                                   'tempbadp.fits',
+                                                   interp_type,
+                                                   stepsize,
+                                                   xmin,
+                                                   xmax,
+                                                   ymin,
+                                                   ymax))
 
+            # Clean up the temporary fits files during each part of the loop
 
-            #Clean up the temporary fits files during each part of the loop 
             os.system('rm %s' % tempObjName)
+
             os.system('rm tempSky.fits')
+
             os.system('rm tempbadp.fits')
 
-            #That should work then for each segment in turn. Does work. 
-            #vStackArray.append(np.hstack(objArray))        
-            #   hor1 += 128
-            #   hor2 += 128 
+            # Now just need to vstack all of these arrays and
+            # will have a 2048x2048 corrected array
 
-            #Now just need to vstack all of these arrays and will have a 2048x2048 corrected array
-            #newObjData = np.vstack(vStackArray)    
         print shiftArray
-        #Now the clever part - to actually apply the shifts to the unmasked infile 
-        #imshift can be used with a list of infile names, outfile names and shift coordinates
-        #If I create these lists I can imshift all at once, read in the data and then recombine
-        #First get the x and y vectors for the shift coordinates
+
+        # Now the clever part - to actually apply
+        # the shifts to the unmasked infile
+        # imshift can be used with a list of infile names,
+        # outfile names and shift coordinates
+        # If I create these lists I can imshift all at once,
+        # read in the data and then recombine
+        # First get the x and y vectors for the shift coordinates
+
         xArray = []
+
         yArray = []
+
         for item in shiftArray:
+
             xArray.append(item[0])
+
             yArray.append(item[1])
+
         xArray = np.array(np.around(xArray, 3))
-        yArray = np.array(np.around(yArray, 3)) 
-        #Create the .txt file with the two columns specifying the shift coordinates
-        np.savetxt('coords.txt', np.c_[xArray, yArray], fmt=('%5.3f', '%5.3f'))
 
-        #Coordinates list sorted. Now need list of input files and input file names 
-        #To do this need to go back to the imSplit method with the unmasked file 
-        #Write to a list of temporary fits files, which will become temporary 
-        #Output fits files, which will be read back in as data before recombining 
-        #Must clean everything up at the end by removing with os.system()
-        #Create arrays of the split files using the imSplit function 
+        yArray = np.array(np.around(yArray, 3))
 
-        #Need to apply the shifts to a masked object file. Open the bad pixel map 
-        #and the object file and mask the pixels and save to temporary file 
-        #Find the coordinates of the bad pixels and the slitlets 
+        # Create the .txt file with the two columns
+        # specifying the shift coordinates
+        np.savetxt('coords.txt',
+                   np.c_[xArray, yArray],
+                   fmt=('%5.3f', '%5.3f'))
+
+        # Coordinates list sorted. Now need list
+        # of input files and input file names
+        # To do this need to go back to the
+        # imSplit method with the unmasked file
+        # Write to a list of temporary fits files, which will become temporary
+        # Output fits files, which will be read
+        # back in as data before recombining
+        # Must clean everything up at the end by removing with os.system()
+        # Create arrays of the split files using the imSplit function
+
+        # Need to apply the shifts to a masked
+        # object file. Open the bad pixel map
+        # and the object file and mask the pixels and save to temporary file
+        # Find the coordinates of the bad pixels and the slitlets
+
         objData = objTable[ext].data
+
         badpData = badpTable[ext].data
+
         badpData[badpData == 0] = np.nan
+
         objData = objData * badpData
 
-        #Write out to new file which will then be read in to split up the data
+        # Write out to new file which will then be read in to split up the data
         objhdu = fits.PrimaryHDU(header=objPrimHeader)
-        objhdu.writeto('temp_masked.fits', clobber=True)
-        fits.append('temp_masked.fits', data=objData, header=objExtHeader)
 
+        objhdu.writeto('temp_masked.fits',
+                       clobber=True)
 
-        objArray = self.imSplit(1, 'temp_masked.fits', vertSegments, horSegments)
+        fits.append('temp_masked.fits',
+                    data=objData,
+                    header=objExtHeader)
+
+        objArray = self.imSplit(1,
+                                'temp_masked.fits',
+                                vertSegments,
+                                horSegments)
+
         inFileArray = []
+
         outFileArray = []
+
         shiftedDataArray = []
+
         vstackArray = []
+
         hstackArray = []
 
+        # Should now have two 1D arrays of 2D arrays of equal size
 
-        #Should now have two 1D arrays of 2D arrays of equal size
         for i in range(len(objArray)):
 
             inFileName = 'tempObjin'+str(i)+'.fits'
+
             outFileName = 'tempObjout'+str(i)+'.fits'
+
             inFileArray.append(inFileName)
+
             outFileArray.append(outFileName)
 
-            #Write out to new temporary fits files - annoyingly need to have 
-            #the data in fits files to be able to use pyraf functions
-            #######OBJECT##########
+            # Write out to new temporary fits files - annoyingly need to have
+            # the data in fits files to be able to use pyraf functions
+
+            # OBJECT
+
             objhdu = fits.PrimaryHDU(header=objPrimHeader)
-            objhdu.writeto(inFileName, clobber=True)
-            fits.append(inFileName, data=objArray[i], header=objExtHeader)
+
+            objhdu.writeto(inFileName,
+                           clobber=True)
+
+            fits.append(inFileName,
+                        data=objArray[i],
+                        header=objExtHeader)
 
             inFileName = inFileName + '[1]'
 
-            #Now apply imshift with all the parameters 
-            pyraf.iraf.imshift(input = inFileName, output=outFileName, \
-                xshift=xArray[i], yshift=yArray[i] ,interp_type=interp_type)
+            # Now apply imshift with all the parameters
+            pyraf.iraf.imshift(input=inFileName,
+                               output=outFileName,
+                               xshift=xArray[i],
+                               yshift=yArray[i],
+                               interp_type=interp_type)
 
-            #We want a 1D array of 2D arrays again, read the data files back in 
+            # We want a 1D array of 2D arrays again,
+            # read the data files back in
+
             data = fits.open(outFileName)
-            data = data[0].data
-            shiftedDataArray.append(data)
-            #Go back to the top of the loop and grab the next file
 
-        #The final problem is that we have a 1D arrays of 2D arrays that needs 
-        #to be recombined into the original 2048 x 2048 which created it 
-        #Ordering depends on the number of vertical and horizontal segments 
- 
-        x = len(shiftedDataArray) / horSegments 
-        a = 0 
+            data = data[0].data
+
+            shiftedDataArray.append(data)
+
+            # Go back to the top of the loop and grab the next file
+
+        # The final problem is that we have a 1D arrays of 2D arrays that needs
+        # to be recombined into the original 2048 x 2048 which created it
+        # Ordering depends on the number of vertical and horizontal segments
+
+        x = len(shiftedDataArray) / horSegments
+
+        a = 0
 
         while x <= len(shiftedDataArray):
-            for i in range(a, x): 
+
+            for i in range(a, x):
+
                 print i
+
                 hstackArray.append(shiftedDataArray[i])
 
             vstackArray.append(np.hstack(hstackArray))
-            hstackArray = []
-            x += len(shiftedDataArray) / horSegments
-            a += len(shiftedDataArray) / horSegments
-            
 
-        #for item in vstackArray:
-            #print item.shape   
-        #Reconstruct by vstacking the final array   
+            hstackArray = []
+
+            x += len(shiftedDataArray) / horSegments
+
+            a += len(shiftedDataArray) / horSegments
+
+        # Reconstruct by vstacking the final array
+
         reconstructedData = np.vstack(vstackArray)
 
-        #Clean up by getting rid of uneeded files
+        # Clean up by getting rid of uneeded files
+
         for item in inFileArray:
+
             os.system('rm %s' % item)
+
         for item in outFileArray:
+
             os.system('rm %s' % item)
-        os.system('rm coords.txt')  
+
+        os.system('rm coords.txt')
+
         os.system('rm temp_masked.fits')
+
         os.system('rm log.txt')
 
         return reconstructedData
 
-
-
-    def shiftAllExtensions(self, infile, skyfile, badpmap,\
-     vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax ):
+    def shiftAllExtensions(self,
+                           infile,
+                           skyfile,
+                           badpmap,
+                           vertSegments,
+                           horSegments,
+                           interp_type,
+                           stepsize,
+                           xmin,
+                           xmax,
+                           ymin,
+                           ymax):
 
         """
-        Def: Uses the shiftImageSegments method for each extensions and then combines
-        all of these together into a single shifted fits file 
+        Def:
+        Uses the shiftImageSegments method for
+        each extensions and then combines
+        all of these together into a single shifted fits file
+
+        Inputs:
+                infile - file to be divided
+                skyFile - sky image to compare objFile with
+                vertSegments - number of vertical segments
+                horSegments - number of horizontal segments
+                ext - extension number
+                interp_type - type of interpolation function for the shift.
+
+                    -'nearest': nearest neighbour
+                    -'linear':bilinear x,y, interpolation
+                    -'poly3':third order interior polynomial
+                    -'poly5':fifth order interior polynomial
+                    -'spline3':third order spline3
+
+                stepsize - value to increment grid by each time, increasing
+                        this increases the time taken for the computation
+                xmin, xmax, ymin, ymax - Grid extremes for brute force shift
+
+        Output:
+                infile_Shifted.fits - containing all three shifted extensions
 
         """
 
-        #Prepare the headers for writing out the fits file
+        # Prepare the headers for writing out the fits file
+
         objTable = fits.open(infile)
+
         objPrimHeader = objTable[0].header
+
         objExtHeader1 = objTable[1].header
+
         objExtHeader2 = objTable[2].header
+
         objExtHeader3 = objTable[3].header
 
         temp = sys.stdout
+
         sys.stdout = open('log.txt', 'w')
+
         print (objPrimHeader)
         print (objExtHeader1)
         print (objExtHeader2)
-        print (objExtHeader3)                       
+        print (objExtHeader3)
+
         sys.stdout.close()
+
         sys.stdout = temp
 
-        #Set up the array 
+        # Set up the array
+
         reconstructedDataArray = []
 
-        #Use the shifted image segment function 
+        # Use the shifted image segment function
+
         for i in range(1, 4):
+
             print 'Shifting Extension: %s' % i
-            reconstructedDataArray.append(self.shiftImageSegments(i, infile, skyfile, badpmap,\
-     vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax))
 
+            reconstructedDataArray.append(
+                self.shiftImageSegments(i,
+                                        infile,
+                                        skyfile,
+                                        badpmap,
+                                        vertSegments,
+                                        horSegments,
+                                        interp_type,
+                                        stepsize,
+                                        xmin,
+                                        xmax,
+                                        ymin,
+                                        ymax))
 
-        #Name the shifted data file 
-        shiftedName = infile[:-5] + '_' + str(vertSegments) + str(horSegments) + '_' + interp_type + '_Shifted.fits' 
+        # Name the shifted data file
+
+        shiftedName = infile[:-5] + '_' + str(vertSegments) + \
+            str(horSegments) + '_' + interp_type + '_Shifted.fits'
+
         print 'Saving %s' % shiftedName
 
         objhdu = fits.PrimaryHDU(header=objPrimHeader)
-        objhdu.writeto(shiftedName, clobber=True)
-        fits.append(shiftedName, data=reconstructedDataArray[0], header=objExtHeader1)
-        fits.append(shiftedName, data=reconstructedDataArray[1], header=objExtHeader2)
-        fits.append(shiftedName, data=reconstructedDataArray[2], header=objExtHeader3)
 
+        objhdu.writeto(shiftedName,
+                       clobber=True)
 
-    def applyShiftAllExtensions(self, fileList, badpmap,\
-     vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax):
-        #Read in the data from the fileList
+        fits.append(shiftedName,
+                    data=reconstructedDataArray[0],
+                    header=objExtHeader1)
+
+        fits.append(shiftedName,
+                    data=reconstructedDataArray[1],
+                    header=objExtHeader2)
+
+        fits.append(shiftedName,
+                    data=reconstructedDataArray[2],
+                    header=objExtHeader3)
+
+    def applyShiftAllExtensions(self,
+                                fileList,
+                                badpmap,
+                                vertSegments,
+                                horSegments,
+                                interp_type,
+                                stepsize,
+                                xmin,
+                                xmax,
+                                ymin,
+                                ymax):
+
+        # Read in the data from the fileList
+
         data = np.genfromtxt(fileList, dtype='str')
-        #Save the names and types as lists 
-        names = data[0:,0]
-        types = data[0:,1]
-        #Loop round all names and apply the computeOffsetSegments method
+
+        # Save the names and types as lists
+
+        names = data[0:, 0]
+
+        types = data[0:, 1]
+
+        # Loop round all names and apply the computeOffsetSegments method
+
         for i in range(1, len(names)):
+
             if types[i] == 'O':
+
                 objFile = names[i]
+
                 if i == 1:
+
                     skyFile = names[i + 1]
+
                 elif types[i - 1] == 'S':
+
                     skyFile = names[i - 1]
+
                 else:
+
                     skyFile = names[i + 1]
 
-                print 'Shifting file: %s : %s' % (i, objFile)   
-                #Now use the method defined within this class 
-                self.shiftAllExtensions(objFile, skyFile, badpmap,\
-     vertSegments, horSegments, interp_type, stepsize, xmin, xmax, ymin, ymax )
-                #Which will loop through all and save the corrected object file 
-                #as objectFile_Corrected.fits. These are then fed through the pipeline. 
+                print 'Shifting file: %s : %s' % (i, objFile)
 
-    def shiftPlot(self, coords_file):
+                # Now use the method defined within this class
+
+                self.shiftAllExtensions(objFile,
+                                        skyFile,
+                                        badpmap,
+                                        vertSegments,
+                                        horSegments,
+                                        interp_type,
+                                        stepsize,
+                                        xmin,
+                                        xmax,
+                                        ymin,
+                                        ymax)
+
+                # Which will loop through all and save
+                # the corrected object file
+                # as objectFile_Corrected.fits.
+                # These are then fed through the pipeline.
+
+    def shiftPlot(self,
+                  coords_file):
+
         """
         Def:
-        Plotting function, takes the output from applyShiftAllExtensionsMin and 
-        plots the x and y shift vectors against the detector ID 
+        Plotting function, takes the output from applyShiftAllExtensionsMin and
+        plots the x and y shift vectors against the detector ID
 
-        Input: coords_file - directly from shiftAllExtensionsMin
-        Output: shift_plot.png 
+        Input: 
+                coords_file - directly from shiftAllExtensionsMin
+        Output: 
+                shift_plot.png
         """
-        #Load the coordinates
+
+        # Load the coordinates
+
         coords = np.loadtxt(coords_file)
 
-        #The coordinates are 2D arrays. Need to set up the vectors 
+        # The coordinates are 2D arrays. Need to set up the vectors
+
         d_x = []
+
         d_y = []
 
-        #x_vector
-        for entry in coords:
-            for i in (0, 2, 4):
-                d_x.append(entry[i])
-                i + 1 
+        # x_vector
 
-        #y_vector
         for entry in coords:
-            for i in (1, 3, 5):
-                d_y.append(entry[i])
+
+            for i in (0, 2, 4):
+
+                d_x.append(entry[i])
+
                 i + 1
 
-        #Set the frame ID vectors 
-        f_ID = np.arange(0, len(d_x), 1)
+        # y_vector
 
-        #Now make the plots for both nights, want the same x-axis for all three layers
+        for entry in coords:
+
+            for i in (1, 3, 5):
+
+                d_y.append(entry[i])
+
+                i + 1
+
+        # Set the frame ID vectors
+
+        f_ID = np.arange(0,
+                         len(d_x),
+                         1)
+
+        # Now make the plots for both nights,
+        # want the same x-axis for all three layers
+
         f, (ax2, ax3) = plt.subplots(2, sharex=True, figsize=(18.0, 10.0))
+
         ax2.plot(f_ID, d_x, color='g')
         ax2.set_title('x shift (pixels) vs. ID', fontsize=24)
         ax2.grid(b=True, which='both', linestyle='--')
         ax2.tick_params(axis='both', which='major', labelsize=15)
+
         ax3.plot(f_ID, d_y, color='r')
         ax3.set_title('y shift (pixels) vs. ID', fontsize=24)
         ax3.set_xlabel('Detector ID', fontsize=20)
@@ -1925,702 +2906,1124 @@ class pipelineOps(object):
         ax3.tick_params(axis='both', which='major', labelsize=15)
         ax3.grid(b=True, which='both', linestyle='--')
 
-
-        # Fine-tune figure; make subplots close to each other and hide x ticks for
-        # all but bottom plot.
-        #f.subplots_adjust(hspace=0)
-        plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False) 
+        plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
         plt.savefig('shift_plot.png')
         plt.close('all')
 
-##########################################################################################################################
-##########################################################################################################################
-#                          ALTERNATE SET OF FUNCTIONS USING MINIMISATION INSTEAD OF GRIDSEARCH                           #
-##########################################################################################################################
-##########################################################################################################################
+    #  alternate set of functions using minimisation to find the
+    #  best shift position
 
-    def shiftImageFirstMin(self, xArray, infile, skyfile, badpmap, interp_type):
+    def shiftImageFirstMin(self,
+                           xArray,
+                           infile,
+                           skyfile,
+                           badpmap,
+                           interp_type):
 
         """
         Def:
-        Compute the correlation coefficient for a grid of pixel shift values and 
-        decide which one is best (if better than the original) and apply this to 
-        the object image to align with the sky. First because we use only the 
-        first extension because of the way the shiftImageSegments function is 
-        defined. This function now applies the bad pixel map both before cross 
+        Compute the correlation coefficient
+        for a grid of pixel shift values and
+        decide which one is best (if better than the original)
+        and apply this to the object image to align with the sky.
+        First because we use only the
+        first extension because of the way the
+        shiftImageSegments function is
+        defined. This function now applies the
+        bad pixel map both before cross
         correlating and before interpolation - need to ignore bad pixels.
 
-        Inputs: 
-        ext - detector extension, must be either 1, 2, 3
-        infile - Input object file to shift 
-        skyFile - sky image to compare objFile with
-        interp_type - type of interpolation function for the shift. 
+        Inputs:
+                ext - detector extension, must be either 1, 2, 3
+                infile - Input object file to shift
+                skyFile - sky image to compare objFile with
+                interp_type - type of interpolation function for the shift.
 
-            -'nearest': nearest neighbour
-            -'linear':bilinear x,y, interpolation
-            -'poly3':third order interior polynomial
-            -'poly5':fifth order interior polynomial
-            -'spline3':third order spline3
+                    -'nearest': nearest neighbour
+                    -'linear':bilinear x,y, interpolation
+                    -'poly3':third order interior polynomial
+                    -'poly5':fifth order interior polynomial
+                    -'spline3':third order spline3
 
-        stepsize - value to increment grid by each time, increasing 
-        this increases the time taken for the computation 
-        xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
+                stepsize - value to increment grid by each time, increasing
+                        this increases the time taken for the computation
+                xmin, xmax, ymin, ymax - Grid extremes for brute force shift
 
         """
-        
-        #We first want to apply the bad pixel map 
+
+        # We first want to apply the bad pixel map
+
         objTable = fits.open(infile)
+
         objData = objTable[1].data
+
         skyTable = fits.open(skyfile)
+
         skyData = skyTable[1].data
+
         badpTable = fits.open(badpmap)
+
         badpData = badpTable[1].data
 
-        #Find the headers of the primary HDU and chosen extension 
+        # Find the headers of the primary HDU and chosen extension
+
         objPrimHeader = objTable[0].header
+
         objExtHeader = objTable[1].header
+
         skyPrimHeader = skyTable[0].header
-        skyExtHeader = skyTable[1].header       
+
+        skyExtHeader = skyTable[1].header
+
         badpPrimHeader = badpTable[0].header
+
         badpExtHeader = badpTable[1].header
 
         temp = sys.stdout
+
         sys.stdout = open('log.txt', 'w')
+
         print (objPrimHeader)
         print (objExtHeader)
         print (skyPrimHeader)
         print (skyExtHeader)
         print (badpPrimHeader)
         print (badpExtHeader)
-        sys.stdout.close()
-        sys.stdout = temp
-        
 
-        #Find the coordinates of the bad pixels and the slitlets 
-        #Instead of looping, do much faster multiplication
-        #Want to avoid loops at all costs
+        sys.stdout.close()
+
+        sys.stdout = temp
+
+        # Find the coordinates of the bad pixels and the slitlets
+        # Instead of looping, do much faster multiplication
+        # Want to avoid loops at all costs
+
         badpData[badpData == 0] = np.nan
+
         objData = objData * badpData
+
         skyData = skyData * badpData
 
-        #Define the minimum and maximum ranges for the correlation 
-        xMinCorr = (1 * len(objData[0]))*0.0625
-        xMaxCorr = (15 * len(objData[0]))*0.0625
-        yMinCorr = (1 * len(objData))*0.0625
-        yMaxCorr = (15 * len(objData))*0.0625
+        # Define the minimum and maximum ranges for the correlation
 
-        #Write out to new temporary fits files - annoyingly need to have 
-        #the data in fits files to be able to use pyraf functions
-        #######OBJECT##########
+        xMinCorr = (1 * len(objData[0])) * 0.0625
+        xMaxCorr = (15 * len(objData[0])) * 0.0625
+        yMinCorr = (1 * len(objData)) * 0.0625
+        yMaxCorr = (15 * len(objData)) * 0.0625
+
+        # Write out to new temporary fits files - annoyingly need to have
+        # the data in fits files to be able to use pyraf functions
+
+        # OBJECT
+
         objhdu = fits.PrimaryHDU(header=objPrimHeader)
-        objhdu.writeto('maskedObj.fits', clobber=True)
-        fits.append('maskedObj.fits', data=objData, header=objExtHeader)
 
-        #######Sky##########
+        objhdu.writeto('maskedObj.fits',
+                       clobber=True)
+
+        fits.append('maskedObj.fits',
+                    data=objData,
+                    header=objExtHeader)
+
+        # SKY
+
         skyhdu = fits.PrimaryHDU(header=skyPrimHeader)
-        skyhdu.writeto('maskedSky.fits', clobber=True)
-        fits.append('maskedSky.fits', data=skyData, header=skyExtHeader)        
 
+        skyhdu.writeto('maskedSky.fits',
+                       clobber=True)
 
-        #Before attempting the interpolation, we want to mask the bad pixel values, 
-        #and save to a fresh temporary fits file. 
+        fits.append('maskedSky.fits',
+                    data=skyData,
+                    header=skyExtHeader)
 
-        #Loop over all values in the grid, shift the image by this 
+        # Before attempting the interpolation,
+        # we want to mask the bad pixel values,
+        # and save to a fresh temporary fits file.
+        # Loop over all values in the grid, shift the image by this
 
         infileName = 'maskedObj.fits[1]'
 
         print '[INFO]: Shifting: %s %s' % (xArray[0], xArray[1])
 
-        pyraf.iraf.imshift(input=infileName, output='temp_shift.fits', \
-            xshift=xArray[0], yshift=xArray[1], interp_type=interp_type)
-                #re-open the shifted file and compute rho
+        pyraf.iraf.imshift(input=infileName,
+                           output='temp_shift.fits',
+                           xshift=xArray[0],
+                           yshift=xArray[1],
+                           interp_type=interp_type)
 
-        rho = self.crossCorrZeroth('temp_shift.fits', 'maskedSky.fits',\
-          yMinCorr, yMaxCorr, xMinCorr, xMaxCorr)
-        #Tidy up
+        # re-open the shifted file and compute rho
+
+        rho = self.crossCorrZeroth('temp_shift.fits',
+                                   'maskedSky.fits',
+                                   yMinCorr,
+                                   yMaxCorr,
+                                   xMinCorr,
+                                   xMaxCorr)
+
+        # Tidy up
+
         os.system('rm temp_shift.fits')
         os.system('rm maskedObj.fits')
         os.system('rm maskedSky.fits')
 
-        #Return the correlation coefficient
+        # Return the correlation coefficient
+
         print (1.0 / rho)
+
         return (1.0 / rho)
-        
 
+    def minimiseRho(self,
+                    infile,
+                    skyfile,
+                    badpmap,
+                    interp_type):
 
-    def minimiseRho(self, infile, skyfile, badpmap, interp_type):
-        #print 'Hello'
-        #Minimise the function recipShift with respect to x and y
-        #Define the shift starting points
-        x0 = [1.0, 1.0] 
-        minimizer_kwargs = {'method':'Nelder-Mead' ,'args': (infile, skyfile, badpmap, interp_type,)}
+        # Minimise the function recipShift with respect to x and y
+        # Define the shift starting points
 
-        #First Method - using simple downhill simplex 
-        res = minimize(self.shiftImageFirstMin, x0, args=(infile, skyfile, badpmap, interp_type,), \
-         method = 'Nelder-Mead', tol=0.005, options={'disp': True})
+        x0 = [1.0, 1.0]
 
-        #Second method - more suited to a global minimization procedure. Takes longer.
-        #res = basinhopping(self.shiftImageFirstMin, x0, niter=5, stepsize = 0.005, minimizer_kwargs = minimizer_kwargs, disp=True)
-            
+        minimizer_kwargs = {'method': 'Nelder-Mead', 'args': (infile,
+                                                              skyfile,
+                                                              badpmap,
+                                                              interp_type,)}
 
+        # First Method - using simple downhill simplex
+        res = minimize(self.shiftImageFirstMin,
+                       x0,
+                       args=(infile,
+                             skyfile,
+                             badpmap,
+                             interp_type,),
+                       method = 'Nelder-Mead',
+                       tol=0.005,
+                       options={'disp': True})
 
-        #Return the shift array which minimises the inverse correlation coefficient
+        # Return the shift array which minimises
+        # the inverse correlation coefficient
+
         print res.x
+
         return res.x
 
 
-    def shiftImageSegmentsMin(self, ext, infile, skyfile, badpmap,\
-     vertSegments, horSegments, interp_type):
+    def shiftImageSegmentsMin(self,
+                              ext,
+                              infile,
+                              skyfile,
+                              badpmap,
+                              vertSegments,
+                              horSegments,
+                              interp_type):
 
         """
-        Def: 
-        Lots of arguments because of using lots of different functions. 
-        This is taking an object and a sky image, splitting them into a specified 
-        number of segments, performing shifts to each of the segments and then 
-        computing the cross-correlation function to see if we can improve the 
-        alignment at all. Should give better results than a global shift 
+        Def:
+        Lots of arguments because of using lots of different functions.
+        This is taking an object and a sky image,
+        splitting them into a specified
+        number of segments, performing shifts to each of the segments and then
+        computing the cross-correlation function to see if we can improve the
+        alignment at all. Should give better results than a global shift
 
-        Inputs: 
-        infile - file to be divided
-        skyFile - sky image to compare objFile with
-        vertSegments - number of vertical segments (2048 must be divisible by) 
-        horSegments - number of horizontal segments (2048 must be divisible by)
-        ext - extension number
-        interp_type - type of interpolation function for the shift. 
+        Inputs:
+                infile - file to be divided
+                skyFile - sky image to compare objFile with
+                vertSegments - number of vertical segments
+                horSegments - number of horizontal segments
+                ext - extension number
+                interp_type - type of interpolation function for the shift.
 
-            -'nearest': nearest neighbour
-            -'linear':bilinear x,y, interpolation
-            -'poly3':third order interior polynomial
-            -'poly5':fifth order interior polynomial
-            -'spline3':third order spline3
+                    -'nearest': nearest neighbour
+                    -'linear':bilinear x,y, interpolation
+                    -'poly3':third order interior polynomial
+                    -'poly5':fifth order interior polynomial
+                    -'spline3':third order spline3
 
-        stepsize - value to increment grid by each time, increasing 
-        this increases the time taken for the computation 
-        xmin, xmax, ymin, ymax - Grid extremes for brute force shift 
+                stepsize - value to increment grid by each time, increasing
+                this increases the time taken for the computation
+                xmin, xmax, ymin, ymax - Grid extremes for brute force shift
 
         """
-        ########################TO ADD###############################
-        #Make sure that 2048 is divisible by the segment numbers 
 
+        # Create arrays of the split files using the imSplit function
 
-
-        #Create arrays of the split files using the imSplit function 
         objArray = self.imSplit(ext, infile, vertSegments, horSegments)
+
         skyArray = self.imSplit(ext, skyfile, vertSegments, horSegments)
+
         badpArray = self.imSplit(ext, badpmap, vertSegments, horSegments)
 
-        #Find the headers of the primary HDU and chosen extension 
+        # Find the headers of the primary HDU and chosen extension
+
         objTable = fits.open(infile)
+
         objPrimHeader = objTable[0].header
+
         objExtHeader = objTable[ext].header
+
         skyTable = fits.open(skyfile)
+
         skyPrimHeader = skyTable[0].header
+
         skyExtHeader = skyTable[ext].header
+
         badpTable = fits.open(badpmap)
+
         badpPrimHeader = badpTable[0].header
+
         badpExtHeader = badpTable[ext].header
 
         temp = sys.stdout
+
         sys.stdout = open('log.txt', 'w')
+
         print (objPrimHeader)
         print (objExtHeader)
         print (skyPrimHeader)
         print (skyExtHeader)
         print (badpPrimHeader)
         print (badpExtHeader)
+
         sys.stdout.close()
+
         sys.stdout = temp
 
-
         shiftArray = []
-        #Should now have two 1D arrays of 2D arrays of equal size
+
+        # Should now have two 1D arrays of 2D arrays of equal size
+
         for i in range(len(objArray)):
 
-            tempObjName = infile[:-5] + str(vertSegments) + str(horSegments) + str(i) + '_temp.fits'
-            #Write out to new temporary fits files - annoyingly need to have 
-            #the data in fits files to be able to use pyraf functions
-            #######OBJECT##########
+            tempObjName = infile[:-5] + str(vertSegments) + \
+                str(horSegments) + str(i) + '_temp.fits'
+
+            # Write out to new temporary fits files - annoyingly need to have
+            # the data in fits files to be able to use pyraf functions
+
+            # OBJECT
+
             objhdu = fits.PrimaryHDU(header=objPrimHeader)
-            objhdu.writeto(tempObjName, clobber=True)
-            fits.append(tempObjName, data=objArray[i], header=objExtHeader)
 
-            #######SKY#############
+            objhdu.writeto(tempObjName,
+                           clobber=True)
+
+            fits.append(tempObjName,
+                        data=objArray[i],
+                        header=objExtHeader)
+
+            # SKY
+
             skyhdu = fits.PrimaryHDU(header=skyPrimHeader)
-            skyhdu.writeto('tempSky.fits', clobber=True)
-            fits.append('tempSky.fits', data=skyArray[i], header=skyExtHeader)
 
-            #######BADPIXEL#############
+            skyhdu.writeto('tempSky.fits',
+                           clobber=True)
+
+            fits.append('tempSky.fits',
+                        data=skyArray[i],
+                        header=skyExtHeader)
+
+            # BADPIXEL
+
             badphdu = fits.PrimaryHDU(header=badpPrimHeader)
-            badphdu.writeto('tempbadp.fits', clobber=True)
-            fits.append('tempbadp.fits', data=badpArray[i], header=badpExtHeader)
 
-            #Now need to apply the shiftImageFirst function, which compares the chosen 
-            #extension shifted object and sky files. 
-            #Create an array to hold the shift coordinates for each segment. This is defined 
-            #Outside the for loop so that I am not initialising it every time.
+            badphdu.writeto('tempbadp.fits',
+                            clobber=True)
 
-            xMinCorr = (1 * len(objArray[0]))*0.0625
-            xMaxCorr = (15 * len(objArray[0]))*0.0625
-            yMinCorr = (1 * len(objArray[0]))*0.0625
-            yMaxCorr = (15 * len(objArray[0]))*0.0625
+            fits.append('tempbadp.fits',
+                        data=badpArray[i],
+                        header=badpExtHeader)
 
+            # Now need to apply the shiftImageFirst
+            # function, which compares the chosen
+            # extension shifted object and sky files.
+            # Create an array to hold the shift
+            # coordinates for each segment. This is defined
+            # Outside the for loop so that I am not initialising it every time.
+
+            xMinCorr = (1 * len(objArray[0])) * 0.0625
+
+            xMaxCorr = (15 * len(objArray[0])) * 0.0625
+
+            yMinCorr = (1 * len(objArray[0])) * 0.0625
+
+            yMaxCorr = (15 * len(objArray[0])) * 0.0625
 
             print 'Before shifting, the correlation is: %s ' % \
-            (1.0 / self.crossCorrFirst(tempObjName, 'tempSky.fits', yMinCorr, yMaxCorr, xMinCorr, xMaxCorr))
+                (1.0 / self.crossCorrFirst(tempObjName,
+                                           'tempSky.fits',
+                                           yMinCorr,
+                                           yMaxCorr,
+                                           xMinCorr,
+                                           xMaxCorr))
 
             print '[INFO]: This is shift: %s' % i
-            shiftArray.append(self.minimiseRho(tempObjName, 'tempSky.fits', 'tempbadp.fits', interp_type))
 
+            shiftArray.append(self.minimiseRho(tempObjName,
+                                               'tempSky.fits',
+                                               'tempbadp.fits',
+                                               interp_type))
 
+            # Clean up the temporary fits files during each part of the loop
 
-            #Clean up the temporary fits files during each part of the loop 
             os.system('rm %s' % tempObjName)
             os.system('rm tempSky.fits')
             os.system('rm tempbadp.fits')
 
-            #Now just need to vstack all of these arrays and will have a 2048x2048 corrected array
+            # Now just need to vstack all of these arrays
+            # and will have a 2048x2048 corrected array
+
         print shiftArray
-        #apply the shifts to the unmasked infile 
-        #imshift can be used with a list of infile names, outfile names and shift coordinates
-        #create these lists and imshift all at once, read in the data and then recombine
-        #First get the x and y vectors for the shift coordinates
+
+        # apply the shifts to the unmasked infile
+        # imshift can be used with a list of infile names,
+        # outfile names and shift coordinates
+        # create these lists and imshift all at once,
+        # read in the data and then recombine
+        # First get the x and y vectors for the shift coordinates
+
         xArray = []
+
         yArray = []
+
         for item in shiftArray:
+
             xArray.append(item[0])
+
             yArray.append(item[1])
+
         xArray = np.array(np.around(xArray, 3))
-        yArray = np.array(np.around(yArray, 3)) 
-        #Create the .txt file with the two columns specifying the shift coordinates
+
+        yArray = np.array(np.around(yArray, 3))
+
+        # Create the .txt file with the two columns
+        # specifying the shift coordinates
+
         np.savetxt('coords.txt', np.c_[xArray, yArray], fmt=('%5.3f', '%5.3f'))
 
-        #Need to apply the shifts to a masked object file. Open the bad pixel map 
-        #and the object file and mask the pixels and save to temporary file 
-        #Find the coordinates of the bad pixels and the slitlets 
+        # Need to apply the shifts to a masked
+        # object file. Open the bad pixel map
+        # and the object file and mask the pixels and save to temporary file
+        # Find the coordinates of the bad pixels and the slitlets
+
         objData = objTable[ext].data
+
         badpData = badpTable[ext].data
+
         badpData[badpData == 0] = np.nan
+
         objData = objData * badpData
 
-        #Write out to new file which will then be read in to split up the data
+        # Write out to new file which will then
+        # be read in to split up the data
+
         objhdu = fits.PrimaryHDU(header=objPrimHeader)
-        objhdu.writeto('temp_masked.fits', clobber=True)
-        fits.append('temp_masked.fits', data=objData, header=objExtHeader)
 
+        objhdu.writeto('temp_masked.fits',
+                       clobber=True)
 
-        objArray = self.imSplit(1, 'temp_masked.fits', vertSegments, horSegments)
+        fits.append('temp_masked.fits',
+                    data=objData,
+                    header=objExtHeader)
+
+        objArray = self.imSplit(1,
+                                'temp_masked.fits',
+                                vertSegments,
+                                horSegments)
+
         inFileArray = []
+
         outFileArray = []
+
         shiftedDataArray = []
+
         vstackArray = []
+
         hstackArray = []
 
+        # Should now have two 1D arrays of 2D arrays of equal size
 
-        #Should now have two 1D arrays of 2D arrays of equal size
         for i in range(len(objArray)):
 
-            inFileName = 'tempObjin'+str(i)+'.fits'
-            outFileName = 'tempObjout'+str(i)+'.fits'
+            inFileName = 'tempObjin' + str(i) + '.fits'
+
+            outFileName = 'tempObjout' + str(i) + '.fits'
+
             inFileArray.append(inFileName)
+
             outFileArray.append(outFileName)
 
-            #Write out to new temporary fits files - annoyingly need to have 
-            #the data in fits files to be able to use pyraf functions
-            #######OBJECT##########
+            # Write out to new temporary fits files - annoyingly need to have
+            # the data in fits files to be able to use pyraf functions
+
+            # OBJECT
+
             objhdu = fits.PrimaryHDU(header=objPrimHeader)
-            objhdu.writeto(inFileName, clobber=True)
-            fits.append(inFileName, data=objArray[i], header=objExtHeader)
+
+            objhdu.writeto(inFileName,
+                           clobber=True)
+
+            fits.append(inFileName,
+                        data=objArray[i],
+                        header=objExtHeader)
 
             inFileName = inFileName + '[1]'
 
+            # Now apply imshift with all the parameters
+            pyraf.iraf.imshift(input=inFileName,
+                               output=outFileName,
+                               xshift=xArray[i],
+                               yshift=yArray[i],
+                               interp_type=interp_type)
 
-            #Now apply imshift with all the parameters 
-            pyraf.iraf.imshift(input = inFileName, output=outFileName, \
-                xshift=xArray[i], yshift=yArray[i] ,interp_type=interp_type)
+            # We want a 1D array of 2D arrays again,
+            # read the data files back in
 
-
-            #We want a 1D array of 2D arrays again, read the data files back in 
             data = fits.open(outFileName)
-            data = data[0].data
-            shiftedDataArray.append(data)
-            #Go back to the top of the loop and grab the next file
 
-        #The final problem is that we have a 1D arrays of 2D arrays that needs 
-        #to be recombined into the original 2048 x 2048 which created it 
-        #Ordering depends on the number of vertical and horizontal segments 
- 
-        x = len(shiftedDataArray) / horSegments 
-        a = 0 
+            data = data[0].data
+
+            shiftedDataArray.append(data)
+
+            # Go back to the top of the loop and grab the next file
+
+        # The final problem is that we have a 1D arrays of 2D arrays that needs
+        # to be recombined into the original 2048 x 2048 which created it
+        # Ordering depends on the number of vertical and horizontal segments
+
+        x = len(shiftedDataArray) / horSegments
+
+        a = 0
 
         while x <= len(shiftedDataArray):
-            for i in range(a, x): 
+
+            for i in range(a, x):
+
                 print i
+
                 hstackArray.append(shiftedDataArray[i])
 
             vstackArray.append(np.hstack(hstackArray))
-            hstackArray = []
-            x += len(shiftedDataArray) / horSegments
-            a += len(shiftedDataArray) / horSegments
-            
 
-        #for item in vstackArray:
-            #print item.shape   
-        #Reconstruct by vstacking the final array   
+            hstackArray = []
+
+            x += len(shiftedDataArray) / horSegments
+
+            a += len(shiftedDataArray) / horSegments
+
+        # Reconstruct by vstacking the final array
+
         reconstructedData = np.vstack(vstackArray)
 
-        #Clean up by getting rid of uneeded files
+        # Clean up by getting rid of uneeded files
+
         for item in inFileArray:
+
             os.system('rm %s' % item)
+
         for item in outFileArray:
+
             os.system('rm %s' % item)
-        os.system('rm coords.txt')  
+
+        os.system('rm coords.txt')
         os.system('rm temp_masked.fits')
         os.system('rm log.txt')
 
         return reconstructedData, shiftArray
 
-
-
-    def shiftAllExtensionsMin(self, infile, skyfile, badpmap,\
-     vertSegments, horSegments, interp_type):
+    def shiftAllExtensionsMin(self,
+                              infile,
+                              skyfile,
+                              badpmap,
+                              vertSegments,
+                              horSegments,
+                              interp_type):
 
         """
-        Def: Uses the shiftImageSegments method for each extensions and then combines
-        all of these together into a single shifted fits file 
+        Def:
+        Uses the shiftImageSegments method for
+        each extensions and then combines
+        all of these together into a single shifted fits file
+
+        Inputs:
+                infile - file to be divided
+                skyFile - sky image to compare objFile with
+                vertSegments - number of vertical segments
+                horSegments - number of horizontal segments
+                ext - extension number
+                interp_type - type of interpolation function for the shift.
+
+                    -'nearest': nearest neighbour
+                    -'linear':bilinear x,y, interpolation
+                    -'poly3':third order interior polynomial
+                    -'poly5':fifth order interior polynomial
+                    -'spline3':third order spline3
+
+                stepsize - value to increment grid by each time, increasing
+                        this increases the time taken for the computation
+                xmin, xmax, ymin, ymax - Grid extremes for brute force shift
+
+        Output:
+                infile_Shifted.fits - containing all three shifted extensions
 
         """
-        #First do the extra masking of the whole infile, this saves as masked_infile.fits 
+        # First do the extra masking of the whole infile,
+        # this saves as masked_infile.fits
+
         self.maskExtraPixels(infile, badpmap)
-        #Prepare the headers for writing out the fits file
+
+        # Prepare the headers for writing out the fits file
+
         objTable = fits.open('masked_infile.fits')
+
         objPrimHeader = objTable[0].header
+
         objExtHeader1 = objTable[1].header
+
         objExtHeader2 = objTable[2].header
+
         objExtHeader3 = objTable[3].header
 
         temp = sys.stdout
+
         sys.stdout = open('log.txt', 'w')
+
         print (objPrimHeader)
         print (objExtHeader1)
         print (objExtHeader2)
-        print (objExtHeader3)                       
+        print (objExtHeader3)
+
         sys.stdout.close()
+
         sys.stdout = temp
 
-        #Set up the array 
+        # Set up the array
+
         reconstructedDataArray = []
+
         ShiftArrayList = []
 
-        #Use the shifted image segment function 
+        # Use the shifted image segment function
+
         for i in range(1, 4):
+
             print '[INFO]: Shifting Extension: %s' % i
-            reconstructedData, shiftArray = self.shiftImageSegmentsMin(i, 'masked_infile.fits', skyfile, badpmap,\
-     vertSegments, horSegments, interp_type)
+
+            reconstructedData, shiftArray = \
+                self.shiftImageSegmentsMin(i,
+                                           'masked_infile.fits',
+                                           skyfile,
+                                           badpmap,
+                                           vertSegments,
+                                           horSegments,
+                                           interp_type)
+
             reconstructedDataArray.append(reconstructedData)
+
             ShiftArrayList.append(shiftArray)
-        
-        #Name the shifted data file 
-        shiftedName = infile[:-5] + '_' + str(vertSegments) + str(horSegments) + '_Shifted.fits' 
+
+        # Name the shifted data file
+        shiftedName = infile[:-5] + '_' + str(vertSegments) + \
+            str(horSegments) + '_Shifted.fits'
+
         print 'Saving %s' % shiftedName
 
         objhdu = fits.PrimaryHDU(header=objPrimHeader)
-        objhdu.writeto(shiftedName, clobber=True)
-        fits.append(shiftedName, data=reconstructedDataArray[0], header=objExtHeader1)
-        fits.append(shiftedName, data=reconstructedDataArray[1], header=objExtHeader2)
-        fits.append(shiftedName, data=reconstructedDataArray[2], header=objExtHeader3)
+
+        objhdu.writeto(shiftedName,
+                       clobber=True)
+
+        fits.append(shiftedName,
+                    data=reconstructedDataArray[0],
+                    header=objExtHeader1)
+
+        fits.append(shiftedName,
+                    data=reconstructedDataArray[1],
+                    header=objExtHeader2)
+
+        fits.append(shiftedName,
+                    data=reconstructedDataArray[2],
+                    header=objExtHeader3)
 
         os.system('rm masked_infile.fits')
 
         return ShiftArrayList
 
-
-    def applyShiftAllExtensionsMin(self, fileList, badpmap,\
-     vertSegments, horSegments, interp_type):
-
-        #Check for existence of masked_infile 
-        if os.path.isfile('masked_infile.fits'):
-            os.system('rm masked_infile.fits')
-        #Read in the data from the fileList
-        data = np.genfromtxt(fileList, dtype='str')
-        #Save the names and types as lists 
-        names = data[0:,0]
-        types = data[0:,1]
-        shiftList = []
-        #Loop round all names and apply the computeOffsetSegments method
-        for i in range(1, len(names)):
-            if types[i] == 'O':
-                objFile = names[i]
-                if i == 1:
-                    skyFile = names[i + 1]
-                elif types[i - 1] == 'S':
-                    skyFile = names[i - 1]
-                else:
-                    skyFile = names[i + 1]
-
-                print '[INFO]: Shifting file: %s : %s' % (i, objFile)   
-                #Now use the method defined within this class 
-                #Do additional masking before starting the shift 
-                shiftList.append(self.shiftAllExtensionsMin(objFile, skyFile, badpmap,\
-                        vertSegments, horSegments, interp_type))
-                #Which will loop through all and save the corrected object file 
-                #as objectFile_Corrected.fits. These are then fed through the pipeline.
-        saveName = 'Shift_Coords.txt' 
-        print shiftList
-        g = []
-        for entry in shiftList:
-            g.append(np.hstack(entry))
-        h = np.vstack(g)    
-        np.savetxt(saveName, h, fmt='%10.5f')
-
-    #Write a function for masking the additional bad pixels before feeding to Pyraf 
-    def maskExtraPixels(self, infile, badpixel_dark):
+    def applyShiftAllExtensionsMin(self,
+                                   fileList,
+                                   badpmap,
+                                   vertSegments,
+                                   horSegments,
+                                   interp_type):
         """
         Def:
-        Take an input raw data file and mask extra bad pixels above a certain flux level. 
-        Although these aren't included in the cross correlation computation, they mess up the 
-        pyraf interpolation, appearing as funny blobs. Depending on which waveband is fed in, 
-        need to be careful about thermal signals on the detector. 
-        Input: file - fits file to identify the extra bad pixels in 
-        Output: overwrite the file with a version of the fits file with the bad pixels masked. It is 
-        important that this is local to the shiftImage method and that we are not overwriting any of the  
-        raw fits files.  
-        """
-        #First read in the fits file and find which waveband is being used 
-        objTable = fits.open(infile)
-        darkTable = fits.open(badpixel_dark)
-        objHeader = objTable[0].header
-        objHeader_one = objTable[1].header
-        objHeader_two = objTable[2].header
-        objHeader_three = objTable[3].header 
-        objFilter = objHeader['HIERARCH ESO INS FILT1 ID']
-        new_obj_data = []
-        new_obj_copy = []
-        #Loop over the extension number 
-        for i in range(1, 4):
-            #assign both the object data and object data copies
-            objData = objTable[i].data
-            darkData = darkTable[i].data
-            #Mask the bad pixels we already know about before starting
-            darkData[darkData == 0] = np.nan
-            objCopy = copy(objData)
-            objCopy = objCopy * darkData            
-            #First subtract thermal spectrum 
-            if objFilter == 'K' or objFilter == 'HK':
-                print 'FOUND K or HK'
-                #Need to subtract the thermal spectrum from these wavebands 
-                #Use the blackbody function defined beneath 
-                black_flux = [] 
-                black_flux_2d = []
-                #HARDWIRED K-BAND STARTING WAVELENGTH
-                start_L = 1.92499995231628
-                delta_L = 0.000280761742033064
-                #define wavelength array 
-                wave_array = start_L + np.arange(0, 2048*(delta_L), delta_L)
-                #for each of the values in the wavelength array evaluate the blackbody
-                for i in range(len(wave_array)):
-                    #append the evaluated blackbody to the black_flux array 
-                    black_flux.append(self.blackbody(250, 17.8, wave_array[i] * 1E-6))
-                black_flux = np.array(black_flux)
-                black_flux = black_flux[::-1]
-                #Create 2D detector array of the blackbody spectrum 
-                for i in range(2048):
-                    black_flux_2d.append(black_flux)
-                black_flux_2d = np.array(black_flux_2d)
-                black_flux_2d = np.transpose(black_flux_2d)
-                #Now have 2D thermal spectrum rising in the K-band with the same dimensions as detector 
-                #Subtract this from the objCopy
-                objCopy = objCopy - black_flux_2d
-            #Now continue with additional masking as before
-            #Point is to identify the extra bad pixels on the object copy and then mask on the actual object and save
-            #Initialise i_array and j_array for storing the bad pixel coordinates 
-            i_array = []
-            j_array = []
-            #Can't loop over all pixels as this takes too long 
-            #Also only looking for the very worst pixels to mask
-            print 'This is the percentile: %s %s %s' % (np.nanpercentile(objCopy, 99.9), np.nanpercentile(objCopy, 99.99), np.nanpercentile(objCopy, 99.999))
-            index = np.where(objCopy > (np.nanpercentile(objCopy, 99.9)))
-            coords = np.array(index)
-            print len(coords[0])
-#           #returns a tuple - turn into a numpy array
-#           for i in range(2048):
-#               print i
-#               for j in range(2048):
-#                   print i, j
-#                   if objCopy[i][j] > np.percentile(objCopy, 99) and not (np.nanmedian(objCopy[i] > np.percentile(objCopy, 90))):
-#                       i_array.append(i)
-#                       j_array.append(j)
+        Apply the shift all extensions min method to a list of files
 
-            #Now mask these pixels on the actual data 
+        Input:
+                fileList - txt file containing the object name in the first
+                            column and ocs.arm1.type in second column
+                badpmap - badpixel map produced by pipeline
+                vertSegments - how many vertical segments for the shift
+                horSegments - how many horizontal segments for the shift
+                interp_type - type of interpolation function for the shift.
+
+                    -'nearest': nearest neighbour
+                    -'linear':bilinear x,y, interpolation
+                    -'poly3':third order interior polynomial
+                    -'poly5':fifth order interior polynomial
+                    -'spline3':third order spline3
+        Output:
+                infiles_Shifted.fits - with shifts applied to all extensions
+        """
+
+        # Check for existence of masked_infile
+
+        if os.path.isfile('masked_infile.fits'):
+
+            os.system('rm masked_infile.fits')
+
+        # Read in the data from the fileList
+
+        data = np.genfromtxt(fileList, dtype='str')
+
+        # Save the names and types as lists
+
+        names = data[0:, 0]
+
+        types = data[0:, 1]
+
+        shiftList = []
+
+        # Loop round all names and apply the computeOffsetSegments method
+
+        for i in range(1, len(names)):
+
+            if types[i] == 'O':
+
+                objFile = names[i]
+
+                if i == 1:
+
+                    skyFile = names[i + 1]
+
+                elif types[i - 1] == 'S':
+
+                    skyFile = names[i - 1]
+
+                else:
+
+                    skyFile = names[i + 1]
+
+                print '[INFO]: Shifting file: %s : %s' % (i, objFile)
+
+                # Now use the method defined within this class
+                # Do additional masking before starting the shift
+
+                shiftList.append(self.shiftAllExtensionsMin(objFile,
+                                                            skyFile,
+                                                            badpmap,
+                                                            vertSegments,
+                                                            horSegments,
+                                                            interp_type))
+
+                # Which will loop through all and save
+                # the corrected object file
+                # as objectFile_Corrected.fits. These are then
+                # fed through the pipeline.
+
+        saveName = 'Shift_Coords.txt'
+
+        print shiftList
+
+        g = []
+
+        for entry in shiftList:
+
+            g.append(np.hstack(entry))
+
+        h = np.vstack(g)
+
+        np.savetxt(saveName, h, fmt='%10.5f')
+
+    def maskExtraPixels(self,
+                        infile,
+                        badpixel_dark):
+
+        """
+        Def:
+        Take an input raw data file and mask extra
+        bad pixels above a certain flux level.
+        Although these aren't included in the cross
+        correlation computation, they mess up the
+        pyraf interpolation, appearing as funny blobs.
+        Depending on which waveband is fed in,
+        need to be careful about thermal signals on the detector.
+
+        Input:
+                infile - fits file to identify the extra bad pixels in
+
+        Output:
+                overwrite the file with a version of the
+                    fits file with the bad pixels masked. It is
+                    important that this is local to the shiftImage method
+                     and that we are not overwriting any of the raw fits files.
+        """
+
+        # First read in the fits file and find which waveband is being used
+
+        objTable = fits.open(infile)
+
+        darkTable = fits.open(badpixel_dark)
+
+        objHeader = objTable[0].header
+
+        objHeader_one = objTable[1].header
+
+        objHeader_two = objTable[2].header
+
+        objHeader_three = objTable[3].header
+
+        objFilter = objHeader['HIERARCH ESO INS FILT1 ID']
+
+        new_obj_data = []
+
+        new_obj_copy = []
+
+        # Loop over the extension number
+
+        for i in range(1, 4):
+
+            # assign both the object data and object data copies
+
+            objData = objTable[i].data
+
+            darkData = darkTable[i].data
+
+            # Mask the bad pixels we already know about before starting
+
+            darkData[darkData == 0] = np.nan
+
+            objCopy = copy(objData)
+
+            objCopy = objCopy * darkData
+
+            # First subtract thermal spectrum
+
+            if objFilter == 'K' or objFilter == 'HK':
+
+                print 'FOUND K or HK'
+
+                # Need to subtract the thermal spectrum from these wavebands
+                # Use the blackbody function defined beneath
+
+                black_flux = []
+
+                black_flux_2d = []
+
+                # HARDWIRED K-BAND STARTING WAVELENGTH
+
+                start_L = 1.92499995231628
+
+                delta_L = 0.000280761742033064
+
+                # define wavelength array
+
+                wave_array = start_L + np.arange(0, 2048 * (delta_L), delta_L)
+
+                # for each of the values in the wavelength
+                # array evaluate the blackbody
+
+                for i in range(len(wave_array)):
+
+                    # append the evaluated blackbody to the black_flux array
+
+                    black_flux.append(self.blackbody(250,
+                                                     17.8,
+                                                     wave_array[i] * 1E-6))
+
+                black_flux = np.array(black_flux)
+
+                black_flux = black_flux[::-1]
+
+                # Create 2D detector array of the blackbody spectrum
+
+                for i in range(2048):
+
+                    black_flux_2d.append(black_flux)
+
+                black_flux_2d = np.array(black_flux_2d)
+
+                black_flux_2d = np.transpose(black_flux_2d)
+
+                # Now have 2D thermal spectrum rising in
+                # the K-band with the same dimensions as detector
+                # Subtract this from the objCopy
+
+                objCopy = objCopy - black_flux_2d
+
+            # Now continue with additional masking as before
+            # Point is to identify the extra bad pixels on the
+            # object copy and then mask on the actual object and save
+            # Initialise i_array and j_array for
+            # storing the bad pixel coordinates
+
+            i_array = []
+
+            j_array = []
+
+            # Can't loop over all pixels as this takes too long
+            # Also only looking for the very worst pixels to mask
+
+            print 'This is the percentile: %s %s %s' % \
+                (np.nanpercentile(objCopy, 99.9),
+                 np.nanpercentile(objCopy, 99.99),
+                 np.nanpercentile(objCopy, 99.999))
+
+            index = np.where(objCopy > (np.nanpercentile(objCopy, 99.9)))
+
+            coords = np.array(index)
+
+            print len(coords[0])
+
+            # Now mask these pixels on the actual data
+
             for i, j in zip(coords[0], coords[1]):
+
                 print i, j
-                #Check that the indices will be in range 
-                if i >= 4 and i <=2043 and j >= 4 and j <= 2043:
-                    #Take the average of the surrounding pixels - if unusually high don't mask
-                    #Taking a more horizontally extended chunk to check for the presence of sky lines 
-                    pixAv = np.nanmean( [objCopy[i - 2][j], objCopy[i - 3][j], objCopy[i - 4][j], \
-                                        objCopy[i + 2][j], objCopy[i + 3][j], objCopy[i + 4][j], \
-                                        objCopy[i - 2][j + 1], objCopy[i - 2][j - 1], objCopy[i - 1][j + 1], objCopy[i - 1][j - 1], \
-                                        objCopy[i + 2][j + 1], objCopy[i + 2][j - 1], objCopy[i + 1][j + 1], objCopy[i + 1][j - 1]])
-                    print 'PixAv and percentile: %s %s' % (pixAv, np.nanpercentile(objCopy, 95)) 
+
+                # Check that the indices will be in range
+                if i >= 4 and i <= 2043 and j >= 4 and j <= 2043:
+
+                    # Take the average of the surrounding
+                    # pixels - if unusually high don't mask
+                    # Taking a more horizontally extended
+                    # chunk to check for the presence of sky lines
+
+                    pixAv = np.nanmean([objCopy[i - 2][j],
+                                        objCopy[i - 3][j],
+                                        objCopy[i - 4][j],
+                                        objCopy[i + 2][j],
+                                        objCopy[i + 3][j],
+                                        objCopy[i + 4][j],
+                                        objCopy[i - 2][j + 1],
+                                        objCopy[i - 2][j - 1],
+                                        objCopy[i - 1][j + 1],
+                                        objCopy[i - 1][j - 1],
+                                        objCopy[i + 2][j + 1],
+                                        objCopy[i + 2][j - 1],
+                                        objCopy[i + 1][j + 1],
+                                        objCopy[i + 1][j - 1]])
+
+                    print 'PixAv and percentile: %s %s' % \
+                        (pixAv, np.nanpercentile(objCopy, 95))
+
                     if pixAv < np.nanpercentile(objCopy, 95):
+
                         print 'YES - Adding to mask'
-                        #Append these coordinates to an array and do all the masking at the end
+
+                        # Append these coordinates to an
+                        # array and do all the masking at the end
+
                         i_array.append(i)
+
                         j_array.append(j)
 
-            #Do the actual masking
+            # Do the actual masking
+
             for i, j in zip(i_array, j_array):
+
                 print 'Masking %s %s' % (i, j)
-                #Mask off a cross around the offending pixel
+
+                # Mask off a cross around the offending pixel
+
                 objData[i][j] = np.nan
+
                 objData[i + 1][j] = np.nan
+
                 objData[i - 1][j] = np.nan
+
                 objData[i][j - 1] = np.nan
+
                 objData[i][j + 1] = np.nan
 
-                #For test also mask off the copy
+                # For test also mask off the copy
+
                 objCopy[i][j] = np.nan
+
                 objCopy[i + 1][j] = np.nan
+
                 objCopy[i - 1][j] = np.nan
+
                 objCopy[i][j - 1] = np.nan
-                objCopy[i][j + 1] = np.nan                          
-    
-            #Also mask all of the most extreme pixels
+
+                objCopy[i][j + 1] = np.nan
+
+            # Also mask all of the most extreme pixels
+
             worst_index = np.where(objCopy > 15000)
+
             coords = np.array(worst_index)
+
             for i, j in zip(coords[0], coords[1]):
-                #Mask off the cross again for the worst pixels
+
+                # Mask off the cross again for the worst pixels
+
                 objData[i][j] = np.nan
+
                 objData[i + 1][j] = np.nan
+
                 objData[i - 1][j] = np.nan
+
                 objData[i][j - 1] = np.nan
+
                 objData[i][j + 1] = np.nan
 
             new_obj_data.append(objData)
+
             new_obj_copy.append(objCopy)
+
         temp = sys.stdout
+
         sys.stdout = open('log.txt', 'w')
+
         print objHeader
         print objHeader_one
         print objHeader_two
         print objHeader_three
+
         sys.stdout.close()
+
         sys.stdout = temp
 
-        #Write out to a different fits file, with name user specified
-        nameOfFile = 'masked_infile.fits'  
+        # Write out to a different fits file
+        nameOfFile = 'masked_infile.fits'
+
         hdu = fits.PrimaryHDU(header=objHeader)
-        hdu.writeto(nameOfFile, clobber=True)
-        fits.append(nameOfFile, data=new_obj_data[0], header=objHeader_one) 
-        fits.append(nameOfFile, data=new_obj_data[1], header=objHeader_two) 
-        fits.append(nameOfFile, data=new_obj_data[2], header=objHeader_three)
 
-#       #Write out to a different fits file, with name user specified
-#       nameOfFile = 'test_Copy.fits'  
-#       hdu = fits.PrimaryHDU(header=objHeader)
-#       hdu.writeto(nameOfFile, clobber=True)
-#       fits.append(nameOfFile, data=new_obj_copy[0], header=objHeader_one) 
-#       fits.append(nameOfFile, data=new_obj_copy[1], header=objHeader_two) 
-#       fits.append(nameOfFile, data=new_obj_copy[2], header=objHeader_three)
-#       os.system('rm log.txt')
+        hdu.writeto(nameOfFile,
+                    clobber=True)
 
-    def blackbody(self, T, scaling, L):
+        fits.append(nameOfFile,
+                    data=new_obj_data[0],
+                    header=objHeader_one)
+
+        fits.append(nameOfFile,
+                    data=new_obj_data[1],
+                    header=objHeader_two)
+
+        fits.append(nameOfFile,
+                    data=new_obj_data[2],
+                    header=objHeader_three)
+
+    def blackbody(self,
+                  T,
+                  scaling,
+                  L):
+
         """
         Def:
         Return the blackbody function
-        """
-        #Define constants before writing the function 
-        h = 6.62606957E-34
-        c = 299792458
-        k = 1.3806488E-23
-        #Initially try a temperature of 10K
-        #T = 10
 
-        preFactor = (2 * h * c**2) / L**5
-        #print 'This is the pre-factor: %s' % preFactor
+        Input:
+                T - temperature of KMOS detector
+                scaling - some blackbody scaling value
+                L
+
+        Output:
+                evaluated blackbody function using these parameters
+        """
+
+        # Define constants before writing the function
+
+        h = 6.62606957E-34
+
+        c = 299792458
+
+        k = 1.3806488E-23
+
+        # Initially try a temperature of 10K
+
+        # T = 10
+
+        preFactor = (2 * h * c ** 2) / L ** 5
+
+        # print 'This is the pre-factor: %s' % preFactor
+
         expPower = (h * c) / (L * k * T)
-        #print 'This is the exponent: %s' % expPower
+
+        # print 'This is the exponent: %s' % expPower
+
         denom = np.exp(expPower) - 1
-        #print 'This is the denominator: %s' % denom
-        B_L = scaling * (preFactor / denom) 
+
+        # print 'This is the denominator: %s' % denom
+
+        B_L = scaling * (preFactor / denom)
+
         return B_L
 
     def blackbodyMod(self):
-        mod = Model(self.blackbody, independent_vars=['L'], param_names=['T', 'scaling'], missing='drop')
-        #print mod.independent_vars
-        #print mod.param_names
-        
+        """
+        Def:
+        Create a blackbody model with lmfit
+
+        Output:
+                blackbody model
+        """
+
+        mod = Model(self.blackbody,
+                    independent_vars=['L'],
+                    param_names=['T', 'scaling'],
+                    missing='drop')
+
         return mod
 
-    def blackbodyModFit(self, wavelength, flux):
+    def blackbodyModFit(self,
+                        wavelength,
+                        flux):
+
         """
         Def:
-        Fit for the blackbody temperature given input wavelength array and flux data
+        Fit for the blackbody temperature given
+        input wavelength array and flux data
+
+        Input:
+                wavelength - wavelength array
+                flux - flux values at the wavelength points
         """
+
         mod = self.blackbodyMod()
-        #Set the parameter hints from the initialPars method 
+
+        # Set the parameter hints from the initialPars method
+
         mod.set_param_hint('T', value=120, vary=False)
+
         mod.set_param_hint('scaling', value=1E9)
-        #Initialise a parameters object to use in the fit
+
+        # Initialise a parameters object to use in the fit
+
         fit_pars = mod.make_params()
-        #Guess isn't implemented for this model 
+
+        # Guess isn't implemented for this model
+
         mod_fit = mod.fit(flux, L=wavelength, params=fit_pars)
+
         print mod_fit.fit_report
+
         return mod_fit
 
+    def quickSpecPlot(self,
+                      flux,
+                      wavelength):
 
-##########################################################################################################################
-##########################################################################################################################
-#                          ALTERNATE SET OF FUNCTIONS USING MINIMISATION INSTEAD OF GRIDSEARCH                           #
-##########################################################################################################################
-##########################################################################################################################
-
-
-    #Apply the 
-    def applySubtraction(self, fileList):
-        """
-        Def: 
-        Apply the subframes method to a list of files
-
-        Input: fileList - list of files, where the top line is 
-        the name and type, the two columns and the name of the file 
-        and either O for object and S for sky. 
-
-        Output: List of subtracted files saved in the object directory 
-        """
-        #Read in the data from the fileList
-        data = np.genfromtxt(fileList, dtype='str')
-        #Save the names and types as lists 
-        names = data[0:,0]
-        #print names
-        types = data[0:,1]
-        #Loop round all names and apply the computeOffsetSegments method
-        for i in range(1, len(names)):
-            if types[i] == 'O':
-                objFile = names[i]
-                if i == 1:
-                    skyFile = names[i + 1]
-                elif types[i - 1] == 'S':
-                    skyFile = names[i - 1]
-                else:
-                    skyFile = names[i + 1]
-
-                print '[INFO]: Subbing file: %s : ' %  objFile  
-                #Now use the method defined within this class 
-                self.subFrames(objFile, skyFile)
-                #Which will loop through all and save the corrected object file 
-                #as objectFile_Corrected.fits. These are then fed through the pipeline.
-
-    def quickSpecPlot(self, flux, wavelength):
         """
         Def:
-        Helper function to quickly plot a spectrum given a 
-        flux and a wavelength 
-        Input: Flux, wavlength 1D arrays 
-        Output: Plot of 1D spectrum 
+        Helper function to quickly plot a spectrum given a
+        flux and a wavelength
+        Input: Flux, wavlength 1D arrays
+        Output: Plot of 1D spectrum
 
         """
-        fig, ax = plt.subplots(1,1, figsize=(18, 10))
+
+        fig, ax = plt.subplots(1, 1, figsize=(18, 10))
         ax.plot(wavelength, flux)
         ax.set_title('Object and Sky Comparison', fontsize=24)
         ax.set_xlabel(r'Wavelength$\AA$')
@@ -2629,612 +4032,996 @@ class pipelineOps(object):
         ax.tick_params(axis='y', which='major', labelsize=15)
         plt.show()
 
-
-    def compareSky(self, sci_dir, combNames):
-        """
-        Def: 
-        From an input sky cube and set of sci_combined file names, 
-        work out the median difference between the bright sky lines  
-        and the corresponding object pixels 
-
-        Input: skyCube - Any reconstructed skyCube only filename 
-               combNames - List of the sci_combined names 
-
-        Ouptut: medianVal - median difference between the sky and object values 
+    def compareSky(self,
+                   sci_dir,
+                   combNames):
 
         """
+        Def:
+        From an input sky cube and set of sci_combined file names,
+        work out the median difference between the bright sky lines
+        and the corresponding object pixels
 
- 
-        #The combNames should be generated from within the Next routine
+        Input: skyCube - Any reconstructed skyCube only filename
+               combNames - List of the sci_combined names
+
+        Ouptut: medianVal - median difference between the sky and object values
+
+        """
+
+        # The combNames should be generated from within the Next routine
         namesOfFiles = np.genfromtxt(combNames, dtype='str')
-        #Initialise an empty dictionary 
-        medVals = {}
-        cubeNames = {}
-        #Loop round each of the cubes in combNames, create a cube 
-        #and store the median 
-        print '[INFO:] Computing Sky Performance Statistic'
-        for fileName in namesOfFiles:
-            #print fileName
-            tempCube = cubeOps(sci_dir + '/' + fileName)
-            IFUNR = tempCube.IFUNR
-            #print IFUNR
-            sky_name = sci_dir + '/combine_sci_reconstructed_arm' + str(IFUNR) + '_sky.fits'
-            #Create instance from the skycube 
-            sky_cube = cubeOps(sky_name)
-            #Extract the sky flux
-            sky_flux = sky_cube.centralSpec()
-            wavelength = sky_cube.wave_array
-            #print 'This is the sky wavelength range: %s %s' % (min(wavelength), max(wavelength))
-            #There is a sky_flux value at every wavelength value 
-            #Want to restrict the data to just the inner regions of the filter 
-            #This has to be done conditionally depending on what waveband we're in
-            if np.nanmedian(wavelength) > 1.40 and np.nanmedian(wavelength) < 1.80:
-                #we're in the H-band
-                filter_indices = np.where(np.logical_and(wavelength > 1.45, wavelength < 1.75))[0]
-                sky_flux = sky_flux[filter_indices]
-                wavelength = wavelength[filter_indices]
-            elif np.nanmedian(wavelength) > 2.0 and np.nanmedian(wavelength) < 2.3:
-                #we're in the K-band
-                filter_indices = np.where(np.logical_and(wavelength > 2.0, wavelength < 2.3))[0]
-                sky_flux = sky_flux[filter_indices] 
-                wavelength = wavelength[filter_indices]
-            elif np.nanmedian(wavelength) > 1.00 and np.nanmedian(wavelength) < 1.35:
-            #we're in the =J-band
-                filter_indices = np.where(np.logical_and(wavelength > 1.05, wavelength < 1.35))[0]
-                sky_flux = sky_flux[filter_indices]
-                wavelength = wavelength[filter_indices]
-            elif np.nanmedian(wavelength) > 1.8 and np.nanmedian(wavelength) < 2.1:
-            #we're in the HK band
-                filter_indices = np.where(np.logical_and(wavelength > 1.6, wavelength < 2.3))[0]
-                sky_flux = sky_flux[filter_indices]
-                wavelength = wavelength[filter_indices]
-            #Could be a different wavelength, will just leave the flux and wavelength unchanged right now 
 
-            #Temporarily plot sky flux 
-            #self.quickSpecPlot(flux, sky_cube.wave_array)
-            #Check for where the flux exceeds a certain number of counts 
+        # Initialise an empty dictionary
+        medVals = {}
+
+        cubeNames = {}
+
+        # Loop round each of the cubes in combNames, create a cube
+        # and store the median
+        print '[INFO:] Computing Sky Performance Statistic'
+
+        for fileName in namesOfFiles:
+
+            # print fileName
+            tempCube = cubeOps(sci_dir + '/' + fileName)
+
+            IFUNR = tempCube.IFUNR
+
+            # print IFUNR
+            sky_name = sci_dir + '/combine_sci_reconstructed_arm' \
+                + str(IFUNR) + '_sky.fits'
+
+            # Create instance from the skycube
+            sky_cube = cubeOps(sky_name)
+
+            # Extract the sky flux
+            sky_flux = sky_cube.centralSpec()
+
+            wavelength = sky_cube.wave_array
+
+            # print 'This is the sky wavelength
+            # range: %s %s' % (min(wavelength), max(wavelength))
+            # There is a sky_flux value at every wavelength value
+            # Want to restrict the data to just the
+            # inner regions of the filter. This has to be done conditionally
+            # depending on what waveband we're in
+
+            if np.nanmedian(wavelength) > 1.40 \
+                    and np.nanmedian(wavelength) < 1.80:
+
+                # we're in the H-band
+
+                filter_indices = np.where(np.logical_and(wavelength > 1.45,
+                                                         wavelength < 1.75))[0]
+
+                sky_flux = sky_flux[filter_indices]
+
+                wavelength = wavelength[filter_indices]
+
+            elif np.nanmedian(wavelength) > 2.0 \
+                    and np.nanmedian(wavelength) < 2.3:
+
+                # we're in the K-band
+
+                filter_indices = np.where(np.logical_and(wavelength > 2.10,
+                                                         wavelength < 2.3))[0]
+
+                sky_flux = sky_flux[filter_indices]
+
+                wavelength = wavelength[filter_indices]
+
+            elif np.nanmedian(wavelength) > 1.00 \
+                    and np.nanmedian(wavelength) < 1.35:
+
+                # we're in the =J-band
+
+                filter_indices = np.where(np.logical_and(wavelength > 1.05,
+                                                         wavelength < 1.35))[0]
+
+                sky_flux = sky_flux[filter_indices]
+
+                wavelength = wavelength[filter_indices]
+
+            elif np.nanmedian(wavelength) > 1.8 \
+                    and np.nanmedian(wavelength) < 2.1:
+
+                # we're in the HK band
+
+                filter_indices = np.where(np.logical_and(wavelength > 1.6,
+                                                         wavelength < 2.3))[0]
+
+                sky_flux = sky_flux[filter_indices]
+
+                wavelength = wavelength[filter_indices]
+
+            # Could be a different wavelength, will just
+            # leave the flux and wavelength unchanged right now
+            # Check for where the flux exceeds a certain number of counts
             emission_indices = np.where(sky_flux > 1000)[0]
-            #print 'initially the emission_indices have value: %s' % emission_indices 
-            #Grow the emission_indices to include values either side of each > 500 index 
+            # print emission_indices
+
+            # print 'initially the emission_indices
+            # have value: %s' % emission_indices
+            # Grow the emission_indices to
+            # include values either side of each > 500 index
             add_array = []
+
             for i in range(len(emission_indices)):
+
                 value = emission_indices[i]
-                #print 'This is the index: %s' % value
+
                 plus_value = value + 1
+
                 sub_value = value - 1
+
                 if plus_value >= len(sky_flux):
-                    plus_value = len(sky_flux) - 1 
+
+                    plus_value = len(sky_flux) - 1
+
                 if sub_value < 0:
+
                     sub_value = 0
-                #print 'These are the values to be appended: %s %s' % (plus_value, sub_value)
-                #insert these into the emission_indices array 
+
+                # insert these into the emission_indices array
                 add_array.append(plus_value)
+
                 add_array.append(sub_value)
-            emission_indices = list(emission_indices)   
+
+            emission_indices = list(emission_indices)
+
             for item in add_array:
+
                 emission_indices.append(item)
-            #print 'THE NEW INDEX VALUE ARE: %s' % emission_indices
-            #Now take the set of unique values from emission_indices
+
+            # Now take the set of unique values from emission_indices
             new_emission_indices = np.sort(list(set(emission_indices)))
-            #print 'The unique emission_indices are: %s' % new_emission_indices         
-            #Find the sky values at these pixels
+
+            # print 'The unique emission_indices
+            # are: %s' % new_emission_indices
+            # Find the sky values at these pixels
             sky_emission_lines = sky_flux[new_emission_indices]
-            #Take the absolute value of the fluxes to account for P-Cygni profiles 
+
+            # Take the absolute value of the fluxes
+            # to account for P-Cygni profiles
             sky_emission_lines = abs(sky_emission_lines)
-            #Extract the object 1D spectrum, this is from the whole cube now. Should help 
-            #eliminate spectrum curvature as much as possible 
+
+            # Extract the object 1D spectrum,
+            # this is from the whole cube now. Should help
+            # eliminate spectrum curvature as much as possible
             object_spectrum = tempCube.total_spec[filter_indices]
+
             object_wavelength = tempCube.wave_array[filter_indices]
-            #print 'This is the minimum and maximum of the object spectrum: %s %s' % (min(object_wavelength), max(object_wavelength))
-            #Find the object flux at the same pixels
+
+            # Find the object flux at the same pixels
             tempValues = object_spectrum[new_emission_indices]
-            #Take the absolute value to account for P-Cygni profiles 
+
+            # Take the absolute value to account for P-Cygni profiles
             tempValues = abs(tempValues)
 
+            # we want to normalise this by the mean object flux
+            # at the wavelength values NOT contaminated by skylines
+            # Find the list of unique emission_indices
+            # without the sky_line emission_indices
+            total_emission_indices = np.arange(0,
+                                               len(object_wavelength), 1)
+            contm_emission_indices = list(set(total_emission_indices)
+                                          - set(new_emission_indices))
 
-            #we want to normalise this by the mean object flux 
-            #at the wavelength values NOT contaminated by skylines
-            #print 'The 1D object_spectrum values at the uniqe emission_indices are: %s' % tempValues 
-            #Find the list of unique emission_indices without the sky_line emission_indices
-            total_emission_indices = np.arange(0, len(object_wavelength), 1)
-            contm_emission_indices = list(set(total_emission_indices) - set(new_emission_indices))
-            #print 'These are the continuum indices: %s' % contm_emission_indices
-            #Take the mean value of these as the mean object flux 
+            # Take the mean value of these as the mean object flux
             tempObjContinuum = object_spectrum[contm_emission_indices]
+
             tempObjWavelength = object_wavelength[contm_emission_indices]
+
             object_continuum = abs(np.median(tempObjContinuum))
-            #Now some of the entries in the object_spectrum could be nan, in which case the 
-            #model fitting won't work. Need to record the indices at which they appear and 
-            #remove the entries from both the object spectrum and wavelength array at which they appear
+
+            # Now some of the entries in the object_spectrum
+            # could be nan, in which case the
+            # model fitting won't work. Need to
+            # record the indices at which they appear and
+            # remove the entries from both the object
+            # spectrum and wavelength array at which they appear
             nan_list = []
+
             for i in range(len(tempObjContinuum)):
+
                 if np.isnan(tempObjContinuum[i]):
+
                     nan_list.append(i)
-            #If there is something in the nan_list delete from wavelength array and object spectrum
+            # If there is something in the nan_list delete
+            # from wavelength array and object spectrum
             if nan_list:
-                tempObjContinuum = [i for j, i in enumerate(tempObjContinuum) if j not in nan_list]
-                tempObjWavelength = [i for j, i in enumerate(tempObjWavelength) if j not in nan_list]
 
+                tempObjContinuum = [i for j,
+                                    i in enumerate(tempObjContinuum)
+                                    if j not in nan_list]
 
-            #Fit a polynomial to the continuum and subtract 
-            #Create the polynomial model from lmFit (from lmfit import PolynomialModel)
+                tempObjWavelength = [i for j,
+                                     i in enumerate(tempObjWavelength)
+                                     if j not in nan_list]
+
+            # Fit a polynomial to the continuum and subtract
+            # Create the polynomial model from
+            # lmFit (from lmfit import PolynomialModel)
             mod = PolynomialModel(4)
-            #print 'This is the object spectrum at the cont. indices: %s %s' % (tempObjContinuum, np.nanmedian(tempObjContinuum))
-            #Have an initial guess at the model parameters 
+
+            # Have an initial guess at the model parameters
             pars = mod.guess(tempObjContinuum, x=tempObjWavelength)
-            #Use the parameters for the full model fit 
-            out  = mod.fit(tempObjContinuum, pars, x=tempObjWavelength)
-            #The output of the model is the fitted continuum
+
+            # Use the parameters for the full model fit
+            out = mod.fit(tempObjContinuum, pars, x=tempObjWavelength)
+
+            # The output of the model is the fitted continuum
             continuum = out.best_fit
-            #print 'This is the object continuum: %s %s %s' % (continuum, len(continuum), np.nanmedian(continuum)) 
-            #extrapolate the model to the full wavelength range
+
+            # extrapolate the model to the full wavelength range
             full_continuum = out.eval(x=object_wavelength)
-            #print 'The length of the continuum is: %s' % len(continuum)
-            #print 'The model evaluated outside of the range has length: %s' % len(full_continuum)
+
+            # print 'The length of the continuum is: %s' % len(continuum)
             fig, ax = plt.subplots(1, 1, figsize=(18, 10))
+
             ax.plot(tempObjWavelength, continuum)
+
             ax.plot(tempObjWavelength, tempObjContinuum)
-            #plt.show()
-            #Now subtract the object continuum from the full object_spectrum and repeat analysis
+
+            # plt.show()
+            # Now subtract the object continuum from
+            # the full object_spectrum and repeat analysis
             new_object_spectrum = object_spectrum - full_continuum
+
             divided_object_spectrum = object_spectrum / full_continuum
-            #print 'New Statistic for this object: %s' % np.median(new_object_spectrum[new_emission_indices])
+
             fig, ax = plt.subplots(1, 1, figsize=(18, 10))
-            ax.plot(tempCube.wave_array[filter_indices], abs(new_object_spectrum))
-            #plt.show()
-            #print 'The object continuum value is: %s' % object_continuum
-            #normalise the tempValues by this 
-            #norm_values = tempValues / object_continuum        
-            #print 'The normalised flux values are: %s ' % norm_values
-            #Find the median of these norm_values as the sky subtraction performance indicator 
-            pos_spec = abs(new_object_spectrum)
-            pos_spec = np.nanmean(np.array(pos_spec[np.where(pos_spec > 2)]))
-            #print 'This is the positive object_spectrum: %s' % pos_spec
-            #print 'This is the IFUNR: %s %s' % (tempCube.IFUNR, tempCube.IFUNR.shape)
+
+            ax.plot(tempCube.wave_array[filter_indices],
+                    abs(new_object_spectrum))
+
+            # plt.show()
+
+            # print 'The object continuum value is: %s' % object_continuum
+
+            # normalise the tempValues by this
+            # norm_values = tempValues / object_continuum
+            # print 'The normalised flux values are: %s ' % norm_values
+            # Find the median of these norm_values
+            # as the sky subtraction performance indicator
+            pos_spec = np.abs(new_object_spectrum)
+
+            pos_spec = np.nanmedian(np.array(pos_spec[np.where(pos_spec > 2)]))
+
+            # print 'This is the positive object_spectrum: %s' % pos_spec
             medVals[int(tempCube.IFUNR)] = pos_spec
+
             cubeNames[int(tempCube.IFUNR)] = tempCube.IFUName
-            #print 'The sky performance statistic for this object is: %s' % medVals[tempCube.IFUNR]
 
+        # print 'The resultant dictionary is: %s' % (medVals)
+        # print 'The names of the files are: %s' % cubeNames
 
-        #print 'The resultant dictionary is: %s' % (medVals)
-        #print 'The names of the files are: %s' % cubeNames
         medVector = np.nanmean(medVals.values())
-        #print 'The sky performance statistic for this frame is: %s' % medVector
-        #print 'This is the median values Dictionary: %s' % medVals
-        #print medVector
-        return np.array(medVals.values()), list(cubeNames.values()), np.array(medVals.keys())
 
-    def gaussFit(self, combNames):
+        # print 'This is the median values Dictionary: %s' % medVals
+        # print medVector
+
+        plt.close('all')
+
+        return np.array(medVals.values()), \
+            list(cubeNames.values()), np.array(medVals.keys())
+
+    def gaussFit(self,
+                 combNames):
 
         """
-        Def: 
-        Uses the psfMask function from cubeClass to 
-        loop round the list of combNames and return a 
-        list of FWHM values and a list of mask profiles 
+        Def:
+        Uses the psfMask function from cubeClass to
+        loop round the list of combNames and return a
+        list of FWHM values and a list of mask profiles
 
-        Input: combNames - list of sci_combined files produced 
-        by the pipeline 
+        Input:
+                combNames - list of sci_combined files produced
+                            by the pipeline
         """
 
         namesOfFiles = np.genfromtxt(combNames, dtype='str')
 
         fwhmArray = []
+
         psfArray = []
+
         paramsArray = []
+
         try:
 
-            #Loop round and create an instance of the class each time
+            # Loop round and create an instance of the class each time
+
             for fileName in namesOfFiles:
+
                 print 'Gaussian fitting science frame: %s' % fileName
+
                 tempCube = cubeOps(fileName)
+
                 shift_list = [tempCube.xDit, tempCube.yDit]
+
                 params, psfProfile, fwhm, offList = tempCube.psfMask()
+
                 fwhmArray.append(fwhm)
+
                 psfArray.append(psfProfile)
+
             return fwhmArray, psfArray, offList, params, shift_list
 
         except TypeError:
-            #Only one file in the list of files 
+
+            # Only one file in the list of files
+
             print namesOfFiles
+
             cubeName = str(namesOfFiles)
+
             print 'Gaussian fitting sky frame: %s' % namesOfFiles
+
             tempCube = cubeOps(cubeName)
+
             shift_list = [tempCube.xDit, tempCube.yDit]
+
             params, psfProfile, fwhm, offList = tempCube.psfMask()
+
             return fwhm, psfProfile, offList, params, shift_list
 
+    def combFrames(self,
+                   sci_dir,
+                   frame_array):
 
-        #Return the arrays  
-        
-
-    def combFrames(self, sci_dir, frame_array):
         """
         Def:
+        Helper Function to combine a list of object files
+        categorised by the frameCheck method. First appends
+        sci_reconstructed_ to each of the names and then
+        combines these together using the KMOS pipeline
+        recipe kmo_combine
 
-        Helper Function to combine a list of object files 
-        categorised by the frameCheck method. First appends 
-        sci_reconstructed_ to each of the names and then 
-        combines these together using the KMOS pipeline 
-        recipe kmo_combine 
-        Input: frame_array - list of object names as specified 
-        by the frameCheck method
+        Input: 
+                frame_array - list of object names as specified
+                                by the frameCheck method
 
         """
-        #Remove .sof file if this exists
+
+        # Remove .sof file if this exists
+
         if os.path.isfile('%s/sci_combine.sof' % sci_dir):
+
             os.system('rm %s/sci_combine.sof' % sci_dir)
+
         if len(frame_array) == 0:
+
             print 'Empty Array'
+
         else:
 
-            #Create new list of arrays with prepended names 
+            # Create new list of arrays with prepended names
+
             new_names = []
+
             with open( sci_dir + '/sci_combine.sof', 'a') as f:
+
                 for entry in frame_array:
 
-                    #If the entry doesn't contain a backslash, the entry 
-                    #is the object name and can prepend directly 
+                    # If the entry doesn't contain a backslash, the entry
+                    # is the object name and can prepend directly
+
                     if entry.find("/") == -1:
+
                         name = sci_dir + '/' + 'sci_reconstructed_' + entry
+
                         f.write('%s\n' % name)
-                    #Otherwise the directory structure is included and have to 
-                    #search for the backslash and omit up to the last one 
+
+                    # Otherwise the directory structure is included and have to
+                    # search for the backslash and omit up to the last one
+
                     else:
+
                         objName = entry[len(entry) - entry[::-1].find("/"):]
+
                         name = sci_dir + '/' + 'sci_reconstructed_' + objName
+
                         f.write('%s\n' % name)
-            #Now execute the recipe 
-            os.system('esorex --output-dir=%s kmo_combine --method="header" --edge_nan=TRUE %s/sci_combine.sof' % (sci_dir, sci_dir))
-            
-    def frameCheck(self, sci_dir, frameNames, tracked_name):
-        """
-        Def:
-        Loop round a list of frameNames of a given type and apply the science 
-        reduction to each pair. Return the vectors which contain the sky tweak 
-        performance for each pair and for each IFU in each pair, and the vector 
-        containing the fwhm of the tracked star. The tracked star is defined in 
-        the multiExtract method. Also bin objects based on their fwhm and return 
-        a dictionary containing the different bins. 
-        Input: skyCube - a given reconstructed skyCube. Note this assumed that the 
-        sky values will not vary significantly in wavelength from frame to frame. 
-        Need to check this. 
-               frameNames - file containing a list of object and sky frames 
-                in the standard format, with column 1 the file name and column 2 the 
-                file type 
-        Output: IFUValVec - mean for each IFU of skytweak performance 
-                frameValVec - mean for each frame of skytweak performance 
-                fwhmValVec - tracked star fwhm for each frame 
-                fwhmDict - keys of 'Best', 'Good', 'Okay', 'Bad' corresponding
-                to the fwhm of the tracked star, and values being the names of 
-                the files which fall into each of these bins 
-        Uses: self.compareSky
-              self.gaussFit 
-              cubeOps  
+
+            # Now execute the recipe
+            os.system('esorex --output-dir=%s kmos_combine --method="header"'
+                      + ' --edge_nan=TRUE %s/sci_combine.sof' % (sci_dir,
+                                                                 sci_dir))
+
+    def frameCheck(self,
+                   sci_dir,
+                   frameNames,
+                   tracked_name):
 
         """
-        #First read in the names and the types from frameNames
+        Def:
+        Loop round a list of frameNames of a given type
+        and apply the science reduction to each pair. Return the vectors
+        which contain the sky tweak performance for each pair and
+        for each IFU in each pair, and the vector
+        containing the fwhm of the tracked star. The tracked star is defined in
+        the multiExtract method.
+        Also bin objects based on their fwhm and return
+        a dictionary containing the different bins.
+        Input: skyCube - a given reconstructed skyCube.
+        Note this assumed that the
+        sky values will not vary significantly
+        in wavelength from frame to frame.
+        Need to check this.
+        Input:
+                frameNames - file containing a list of object and sky frames
+                            in the standard format, with column 1
+                            the file name and column 2 the file type
+                tracked_name - name of one of the stars being tracked
+        Output:
+                IFUValVec - mean for each IFU of skytweak performance
+                frameValVec - mean for each frame of skytweak performance
+                fwhmValVec - tracked star fwhm for each frame
+                fwhmDict - keys of 'Best', 'Good', 'Okay', 'Bad' corresponding
+                to the fwhm of the tracked star, and values being the name of
+                the files which fall into each of these bins
+
+        Uses: self.compareSky
+              self.gaussFit
+              cubeOps
+
+        """
+
+        # First read in the names and the types from frameNames
+
         data = np.genfromtxt(frameNames, dtype='str')
-        #Save the names and types as lists 
-        names = data[0:,0]
-        types = data[0:,1]
-        #Set the sci_comb names defined in the cubeclass  
+
+        # Save the names and types as lists
+
+        names = data[0:, 0]
+
+        types = data[0:, 1]
+
+        # Set the sci_comb names defined in the cubeclass
+
         if types[1] == 'O':
+
             combNames = cubeOps(names[1]).combNames
+
             rec_combNames = cubeOps(names[1]).rec_combNames
+
         elif types[2] == 'O':
+
             combNames = cubeOps(names[2]).combNames
+
             rec_combNames = cubeOps(names[2]).rec_combNames
+
         elif types[3] == 'O':
+
             combNames = cubeOps(names[3]).combNames
+
             rec_combNames = cubeOps(names[3]).rec_combNames
+
         else:
+
             print 'Having difficulty setting sci_comb names'
 
         print 'This is the order of the combined names: %s' % combNames
-        #Define the tracked star ID
-        #Writing out a temporary file containing the tracked star name
-        ##########################################################################
-        ###########################HARDWIRED######################################
-        ##########################################################################
-        #Can probably in the future get the name of the IFU tracking a standard 
-        #Star straight from the fits header. Will hardwire it in a-priori now 
+
+        # Define the tracked star ID
+        # Writing out a temporary file containing the tracked star name
+        # Can probably in the future get the name
+        # of the IFU tracking a standard
+        # Star straight from the fits header. Will hardwire it in a-priori now
+
         track_name = tracked_name
-        #Loop round the list of combNames until the track_name appears 
+
+        # Loop round the list of combNames until the track_name appears
+
         for entry in combNames:
+
             if entry.find(track_name) != -1:
+
                 tracked_star = entry
-        #Initialise loop counter and variables 
+
+        # Initialise loop counter and variables
+
         counter = 0
+
         frameValVec = []
+
         IFUValVec = []
+
         namesVec = []
+
         fwhmValVec = []
-        #Set up the different bins for fwhm of tracked star
+
+        # Set up the different bins for fwhm of tracked star
+
         a_fwhm_names = []
         b_fwhm_names = []
         c_fwhm_names = []
         d_fwhm_names = []
-        #Remove the combine input file if it exists
+
+        # Remove the combine input file if it exists
+
         if os.path.isfile('combine_input.txt'):
-            os.system('rm combine_input.txt')#
-        #Loop around each name, assign sky pair and populate 
-        #the sky tweak performance and fwhm variables 
+
+            os.system('rm combine_input.txt')
+
+        # Loop around each name, assign sky pair and populate
+        # the sky tweak performance and fwhm variables
+
         for i in range(1, len(names)):
+
             if types[i] == 'O':
+
                 counter += 1
+
                 objFile = names[i]
+
                 if i == 1:
+
                     skyFile = names[i + 1]
+
                 elif types[i - 1] == 'S':
+
                     skyFile = names[i - 1]
+
                 else:
+
                     skyFile = names[i + 1]
 
-                print '[INFO]: reducing file: %s : ' %  objFile
-                namesVec.append(objFile)
-                #Create the new .sof file at each stage for just the object sky pair
-                #the .sof file must be in the directory, and must have all the other 
-                #files required already specified.
+                print '[INFO]: reducing file: %s : ' % objFile
 
-                #Create a copy of the sci_reduc.sof in a new temporary file
+                namesVec.append(objFile)
+
+                # Create the new .sof file at each stage
+                # for just the object sky pair
+                # the .sof file must be in the directory,
+                # and must have all the other
+                # files required already specified.
+
+                # Create a copy of the sci_reduc.sof in a new temporary file
+
                 with open('sci_reduc.sof') as f:
+
                     with open('sci_reduc_temp.sof', 'w') as f1:
+
                         for line in f:
+
                                 f1.write(line)
 
-                #Append the current object and skyfile names to the newly created .sof file
-                with open('sci_reduc_temp.sof', 'a') as f:
-                    f.write('\n%s\tSCIENCE' % objFile)
-                    f.write('\n%s\tSCIENCE' % skyFile)
-                #Now just execute the esorex recipe for this new file 
-                os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.1 --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % sci_dir)
+                # Append the current object and skyfile
+                # names to the newly created .sof file
 
-                #We have all the science products now execute the above method for each 
-                #of the pairs. Should think of a better way to create the combNames file
+                with open('sci_reduc_temp.sof', 'a') as f:
+
+                    f.write('\n%s\tSCIENCE' % objFile)
+
+                    f.write('\n%s\tSCIENCE' % skyFile)
+
+                # Now just execute the esorex recipe for this new file
+                os.system('esorex --output-dir=%s kmos_sci_red' % sci_dir
+                          + '  --pix_scale=0.1 --oscan=FALSE --sky_tweak=TRUE'
+                          + ' --edge_nan=TRUE sci_reduc_temp.sof')
+
+                # We have all the science products now
+                # execute the above method for each
+                # of the pairs. Should think of a better
+                # way to create the combNames file
+
                 print 'Checking IFU sky tweak performance'
-                #This is the array of IFU values for each frame 
-                medVals, cube_name_list, IFU_number_array = self.compareSky(sci_dir, combNames)
-                #print the value of this vector 
-                print 'The sky statistic values as a function of IFU are: %s' % medVals
-                print 'The median value of this array is: %s' % np.nanmedian(medVals)
-                #Append the full vector for a more detailed plot 
+
+                # This is the array of IFU values for each frame
+
+                medVals, cube_name_list, IFU_number_array = \
+                    self.compareSky(sci_dir, combNames)
+
+                # print the value of this vector
+
+                print 'The sky statistic values as a' \
+                    + 'function of IFU are: %s' % medVals
+
+                print 'The median value of this array' \
+                    + ' is: %s' % np.nanmedian(medVals)
+
+                # Append the full vector for a more detailed plot
+
                 IFUValVec.append(medVals)
-                #Append the mean value for the average plot
+
+                # Append the mean value for the average plot
+
                 frameValVec.append(np.nanmedian(medVals))
 
-                #Move onto FWHM analysis of chosen tracked star     
+                # Move onto FWHM analysis of chosen tracked star
+
                 print 'Checking PSF of tracked star'
-                fwhm, psfProfile, offList, params, shift_list = self.gaussFit('tracked.txt')
+
+                fwhm, psfProfile, offList, params, shift_list = \
+                    self.gaussFit('tracked.txt')
+
                 fwhmValVec.append(fwhm)
-                #remove the temporary .sof file and go back to the start of the loop
-                os.system('rm sci_reduc_temp.sof')  
-                
 
-                #########################################################
-                #Here place the objects into different bins based on the#
-                #computed FWHM of each frame                            #
-                #########################################################
-                #Change FWHM to arcsecond scale, by using the pixel scale
-                #recover the pixel scale by creating a cubeClass instance
-                pixel_scale = float(cubeOps(sci_dir + '/' + tracked_star).pix_scale)
-                arc_fwhm =  fwhm * pixel_scale
+                # remove the temporary .sof file and
+                # go back to the start of the loop
 
-                #Define the reconstructed objFile name 
-                #If the entry doesn't contain a backslash, the entry 
-                #is the object name and can prepend directly 
+                os.system('rm sci_reduc_temp.sof')
+
+                # Change FWHM to arcsecond scale, by using the pixel scale
+                # recover the pixel scale by creating a cubeClass instance
+
+                pixel_scale = float(cubeOps(
+                    sci_dir + '/' + tracked_star).pix_scale)
+                arc_fwhm = fwhm * pixel_scale
+
+                # Define the reconstructed objFile name
+                # If the entry doesn't contain a backslash, the entry
+                # is the object name and can prepend directly
+
                 if objFile.find("/") == -1:
-                    rec_objFile = sci_dir + '/' + 'sci_reconstructed_' + objFile
-                #Otherwise the directory structure is included and have to 
-                #search for the backslash and omit up to the last one 
+                    rec_objFile = sci_dir + '/' + \
+                        'sci_reconstructed_' + objFile
+
+                # Otherwise the directory structure is included and have to
+                # search for the backslash and omit up to the last one
+
                 else:
+
                     objName = objFile[len(objFile) - objFile[::-1].find("/"):]
-                    rec_objFile = sci_dir + '/' + 'sci_reconstructed_' + objName
-                #Make the output file for combining - have all the information now 
-                #For each object 
+
+                    rec_objFile = sci_dir + '/' + \
+                        'sci_reconstructed_' + objName
+
+                # Make the output file for combining
+                # - have all the information now
+                # For each object
 
                 with open('combine_input.txt', 'a') as f:
-                    for i in range(len(cube_name_list)):
-                        f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (rec_objFile, skyFile, IFU_number_array[i], cube_name_list[i], \
-                            medVals[i], arc_fwhm, params['center_x'], params['center_y'], shift_list[0] / pixel_scale, shift_list[1] / pixel_scale))
 
-                #Conditional binning - HARDWIRED VALUES 
-                #Could look at percentiles of FWHM distribution?
-                #Only put the objects in the bins if the sky subtraction 
-                #performance statistic is less than 1.5 
-                #if (np.nanmedian(medVals) > 0 and np.nanmedian(medVals) < 1.5):
+                    for i in range(len(cube_name_list)):
+
+                        f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' %
+                                (rec_objFile,
+                                 skyFile,
+                                 IFU_number_array[i],
+                                 cube_name_list[i],
+                                 medVals[i],
+                                 arc_fwhm,
+                                 params['center_x'],
+                                 params['center_y'],
+                                 shift_list[0] / pixel_scale,
+                                 shift_list[1] / pixel_scale))
 
                     if (arc_fwhm > 0.0 and arc_fwhm < 0.6):
-                        print '[INFO]: Placing object in best bin' #wagwanplaya
-                        a_fwhm_names.append(objFile)
-                    elif (arc_fwhm > 0.6 and arc_fwhm < 1.0):
-                        print '[INFO]: Placing object in good bin'
-                        b_fwhm_names.append(objFile)
-                    elif (arc_fwhm > 1.0 and arc_fwhm < 1.5):
-                        print '[INFO]: Placing object in okay bin'
-                        c_fwhm_names.append(objFile)
-                    else:
-                        print '[INFO]: Placing object in bad bin'
-                        d_fwhm_names.append(objFile)        
 
-        #Should now have populated the frameValVec, IFUValVec and incremented counter
-        #Only for the objects that have passed the skytweak performance test 
+                        print '[INFO]: Placing object in best bin'
+
+                        a_fwhm_names.append(objFile)
+
+                    elif (arc_fwhm > 0.6 and arc_fwhm < 1.0):
+
+                        print '[INFO]: Placing object in good bin'
+
+                        b_fwhm_names.append(objFile)
+
+                    elif (arc_fwhm > 1.0 and arc_fwhm < 1.5):
+
+                        print '[INFO]: Placing object in okay bin'
+
+                        c_fwhm_names.append(objFile)
+
+                    else:
+
+                        print '[INFO]: Placing object in bad bin'
+
+                        d_fwhm_names.append(objFile)
+
+        # Should now have populated the frameValVec,
+        # IFUValVec and incremented counter
+        # Only for the objects that have passed the skytweak performance test
+
         IFUValVec = np.array(IFUValVec)
+
         fwhmValVec = np.array(fwhmValVec)
+
         offList = np.array(offList)
-        #Convert the FWHM to arcseconds instead of pixels
+
+        # Convert the FWHM to arcseconds instead of pixels
+
         fwhmValVec = pixel_scale * np.array(fwhmValVec)
+
         ID = np.arange(0.0, counter, 1.0)
 
-        #Make the dictionary of fwhm values 
-        fwhmDict = {'Best':a_fwhm_names,'Good':b_fwhm_names,'Okay':c_fwhm_names,'Bad':d_fwhm_names}
+        # Make the dictionary of fwhm values
+        fwhmDict = {'Best': a_fwhm_names,
+                    'Good': b_fwhm_names,
+                    'Okay': c_fwhm_names,
+                    'Bad': d_fwhm_names}
 
-        #Shift all plots to a plots folder within the science directory
+        # Shift all plots to a plots folder within the science directory
         plot_dir_name = sci_dir + '/Plots'
+
         if os.path.isdir(plot_dir_name):
+
             os.system('rm -rf %s' % plot_dir_name)
+
         os.system('mkdir %s' % plot_dir_name)
-        #Move all of the newly created Shifted files into this directory 
+
+        # Move all of the newly created Shifted files into this directory
+
         os.system('mv %s %s' % (sci_dir + '/*.png', plot_dir_name))
 
-        #Return all of these values 
-        return ID, offList, namesVec, IFUValVec, frameValVec, fwhmValVec, fwhmDict
+        # Return all of these values
 
-    def meanIFUPlot(self, offList, namesVec, IFUValVec):
+        return ID, offList, namesVec, IFUValVec, \
+            frameValVec, fwhmValVec, fwhmDict
+
+    def meanIFUPlot(self,
+                    offList,
+                    namesVec,
+                    IFUValVec):
+
         """
         Def:
-        Takes the output from frameCheck and plots a line graph 
-        of skytweak performance against IFUID for each input frame. 
-        Each of the IFUs which are not operational are plotted as 
+        Takes the output from frameCheck and plots a line graph
+        of skytweak performance against IFUID for each input frame.
+        Each of the IFUs which are not operational are plotted as
         np.nan
-        Input - ID: Vector from 1 - len(number of frames)
-                offList: List of the IFUs which are not operational
-                namesVec: The names of the input object files 
-                IFUValVec: Vector of means for each IFU
-        Output - Plot of performance against IFU, recognising the 
-                IFUs which are not illuminated
+
+        Input:
+                ID - Vector from 1 - len(number of frames)
+                offList - List of the IFUs which are not operational
+                namesVec - The names of the input object files
+                IFUValVec - Vector of means for each IFU
+
+        Output - Plot of performance against IFU, recognising the
+                    IFUs which are not illuminated
         """
-        #Construct ID array of length 24
+
+        # Construct ID array of length 24
+
         IFUID = np.arange(1.0, 25, 1.0)
-        
-        #Insert np.nan at the locations where the IFU is off
-        #Initialise the counter for the frame naming
+
+        # Insert np.nan at the locations where the IFU is off
+        # Initialise the counter for the frame naming
+
         val = 0
+
         colors_plot = cycle(cm.rainbow(np.linspace(0, 1, len(IFUValVec))))
+
         colors_scatter = cycle(cm.rainbow(np.linspace(0, 1, len(IFUValVec))))
-        #Collape all the information at the IFU level onto a single plot
+
+        # Collape all the information at the IFU level onto a single plot
+
         fig, ax = plt.subplots(1, 1, figsize=(14.0, 14.0))
+
         for entry in IFUValVec:
-            #Extend the value array to match the IFUID array
+
+            # Extend the value array to match the IFUID array
+
             for value in offList:
+
                 entry = np.insert(entry, value, np.nan)
 
-            ax.plot(IFUID, entry, label=namesVec[val], color=next(colors_plot))
-            ax.scatter(IFUID, entry, color=next(colors_scatter))
+            ax.plot(IFUID,
+                    entry,
+                    label=namesVec[val],
+                    color=next(colors_plot))
+
+            ax.scatter(IFUID,
+                       entry,
+                       color=next(colors_scatter))
+
             val += 1
+
         ax.set_title('Sky Tweak Performance vs. IFU ID')
         ax.set_xlabel('IFU ID')
-        ax.set_xlim(1,24)
-        ax.set_xticks((np.arange(min(IFUID), max(IFUID)+1, 1.0)))
+        ax.set_xlim(1, 24)
+        ax.set_xticks((np.arange(min(IFUID), max(IFUID) + 1, 1.0)))
         ax.grid(b=True, which='both', linestyle='--')
-        #plt.legend(prop={'size':10})
+
+        # plt.legend(prop={'size':10})
+
         fig.savefig('IFU_by_Frame.png')
-        #plt.show()
+
+        # plt.show()
+
         plt.close('all')
 
-    def indIFUPlot(self, offList, ID, IFUValVec):
+    def indIFUPlot(self,
+                   offList,
+                   ID,
+                   IFUValVec):
+
         """
-        Def: Uses the output of frameCheck to 
-        Plot for each individual IFU the performance of skytweak 
-        against frame ID. More detail as to how well skytweak is 
-        performing. 
-        Input - Offlist: List of IFU numbers which aren't illuminated
-              - ID: np.arange between 0 and total number of operational IFUs 
-              - IFUValVec: 2D array of median sky tweak performance values 
-        Output - subplot array showing how well the sky has been subtracted 
-        in each individual IFU
+        Def: Uses the output of frameCheck to
+        Plot for each individual IFU the performance of skytweak
+        against frame ID. More detail as to how well skytweak is
+        performing.
+
+        Input:
+                - Offlist: List of IFU numbers which aren't illuminated
+                - ID: np.arange between 0 and total number of operational IFUs
+                - IFUValVec: 2D array of median sky tweak performance values
+
+        Output:
+                - subplot array showing how well the sky has been subtracted
+                    in each individual IFU
         """
-        #Make a plot for each IFU in a subplot array
+
+        # Make a plot for each IFU in a subplot array
+
         fig, axArray = plt.subplots(3, 8, figsize=(20.0, 15.0))
+
         IFUCount = 0
+
         dataCount = 0
-        #Have the data now - populate the subplots 
+
+        # Have the data now - populate the subplots
+
         for col in range(3):
+
             for row in range(8):
-                #Only plot if the IFU is functioning 
+
+                # Only plot if the IFU is functioning
+
                 if IFUCount not in offList:
+
                     frameVec = IFUValVec[:, dataCount]
+
                     axArray[col][row].plot(ID, frameVec)
                     axArray[col][row].scatter(ID, frameVec)
                     axArray[col][row].set_title('IFU %s' % (IFUCount + 1))
                     axArray[col][row].set_xlabel('Frame ID')
-                    axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
-                    axArray[col][row].grid(b=True, which='both', linestyle='--')
-                    #axArray[col][row].set_ylim(1.0, 2.0)
+                    axArray[col][row].set_xticks((np.arange(min(ID),
+                                                            max(ID) + 1, 1.0)))
+                    axArray[col][row].grid(b=True,
+                                           which='both',
+                                           linestyle='--')
                     axArray[col][row].set_xlim(0, len(ID))
+
                     dataCount += 1
-                #Increment the IFUCount number
+
+                # Increment the IFUCount number
+
                 IFUCount += 1
-        #Subplots populated, save the overall figure 
+
+        # Subplots populated, save the overall figure
+
         fig.savefig('IFU_subplots.png')
-        #plt.show()
+
+        # plt.show()
+
         plt.close('all')
 
-    def multiIndIFUPlot(self, offList, ID, IFUValVec1, IFUValVec2):
+    def multiIndIFUPlot(self,
+                        offList,
+                        ID,
+                        IFUValVec1,
+                        IFUValVec2):
+
         """
-        Def: Uses the output of frameCheck to 
-        Plot for each individual IFU the performance of skytweak 
-        against frame ID. More detail as to how well skytweak is 
-        performing. 
-        Input - Offlist: List of IFU numbers which aren't illuminated
-              - ID: np.arange between 0 and total number of operational IFUs 
-              - IFUValVec: 2D array of median sky tweak performance values 
-        Output - subplot array showing how well the sky has been subtracted 
-        in each individual IFU
+        Def: Uses the output of frameCheck to
+        Plot for each individual IFU the performance of skytweak
+        against frame ID. More detail as to how well skytweak is
+        performing.
+
+        Input:
+                - Offlist: List of IFU numbers which aren't illuminated
+                - ID: np.arange between 0 and total number of operational IFUs
+                - IFUValVec: 2D array of median sky tweak performance values
+
+        Output:
+                - subplot array showing how well the sky has been subtracted
+                    in each individual IFU
         """
-        #Make a plot for each IFU in a subplot array
+
+        # Make a plot for each IFU in a subplot array
+
         fig, axArray = plt.subplots(3, 8, figsize=(20.0, 15.0))
+
         IFUCount = 0
+
         dataCount = 0
-        #Have the data now - populate the subplots 
+
+        # Have the data now - populate the subplots
+
         for col in range(3):
+
             for row in range(8):
-                #Only plot if the IFU is functioning 
+
+                # Only plot if the IFU is functioning
+
                 if IFUCount not in offList:
+
                     frameVec1 = IFUValVec1[:, dataCount]
+
                     frameVec2 = IFUValVec2[:, dataCount]
+
                     axArray[col][row].plot(ID, frameVec1, color='blue')
                     axArray[col][row].scatter(ID, frameVec1, color='blue')
                     axArray[col][row].plot(ID, frameVec2, color='red')
                     axArray[col][row].scatter(ID, frameVec2, color='red')
                     axArray[col][row].set_title('IFU %s' % (IFUCount + 1))
                     axArray[col][row].set_xlabel('Frame ID')
-                    axArray[col][row].set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
-                    axArray[col][row].grid(b=True, which='both', linestyle='--')
-                    #axArray[col][row].set_ylim(0, 2.5)
+                    axArray[col][row].set_xticks((np.arange(min(ID),
+                                                            max(ID) + 1, 1.0)))
+                    axArray[col][row].grid(b=True,
+                                           which='both',
+                                           linestyle='--')
                     axArray[col][row].set_xlim(0, len(ID))
+
                     dataCount += 1
-                #Increment the IFUCount number
+
+                # Increment the IFUCount number
+
                 IFUCount += 1
-        #Subplots populated, save the overall figure 
+
+        # Subplots populated, save the overall figure
+
         fig.savefig('IFU_subplots_double.png')
-        #plt.show()
+
+        # plt.show()
+
         plt.close('all')
 
-    def meanFramePlot(self, ID, frameValVec):
+    def meanFramePlot(self,
+                      ID,
+                      frameValVec):
 
         """
         Def:
-        Uses the output from frameCheck to make a simple 
-        plot of the mean sky tweak performance against frame 
-        Input - ID: np.arange between 0 and count of number of frames 
-              - frameValVec: 1D array of mean sky tweak performance
+        Uses the output from frameCheck to make a simple
+        plot of the mean sky tweak performance against frame
+
+        Input:
+                - ID np.arange between 0 and count of number of frames
+                - frameValVec: 1D array of mean sky tweak performance
         """
-        #Make the overall mean plot of performance for the frames  
-        #Create a figure and plot the results  
-        fig, ax = plt.subplots(1, 1, figsize=(14.0,14.0))
+
+        # Make the overall mean plot of performance for the frames
+
+        # Create a figure and plot the results
+
+        fig, ax = plt.subplots(1, 1, figsize=(14.0, 14.0))
+
         ax.plot(ID, frameValVec)
+
         ax.scatter(ID, frameValVec)
+
         ax.set_title('Sky Tweak Performance vs. Frame ID')
+
         ax.set_xlabel('Frame ID')
-        ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+
+        ax.set_xticks((np.arange(min(ID), max(ID) + 1, 1.0)))
+
         ax.set_xlim(0, len(ID))
+
         ax.grid(b=True, which='both', linestyle='--')
+
         fig.savefig('frame_performance.png')
-        #plt.show()
+
+        # plt.show()
+
         plt.close('all')
 
-    def multiMeanFramePlot(self, ID, frameValVec1, frameValVec2):
+    def multiMeanFramePlot(self,
+                           ID,
+                           frameValVec1,
+                           frameValVec2):
 
         """
         Def:
-        Uses the output from frameCheck to make a simple 
-        plot of the mean sky tweak performance against frame 
-        Input - ID: np.arange between 0 and count of number of frames 
-              - frameValVec: 1D array of mean sky tweak performance
+        Uses the output from frameCheck to make a simple
+        plot of the mean sky tweak performance against frame
+        Input:
+                - ID: np.arange between 0 and count of number of frames
+                - frameValVec: 1D array of mean sky tweak performance
         """
-        #Make the overall mean plot of performance for the frames  
-        #Create a figure and plot the results  
-        fig, ax = plt.subplots(1, 1, figsize=(14.0,14.0))
+
+        # Make the overall mean plot of performance for the frames
+        # Create a figure and plot the results
+
+        fig, ax = plt.subplots(1, 1, figsize=(14.0, 14.0))
+
         ax.plot(ID, frameValVec1, color='blue')
         ax.scatter(ID, frameValVec1, color='blue')
         ax.plot(ID, frameValVec2, color='red')
@@ -3242,43 +5029,60 @@ class pipelineOps(object):
         ax.set_title('Sky Tweak Performance vs. Frame ID')
         ax.set_xlabel('Frame ID')
         ax.set_xlim(0, len(ID))
-        ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+        ax.set_xticks((np.arange(min(ID), max(ID)+ 1, 1.0)))
         ax.grid(b=True, which='both', linestyle='--')
+
         fig.savefig('frame_performance_double.png')
-        #plt.show()
+
+        # plt.show()
+
         plt.close('all')
 
-    def meanFWHMPlot(self, ID, fwhmValVec):
+    def meanFWHMPlot(self,
+                     ID,
+                     fwhmValVec):
 
         """
         Def:
-        Uses the output from frameCheck to make a simple 
-        plot of the tracked star FWHM against frame ID 
-        Input - ID: np.arange between 0 and count of number of frames 
-              - fwhmValVec: 1D array of tracked star fwhm in each frame
+        Uses the output from frameCheck to make a simple
+        plot of the tracked star FWHM against frame ID
+
+        Input:
+                - ID: np.arange between 0 and count of number of frames
+                - fwhmValVec: 1D array of tracked star fwhm in each frame
         """
-        fig, ax = plt.subplots(1, 1, figsize=(14.0,14.0))
+
+        fig, ax = plt.subplots(1, 1, figsize=(14.0, 14.0))
+
         ax.plot(ID, fwhmValVec)
         ax.scatter(ID, fwhmValVec)
         ax.set_title('Average fwhm vs. Frame ID')
         ax.set_xlabel('Frame ID')
         ax.set_xlim(0, len(ID))
-        ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+        ax.set_xticks((np.arange(min(ID), max(ID)+ 1, 1.0)))
         ax.grid(b=True, which='both', linestyle='--')
+
         fig.savefig('frame_fwhm.png')
-        #plt.show()
+
+        # plt.show()
+
         plt.close('all')
 
-    def multiMeanFWHMPlot(self, ID, fwhmValVec1, fwhmValVec2):
+    def multiMeanFWHMPlot(self,
+                          ID,
+                          fwhmValVec1,
+                          fwhmValVec2):
 
         """
         Def:
-        Uses the output from frameCheck to make a simple 
-        plot of the tracked star FWHM against frame ID 
-        Input - ID: np.arange between 0 and count of number of frames 
+        Uses the output from frameCheck to make a simple
+        plot of the tracked star FWHM against frame ID
+        Input - ID: np.arange between 0 and count of number of frames
               - fwhmValVec: 1D array of tracked star fwhm in each frame
         """
-        fig, ax = plt.subplots(1, 1, figsize=(14.0,14.0))
+
+        fig, ax = plt.subplots(1, 1, figsize=(14.0, 14.0))
+
         ax.plot(ID, fwhmValVec1, color='blue')
         ax.scatter(ID, fwhmValVec1, color='blue')
         ax.plot(ID, fwhmValVec2, color='red')
@@ -3286,586 +5090,1005 @@ class pipelineOps(object):
         ax.set_xlim(0, len(ID))
         ax.set_title('Average fwhm vs. Frame ID')
         ax.set_xlabel('Frame ID')
-        ax.set_xticks((np.arange(min(ID), max(ID)+1, 1.0)))
+        ax.set_xticks((np.arange(min(ID), max(ID) + 1, 1.0)))
         ax.grid(b=True, which='both', linestyle='--')
-        fig.savefig('frame_fwhm_double.png')
-        #plt.show()
-        plt.close('all')        
 
-    def extractSpec(self, sci_dir, fwhmDict, combNames, rec_combNames, tracked_name):
+        fig.savefig('frame_fwhm_double.png')
+
+        # plt.show()
+
+        plt.close('all')
+
+    def extractSpec(self,
+                    sci_dir,
+                    fwhmDict,
+                    combNames,
+                    rec_combNames,
+                    tracked_name):
+
         """
         Def:
-        Takes the grouped tracked star fwhm dictionary, combines 
-        the objects in each bin using the ESO pipeline and then 
-        extracts the optimal spectrum from each IFU in each bin 
+        Takes the grouped tracked star fwhm dictionary, combines
+        the objects in each bin using the ESO pipeline and then
+        extracts the optimal spectrum from each IFU in each bin
         with appended dictionary name, i.e. 'Good_sci_combined*'
+
+        Input:
+                sci_dir - current science directory
+                fwhmDict - dictionary of fwhm values for the objects
+                combNames - combined cube names for the objects
+                rec_combNames - reconstructed combined names
+                tracked_name - name of the tracked star
+
+        Output:
+
         """
-        #Writing out a temporary file containing the tracked star name
-        ##########################################################################
-        ###########################HARDWIRED######################################
-        ##########################################################################
-        #Can probably in the future get the name of the IFU tracking a standard 
-        #Star straight from the fits header. Will hardwire it in a-priori now 
+        # Writing out a temporary file containing the tracked star name
+        # Can probably in the future get the name of
+        # the IFU tracking a standard
+        # Star straight from the fits header
+
         track_name = tracked_name
-        #Loop round the list of combNames until the track_name appears 
+
+        # Loop round the list of combNames until the track_name appears
+
         for entry in combNames:
+
             if entry.find(track_name) != -1:
+
                 tracked_star = sci_dir + '/' + entry
 
-        #First check the directory for the rec_combNames and delete if they exist 
+        # First check the directory for the
+        # rec_combNames and delete if they exist
+
         for entry in rec_combNames:
+
             if os.path.isfile('%s/%s' % (sci_dir, entry)):
+
                 os.system('rm %s/%s' % (sci_dir, entry))
 
-            #Set the rec_combName of the standard star in the same way as above 
+            # Set the rec_combName of the
+            # standard star in the same way as above
+
             if entry.find(track_name) != -1:
+
                 rec_tracked_star = sci_dir + '/' + entry
 
-        #retrieve the dictionary combining the science names and IFU numbers 
+        # retrieve the dictionary combining the science names and IFU numbers
+
         combDict = cubeOps(tracked_star).combDict
-        #Remove the current sci_combined*.fits prior to this analysis
+
+        # Remove the current sci_combined*.fits prior to this analysis
+
         os.system('rm %s/sci_combined*.fits' % sci_dir)
 
-        #Initialise dictionary for final fwhm values
+        # Initialise dictionary for final fwhm values
+
         fwhm_values = {}
-        #Loop around each of the keys in the FWHM dictionary
+
+        # Loop around each of the keys in the FWHM dictionary
+
         for group in fwhmDict.keys():
 
             print '[INFO]: Extracting Spectra for the %s group' % group
 
             if fwhmDict[group]:
-                
-                #The case with only 1 entry in the group (complex) 
-                if len(fwhmDict[group]) == 1:
-                    print '[INFO]: Only 1 %s PSF frame: Selecting %s PSF Cubes' % (group, group)
 
-                    #Construct the reconstructed file name 
-                    #If the entry doesn't contain a backslash, the entry 
-                    #is the object name and can prepend directly 
+                # The case with only 1 entry in the group (complex)
+
+                if len(fwhmDict[group]) == 1:
+
+                    print '[INFO]: Only 1 '
+                    + '%s PSF frame: Selecting %s PSF Cubes' % (group,
+                                                                group)
+
+                    # Construct the reconstructed file name
+                    # If the entry doesn't contain a backslash, the entry
+                    # is the object name and can prepend directly
+
                     if fwhmDict[group][0].find("/") == -1:
-                        rec_frame = sci_dir + '/sci_reconstructed_' + fwhmDict[group][0]
-                    #Otherwise the directory structure is included and have to 
-                    #search for the backslash and omit up to the last character 
+
+                        rec_frame = sci_dir + '/sci_reconstructed_' \
+                            + fwhmDict[group][0]
+
+                    # Otherwise the directory structure
+                    # is included and have to
+                    # search for the backslash and
+                    # omit up to the last character
+
                     else:
-                        objName = fwhmDict[group][0][len(fwhmDict[group][0]) - fwhmDict[group][0][::-1].find("/"):]
+
+                        objName = fwhmDict[group][0][len(fwhmDict[group][0])
+                                                     - fwhmDict[group][0][::-1]
+                                                     .find("/"):]
+
                         rec_frame = sci_dir + '/sci_reconstructed_' + objName
-                    #Now have the correct name of the reconstructed file 
-                    #Need to select the correct extension for the tracked_star
-                    ext = combDict[track_name]  
-                    #Open the reconstructed frame and assign the data for the correct IFU:
+
+                    # Now have the correct name of the reconstructed file
+                    # Need to select the correct extension for the tracked_star
+
+                    ext = combDict[track_name]
+
+                    # Open the reconstructed frame and
+                    # assign the data for the correct IFU:
+
                     Table = fits.open(rec_frame)
-                    primHeader = Table[0].header    
+
+                    primHeader = Table[0].header
+
                     dataHeader = Table[ext].header
+
                     cube_data = Table[ext].data
 
-                    #Fix the issue with the fits header
+                    # Fix the issue with the fits header
+
                     temp = sys.stdout
+
                     sys.stdout = open('log.txt', 'w')
+
                     print (primHeader)
-                    print (dataHeader)                      
+                    print (dataHeader)
+
                     sys.stdout.close()
+
                     sys.stdout = temp
+
                     os.system('rm log.txt')
 
-                    
-                    #Write out to a new fits file
-                    objhdu = fits.PrimaryHDU(header=primHeader)
-                    objhdu.writeto(tracked_star, clobber=True)
-                    fits.append(tracked_star, data=cube_data, header=dataHeader)
+                    # Write out to a new fits file
 
-                    #Now on the same footing as below 
+                    objhdu = fits.PrimaryHDU(header=primHeader)
+
+                    objhdu.writeto(tracked_star,
+                                   clobber=True)
+
+                    fits.append(tracked_star,
+                                data=cube_data,
+                                header=dataHeader)
+
+                    # Now on the same footing as below
+
                     tracked_cube = cubeOps(tracked_star)
-                    #Extract the PSFProfile from the stacked, tracked star
+
+                    # Extract the PSFProfile from the stacked, tracked star
+
                     params, psfProfile, FWHM, offList = tracked_cube.psfMask()
-                    #Add best stacked FWHM to the dictionary just to check afterwards 
+
+                    # Add best stacked FWHM to the dictionary
+                    # just to check afterwards
+
                     fwhm_values[group] = FWHM * float(tracked_cube.pix_scale)
-                    #Set the rec_combNames as an iterable for specifying the file name
+
+                    # Set the rec_combNames as an iterable
+                    # for specifying the file name
+
                     iterCombNames_one = cycle(combNames)
+
                     iterCombNames_two = cycle(combNames)
-                    #Now get all the operational IFUs and do the same
+
+                    # Now get all the operational IFUs and do the same
+
                     for name in combDict.keys():
+
                         ext = combDict[name]
-                        #Open the reconstructed frame:
+
+                        # Open the reconstructed frame:
+
                         Table = fits.open(rec_frame)
-                        primHeader = Table[0].header    
+
+                        primHeader = Table[0].header
+
                         dataHeader = Table[ext].header
+
                         cube_data = Table[ext].data
 
                         temp = sys.stdout
+
                         sys.stdout = open('log.txt', 'w')
+
                         print (primHeader)
-                        print (dataHeader)                      
+                        print (dataHeader)
+
                         sys.stdout.close()
+
                         sys.stdout = temp
+
                         os.system('rm log.txt')
 
-                        #Write out to a new fits file
+                        # Write out to a new fits file
                         objhdu = fits.PrimaryHDU(header=primHeader)
-                        objhdu.writeto(sci_dir + '/' + next(iterCombNames_one), clobber=True)
-                        fits.append(sci_dir + '/' + next(iterCombNames_two), data=cube_data, header=dataHeader)
+
+                        objhdu.writeto(sci_dir + '/' + next(iterCombNames_one),
+                                       clobber=True)
+                        fits.append(sci_dir + '/' + next(iterCombNames_two),
+                                    data=cube_data,
+                                    header=dataHeader)
+
                     new_name_vec = []
-                    #Append best to all the rec_combNames 
+
+                    # Append best to all the rec_combNames
+
                     for entry in combNames:
+
                         group_name = sci_dir + '/' + group + '_' + entry
+
                         new_name_vec.append(group_name)
-                        os.system('mv %s %s' % (sci_dir + '/' + entry, group_name))
 
+                        os.system('mv %s %s' % (sci_dir + '/' + entry,
+                                                group_name))
 
-                #The Case where there is more than one entry in the group (normal)
+                # The Case where there is more
+                # than one entry in the group (normal)
+
                 elif len(fwhmDict[group]) > 1:
+
                     print 'Combining %s PSF Cubes' % group
+
                     self.combFrames(sci_dir, fwhmDict[group])
-                    #The output from this is the combined_sci file names contained in rec_combNames
-                    #These are all stacked data cubes in bins of seeing 
+
+                    # The output from this is the
+                    # combined_sci file names contained in rec_combNames
+                    # These are all stacked data cubes in bins of seeing
+
                     tracked_cube = cubeOps(rec_tracked_star)
-                    #Extract the PSFProfile from the stacked, tracked star
+
+                    # Extract the PSFProfile from the stacked, tracked star
+
                     params, psfProfile, FWHM, offList = tracked_cube.psfMask()
-                    #Add best stacked FWHM to the dictionary just to check afterwards 
+
+                    # Add best stacked FWHM to the
+                    # dictionary just to check afterwards
+
                     fwhm_values[group] = FWHM * float(tracked_cube.pix_scale)
 
                     new_name_vec = []
-                    #Append best to all the rec_combNames 
+
+                    # Append best to all the rec_combNames
+
                     for entry in zip(rec_combNames, combNames):
+
                         current_name = sci_dir + '/' + entry[0]
+
                         group_name = sci_dir + '/' + group + '_' + entry[1]
+
                         new_name_vec.append(group_name)
+
                         os.system('mv %s %s' % (current_name, group_name))
 
-                #Should now have the working directory filled with objects 
-                #That have the same name, regardless of whether they passed through 
-                #the single object in a bin route or the multi-route, with these names 
-                #stored in the new_name_vec array 
+                # Should now have the working directory filled with objects
+                # That have the same name, regardless
+                # of whether they passed through
+                # the single object in a bin route or
+                # the multi-route, with these names
+                # stored in the new_name_vec array
 
-                print 'Fitting Gaussian to each of the stacked %s objects' % group
-                #Record the centre of the tracked star 
+                print 'Fitting Gaussian to each of' \
+                      + 'the stacked %s objects' % group
+
+                # Record the centre of the tracked star
+
                 tracked_centre = [params['center_y'], params['center_x']]
+
                 tracked_profile = copy(psfProfile)
+
                 tracked_fwhm = copy(FWHM)
-                #From here onwards should definitely be fine with the new sci_dir convention
-                #First Fit a gaussian to each of the objects to determine the center! 
+
+                # From here onwards should definitely
+                # be fine with the new sci_dir convention
+                # First Fit a gaussian to each of
+                # the objects to determine the center!
+
                 spectra_names = []
+
                 for name in new_name_vec:
+
                     spec_name = name[:-5] + '_spectrum.fits'
+
                     spectra_names.append(spec_name)
+
                     cube = cubeOps(name)
-                    #Find the central value of the object flux by 
-                    #fitting a gaussian to the image
+
+                    # Find the central value of the object flux by
+                    # fitting a gaussian to the image
+
                     params, objProfile, FWHM, offList = cube.psfMask()
+
                     obj_centre = [params['center_y'], params['center_x']]
 
-                    print '[INFO]: The standard star centre is: %s' % tracked_centre
+                    print '[INFO]: The standard star' \
+                          + ' centre is: %s' % tracked_centre
+
                     print '[INFO]: The Object centre is: %s' % obj_centre
-                    #Find the difference between the tracked centre and obj centre
+
+                    # Find the difference between
+                    # the tracked centre and obj centre
+
                     x_shift = obj_centre[0] - tracked_centre[0]
+
                     y_shift = obj_centre[1] - tracked_centre[1]
+
                     x_shift = int(np.round(x_shift))
+
                     y_shift = int(np.round(y_shift))
-                    print '[INFO]: Shifting Profile by: %s %s' % (x_shift, y_shift)
-                    #Use numpy.roll to shift the psfMask to the location of the object 
+
+                    print '[INFO]: Shifting Profile' \
+                          + ' by: %s %s' % (x_shift, y_shift)
+
+                    # Use numpy.roll to shift the psfMask
+                    # to the location of the object
+
                     new_mask = np.roll(tracked_profile, y_shift, axis=0)
-                    #For the x_shift need to loop round the elements of the new_mask 
+
+                    # For the x_shift need to loop
+                    # round the elements of the new_mask
+
                     final_new_mask = []
+
                     for arr in new_mask:
+
                         final_new_mask.append(np.roll(arr, x_shift))
+
                     final_new_mask = np.array(final_new_mask)
 
-                    #Check to see that the gaussian and shifted profile align
-                    colFig, colAx = plt.subplots(1,1, figsize=(14.0,14.0))
-                    colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
+                    # Check to see that the gaussian and shifted profile align
+
+                    colFig, colAx = plt.subplots(1, 1, figsize=(14.0, 14.0))
+
+                    colCax = colAx.imshow(final_new_mask,
+                                          interpolation='bicubic')
+
                     colFig.colorbar(colCax)
-                    #plt.show()
-                    #Extract each optimal spectrum 
-                    optimal_spec = cube.optimalSpecFromProfile(final_new_mask, tracked_fwhm, params['center_y'], params['center_x'])
-                    #Save the optimal spectrum for each object 
-                    #Need to create a new fits table for this 
-                    tbhdu = fits.new_table(fits.ColDefs(\
-                        [fits.Column(name='Wavelength', format='E', array=cube.wave_array),\
-                         fits.Column(name='Flux', format='E', array=optimal_spec)]))
+
+                    # Extract each optimal spectrum
+
+                    optimal_spec = \
+                        cube.optimalSpecFromProfile(final_new_mask,
+                                                    tracked_fwhm,
+                                                    params['center_y'],
+                                                    params['center_x'])
+
+                    # Save the optimal spectrum for each object
+                    # Need to create a new fits table for this
+
+                    tbhdu = \
+                        fits.new_table(
+                            fits.ColDefs([fits.Column(name='Wavelength',
+                                                      format='E',
+                                                      array=cube.wave_array),
+                                          fits.Column(name='Flux',
+                                                      format='E',
+                                                      array=optimal_spec)]))
+
                     prihdu = fits.PrimaryHDU(header=cube.primHeader)
+
                     thdulist = fits.HDUList([prihdu, tbhdu])
+
                     thdulist.writeto(spec_name, clobber=True)
-                    plot_sky_name = sci_dir + '/combine_sci_reconstructed_arm' + str(cube.IFUNR) + '_sky.fits'
-                    print 'The skycube name for the plotting routine is: %s' % plot_sky_name
+
+                    plot_sky_name = sci_dir + '/combine_sci_reconstructed_arm' \
+                        + str(cube.IFUNR) + '_sky.fits'
+
+                    print 'The skycube name for the' \
+                          + ' plotting routine is: %s' % plot_sky_name
+
                     self.plotSpecs(sci_dir, spec_name, plot_sky_name, 1)
-#                   try:
-#                       self.plotSpecs(spec_name, plot_sky_name, 1)
-#                   except:
-#                       print 'Could not plot the 1D spectrum'
-                #Create a new sub-directory in the Science directory to house the spectra for this group 
+
+                # Create a new sub-directory in the Science
+                # directory to house the spectra for this grouP
+
                 new_dir_name = sci_dir + '/' + group
+
                 if os.path.isdir(new_dir_name):
+
                     os.system('rm -rf %s' % new_dir_name)
+
                 os.system('mkdir %s' % new_dir_name)
-                #Move all of the newly created group objects into this directory
-                os.system('mv %s %s' % (sci_dir + '/' + group + '*', new_dir_name)) 
+
+                # Move all of the newly created group
+                # objects into this directory
+
+                os.system('mv %s %s' % (sci_dir + '/' + group + '*',
+                                        new_dir_name))
 
         print '[INFO]: %s' % fwhm_values
 
-############################################################################################################
-############################################################################################################
-#SECTION FOR COMBINING OBJECTS BASED ON THE combine_input.txt FILE OUTPUT FROM frameCheck 
-############################################################################################################
-############################################################################################################
-
-    def reduce_list_seeing(self, combine_file, seeing_lower, seeing_upper):
+    def reduce_list_seeing(self,
+                           combine_file,
+                           seeing_lower,
+                           seeing_upper):
 
         """
-        Def: 
-        Helper method for reducing the combine_input.txt list of files 
-        down to the chosen seeing limits. Takes the list and returns a 
-        shorter list containing only objects appearing within the defined 
-        seeing limits. 
-        Input: combine_file - one of the outputs from frameCheck
-                seeing_lower - lower limit for the seeing 
-                seeing_upper - upper limit for the seeing 
-        Output: new_Table - shortened version of the list containing 
+        Def:
+        Helper method for reducing the combine_input.txt list of files
+        down to the chosen seeing limits. Takes the list and returns a
+        shorter list containing only objects appearing within the defined
+        seeing limits.
+
+        Input: 
+                combine_file - one of the outputs from frameCheck
+                seeing_lower - lower limit for the seeing
+                seeing_upper - upper limit for the seeing
+
+        Output: 
+                    new_Table - shortened version of the list containing
                                 the names and properties of objects to combine
         """
 
-        #Read in the combine_file, which contains 4 columns  
+        # Read in the combine_file, which contains 4 columns
+
         Table = np.loadtxt(combine_file, dtype='str')
-        #zip these together into a combined object, which can be looped
-        zipped_entries = zip(Table[:,0], Table[:,1], Table[:,2], Table[:,3], Table[:,4], Table[:,5], Table[:,6], Table[:,7], Table[:,8], Table[:,9] )
-        #Loop over each of the entries and decide if it is in this seeing range 
-        #The seeing is the last entry of the table 
+
+        # zip these together into a combined object, which can be looped
+
+        zipped_entries = zip(Table[:, 0],
+                             Table[:, 1],
+                             Table[:, 2],
+                             Table[:, 3],
+                             Table[:, 4],
+                             Table[:, 5],
+                             Table[:, 6],
+                             Table[:, 7],
+                             Table[:, 8],
+                             Table[:, 9])
+
+        # Loop over each of the entries and
+        # decide if it is in this seeing range
+        # The seeing is the last entry of the table
+
         new_Table = []
+
         for row in zipped_entries:
-            #print 'This is the actual seeing: %s %s' % (row[4], type(row[4]))
+
             if float(row[5]) > seeing_lower and float(row[5]) < seeing_upper:
-                #print 'Made it'
+
                 new_Table.append(row)
-        #Return the newly generated and reduced table 
+
+        # Return the newly generated and reduced table
+
         return new_Table
 
-    def reduce_list_name(self, combine_list, ifu_name):
+    def reduce_list_name(self,
+                         combine_list,
+                         ifu_name):
 
         """
-        Def: 
-        Helper method for reducing the output from reduce_list_seeing 
-        down to the chosen object name. Takes the list and returns a 
+        Def:
+        Helper method for reducing the output from reduce_list_seeing
+        down to the chosen object name. Takes the list and returns a
         shorter list containing only objects appearing within the name defined
-        within a loop. 
-        Input: combine_list - output from reduce_list_seeing
+        within a loop.
+
+        Input:
+                 combine_list - output from reduce_list_seeing
                  ifu_name - IFU name of the object to be combined
-        Output: new_Table - shortened version of the list containing 
-                                the names and properties of objects to combine
+
+        Output: 
+                new_Table - shortened version of the list containing
+                            the names and properties of objects to combine
         """
 
         new_Table = []
-        #loop round the entries in the combine_list 
+
+        # loop round the entries in the combine_list
+
         for row in combine_list:
-            #The column containing the names is index number 2
+
+            # The column containing the names is index number 2
+
             if row[3] == ifu_name:
-                new_Table.append(row)
 
-        return new_Table        
-
-    def reduce_list_sky(self, combine_list, performance_limit):
-
-        """
-        Def: 
-        Helper method for reducing the output from reduce_list_name 
-        down to only those which pass the sky subtraction test. Takes the list and returns a 
-        shorter list containing only objects with fourth index < performance_limit
-        Input: combine_list - output from reduce_list_seeing
-                 performance_limit - The sky subtraction statistic value
-        Output: new_Table - shortened version of the list containing 
-                                the names and properties of objects to combine
-        """
-
-        new_Table = []
-        #loop round the entries in the combine_list 
-        for row in combine_list:
-            print row[4]
-            #The column containing the names is index number 2
-            if float(row[4]) < performance_limit:
                 new_Table.append(row)
 
         return new_Table
 
-    def compute_shifts(self, sci_dir, combine_list, name):
+    def reduce_list_sky(self,
+                        combine_list,
+                        performance_limit):
 
         """
-        Def: 
-        Helper method for taking the output from reduce_list_sky and calculating the list of 
-        shift values to pass to combine_by_name. This function will be called each time for 
-        the different object names.
-        Output: *_shift_file.txt - List of shifts relative to first in the list
-                name - the name of the object being shifted 
-                plot of the increase in the difference between actual and theoretical 
-                shift values - shift_plot.png
+        Def:
+        Helper method for reducing the output from reduce_list_name
+        down to only those which pass the sky subtraction test.
+        Takes the list and returns a shorter list containing only
+        objects with fourth index < performance_limit.
+
+        Input:
+                combine_list - output from reduce_list_seeing
+                performance_limit - The sky subtraction statistic value
+
+        Output:
+                new_Table - shortened version of the list containing
+                            the names and properties of objects to combine
         """
-        #Record the names of the deltaFile and shiftFile 
+
+        new_Table = []
+
+        # loop round the entries in the combine_list
+
+        for row in combine_list:
+
+            print row[4]
+
+            # The column containing the names is index number 2
+
+            if float(row[4]) < performance_limit:
+
+                new_Table.append(row)
+
+        return new_Table
+
+    def compute_shifts(self,
+                       sci_dir,
+                       combine_list,
+                       name):
+
+        """
+        Def:
+        Helper method for taking the output from
+        reduce_list_sky and calculating the list of
+        shift values to pass to combine_by_name.
+        This function will be called each time for
+        the different object names.
+
+        Input:
+                sci_dir - path to the science directory
+                combine_list - output from reduce_list_seeing
+                name - the name of the object being shifted
+        Output:
+                *_shift_file.txt - List of shifts relative to first in the list
+                plot of the increase in the difference
+                between actual and theoretical
+                shift values - shift_plot.png
+
+        """
+
+        # Record the names of the deltaFile and shiftFile
+
         deltaFile = sci_dir + '/' + name + '_delta_file.txt'
+
         shiftFile = sci_dir + '/' + name + '_shift_file.txt'
-        #If the shift file exists in the current directory, delete this 
+
+        # If the shift file exists in the current directory, delete this
+
         if os.path.isfile(deltaFile):
-            os.system('rm %s' % deltaFile) 
+
+            os.system('rm %s' % deltaFile)
+
         if os.path.isfile(shiftFile):
+
             os.system('rm %s' % shiftFile)
 
-        #print combine_list[0]
-        #Find the initial central values 
+        # print combine_list[0]
+
+        # Find the initial central values
+
         center_x = float(combine_list[0][7])
+
         center_y = float(combine_list[0][6])
+
         shift_x = float(combine_list[0][8])
+
         shift_y = float(combine_list[0][9])
-        #Now write to the shift file the actual shifts
-        #write to the delta file the difference between expected and actual 
+
+        # Now write to the shift file the actual shifts
+
+        # write to the delta file the difference between expected and actual
+
         with open(shiftFile, 'a') as s:
+
             with open(deltaFile, 'a') as d:
+
                 for i in range(1, len(combine_list)):
+
                     row = combine_list[i]
-                    real_shift_x = float(row[7]) - center_x   
+
+                    real_shift_x = float(row[7]) - center_x
+
                     real_shift_y = center_y - float(row[6])
+
                     dshift_x = shift_x - float(row[8])
+
                     dshift_y = shift_y - float(row[9])
+
                     dX = real_shift_x + dshift_x
+
                     dY = real_shift_y + dshift_y
+
                     s.write('%s\t%s\n' % (real_shift_x, real_shift_y))
+
                     d.write('%s\t%s\n' % (dX, dY))
-        #shift file has now been created for each of the objects 
 
+        # shift file has now been created for each of the objects
 
-
-    def combine_by_name(self, sci_dir, combine_file, seeing_lower, seeing_upper, performance_limit):
+    def combine_by_name(self,
+                        sci_dir,
+                        combine_file,
+                        seeing_lower,
+                        seeing_upper,
+                        performance_limit):
 
         """
-        Def: 
-        Main method for combining the frames into the science cubes. Right now will not do anything 
-        special with the produced output files, will just leave all of those in the science directory.
-        Selects all of the frames which pass the sky subtraction test and are within a particular seeing 
-        range for each of the objects. More powerful way of combining 
-        Input: sci_dir - science directory defined in the environment variables 
-                combine_file - output file from frameCheck 
-                seeing_lower - lower limit for the seeing 
-                seeing_upper - upper limit for the seeing 
-                performance_limit - sky performance pass limit 
-        output: sci_combined cubes for all of the objects imaged in the frames, provided at least a single frame 
-        passes the tests 
+        Def:
+        Main method for combining the frames into
+        the science cubes. Right now will not do anything
+        special with the produced output files,
+        will just leave all of those in the science directory.
+        Selects all of the frames which pass the
+        sky subtraction test and are within a particular seeing
+        range for each of the objects. More powerful way of combining.
+
+        Input:
+                sci_dir - science directory def in the environment variables
+                combine_file - output file from frameCheck
+                seeing_lower - lower limit for the seeing
+                seeing_upper - upper limit for the seeing
+                performance_limit - sky performance pass limit
+
+        Output:
+                sci_combined cubes for all of the objects imaged
+                in the frames, provided at least a single frame
+                passes the tests
         """
-        #First step is to get a unique list of the object names from the combine_file table 
-        #So that these can be looped over to generate the .sof file in each case 
+
+        # First step is to get a unique list
+        # of the object names from the combine_file table
+        # So that these can be looped over
+        # to generate the .sof file in each case
+
         Table = np.loadtxt(combine_file, dtype='str')
-        #The names are the third column 
-        ifu_names = Table[:,3]
-        #Create a unique list by taking a set 
+
+        # The names are the third column
+
+        ifu_names = Table[:, 3]
+
+        # Create a unique list by taking a set
+
         ifu_names = list(set(ifu_names))
-        #For each name execute the three helper reduce methods 
+
+        # For each name execute the three helper reduce methods
+
         for name in ifu_names:
-            #Initialise the names of the files 
+
+            # Initialise the names of the files
+
             deltaFile = sci_dir + '/' + name + '_delta_file.txt'
+
             shiftFile = sci_dir + '/' + name + '_shift_file.txt'
+
             print '[INFO]: Combining Object: %s ' % name
-            new_Table = self.reduce_list_seeing(combine_file, seeing_lower, seeing_upper)
-            name_Table = self.reduce_list_name(new_Table, name)
-            combine_Table = self.reduce_list_sky(name_Table, performance_limit)
-            #Create the shift list for this object 
+
+            new_Table = self.reduce_list_seeing(combine_file,
+                                                seeing_lower,
+                                                seeing_upper)
+
+            name_Table = self.reduce_list_name(new_Table,
+                                               name)
+
+            combine_Table = self.reduce_list_sky(name_Table,
+                                                 performance_limit)
+
+            # Create the shift list for this object
+
             self.compute_shifts(sci_dir, combine_Table, name)
-            #Plot the drift results 
-            self.plotDrift(deltaFile, name) 
-            #This combine_Table contains as first column the reconstructed names to combine for that object 
-            #Want to write these out to a combine.sof file - checking to see whether it exists already
-            combine_name = name + '_combine.sof' 
+
+            # Plot the drift results
+
+            self.plotDrift(deltaFile, name)
+
+            # This combine_Table contains as first column
+            # the reconstructed names to combine for that object
+            # Want to write these out to a combine.sof file
+            # - checking to see whether it exists already
+
+            combine_name = name + '_combine.sof'
+
             if os.path.isfile(combine_name):
+
                 os.system('rm %s' % combine_name)
-            #Conditional execution of the recipes depending on how much frames 
-            #Easiest if more than a single object 
+
+            # Conditional execution of the recipes
+            # depending on how much frames
+            # Easiest if more than a single object
+
             if len(combine_Table) > 1:
+
                 with open(combine_name, 'a') as f:
+
                     for row in combine_Table:
+
                         f.write('%s\n' % row[0])
-                #Now execute the combine recipe for this name given the sof file has been created 
-                os.system('esorex --output-dir=%s kmo_combine --name=%s --cpos_rej=2.0 --cneg_rej=2.0 --method="user" --filename=%s --edge_nan=TRUE %s' % (sci_dir, name, shiftFile, combine_name))
-            #If there is only a single object in this seeing bin, isolate the core part of the name 
-            #and execute the kmo_sci_red recipe after appending the object name to the sci_reduc.sof file  
-            #Since this is being executed in the calibrations directory the sci_reduc.sof file is already there
-            elif len(combine_Table) == 1: 
-                #raw_dir = os.environ['KMOS_RAW']
-                print 'This is the combined object name and type: %s %s' % (combine_Table[0][0], type(combine_Table[0][0]))
-                objName = combine_Table[0][0][combine_Table[0][0].find('sci_reconstructed_') + 18:]
-                real_name = combine_Table[0][1][: len(combine_Table[0][1]) - combine_Table[0][1][::-1].find('/')] + objName
-                #The sci_reduc.sof file is in the directory - write out to this 
-                #Create a copy of the sci_reduc.sof in a new temporary file
+
+                # Now execute the combine recipe
+                # for this name given the sof file has been created
+
+                os.system('esorex --output-dir=%s' % sci_dir
+                          + ' kmos_combine --name=%s' % name
+                          + ' --cpos_rej=2.0'
+                          + ' --cneg_rej=2.0'
+                          + ' --method="user"'
+                          + ' --filename=%s' % shiftFile
+                          + ' --edge_nan=TRUE %s' % combine_name)
+
+            # If there is only a single object in this
+            # seeing bin, isolate the core part of the name
+            # and execute the kmo_sci_red recipe after
+            # appending the object name to the sci_reduc.sof file
+            # Since this is being executed in the calibrations
+            # directory the sci_reduc.sof file is already there
+
+            elif len(combine_Table) == 1:
+
+                print 'This is the combined object' \
+                      + ' name and type: %s %s' % (combine_Table[0][0],
+                                                   type(combine_Table[0][0]))
+
+                objName = combine_Table[0][0][
+                    combine_Table[0][0].find('sci_reconstructed_') + 18:]
+
+                real_name = \
+                    combine_Table[0][1][: len(combine_Table[0][1])
+                                        - combine_Table[0][1][::-1].find('/')] \
+                    + objName
+
+                # The sci_reduc.sof file is in the directory
+                # - write out to this
+                # Create a copy of the sci_reduc.sof in a new temporary file
+
                 if os.path.isfile('sci_reduc_temp.sof'):
+
                     os.system('rm sci_reduc_temp.sof')
                 with open(sci_dir + '/sci_reduc.sof') as f:
                     with open('sci_reduc_temp.sof', 'w') as f1:
                         for line in f:
                                 f1.write(line)
 
-                #Append the current object and skyfile names to the newly created .sof file
+                # Append the current object and skyfile
+                # names to the newly created .sof file
+
                 with open('sci_reduc_temp.sof', 'a') as f:
+
                     f.write('\n%s\tSCIENCE' % real_name)
+
                     f.write('\n%s\tSCIENCE' % combine_Table[0][1])
-                #Now just execute the esorex recipe for this new file 
-                os.system('esorex --output-dir=%s kmos_sci_red --pix_scale=0.1 --name=%s --sky_tweak=TRUE --edge_nan=TRUE sci_reduc_temp.sof' % (sci_dir, name))    
-                os.system('rm sci_reduc_temp.sof')          
-            #Final case - if the list is empty, do nothing 
+
+                # Now just execute the esorex recipe for this new file
+
+                os.system('esorex --output-dir=%s' % sci_dir
+                          + ' kmos_sci_red --pix_scale=0.1 --oscan=FALSE'
+                          + ' --name=%s --sky_tweak=TRUE' % name
+                          + ' --edge_nan=TRUE'
+                          + ' sci_reduc_temp.sof')
+
+                os.system('rm sci_reduc_temp.sof')
+
+            # Final case - if the list is empty, do nothing
+
             else:
+
                 print 'Nothing to combine for object %s' % name
 
 
-    def plotDrift(self, deltaFile, name):
+    def plotDrift(self,
+                  deltaFile,
+                  name):
+
         """
-        Def: 
-        Simple plotting method to visualise the drift away from given shift values 
-        Takes the output delta shift file from compute_shifts and plots seperate 
-        graphs for the x_y_shift from each object 
-        Input: deltaFile - file produced by compute_shifts with x in column 1 and y 
-        in column 2 
+        Def:
+        Simple plotting method to visualise the drift
+        away from given shift values.
+        Takes the output delta shift file
+        from compute_shifts and plots seperate
+        graphs for the x_y_shift from each object.
+
+        Input:
+                deltaFile - file produced by compute_shifts,
+                            x in column 1, y in column 2
+
                 name - name of the object being plotted
-        Output: x plot and y plot for each object 
+
+        Output:
+                x plot and y plot for each object
         """
 
-        #Read in the x and y columns from the input file 
+        # Read in the x and y columns from the input file
+
         Table = np.loadtxt(deltaFile, dtype='str')
-        #The names are the third column 
-        x_drift = Table[:,0]
-        y_drift = Table[:,1]
+
+        # The names are the third column
+
+        x_drift = Table[:, 0]
+
+        y_drift = Table[:, 1]
+
         fileCount = np.arange(1, len(x_drift) + 1, 1)
-        #Plot the results 
-        #Now make the plots for both nights, want the same x-axis for all three layers
+
+        # Plot the results
+
+        # Now make the plots for both nights,
+        # want the same x-axis for all three layers
+
         f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(18.0, 10.0))
+
         ax1.plot(fileCount, x_drift, color='b')
         ax1.set_title('X-Shift ' + name, fontsize=24)
-        #ax1.set_ylim(0, max(x_drift))
         ax1.tick_params(axis='y', which='major', labelsize=15)
         ax1.grid(b=True, which='both', linestyle='--')
+
+        nbins = len(ax1.get_xticklabels())
+
         ax2.plot(fileCount, y_drift, color='g')
         ax2.set_title('Y-Shift ' + name, fontsize=24)
         ax2.set_xlabel(r'Frame Number', fontsize=24)
         ax2.tick_params(axis='both', which='major', labelsize=15)
         ax2.grid(b=True, which='both', linestyle='--')
-        #ax2.set_ylim(0, 80)
-        nbins = len(ax1.get_xticklabels())
         ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
         ax2.set_xlim(min(fileCount) + 0.1, max(fileCount) - 0.1)
-        #ax2.set_xlim(1.1,1.25)
+
         f.subplots_adjust(hspace=0.001)
         f.tight_layout()
-        #plt.show()
+        # plt.show()
         f.savefig(name + '_drift.png')
 
-############################################################################################################
-############################################################################################################
-#ENF OF SECTION FOR COMBINING OBJECTS BASED ON THE combine_input.txt FILE OUTPUT FROM frameCheck 
-############################################################################################################
-############################################################################################################
-
-    def multiExtractSpec(self, sci_dir, frameNames, tracked_name, **kwargs):
+    def multiExtractSpec(self,
+                         sci_dir,
+                         frameNames,
+                         tracked_name,
+                         **kwargs):
 
         """
-        Def: 
-        Executes the kmo_sci_red recipe with skytweak 
-        for each of the individual object sky pairs and then 
-        applies compareSky to the science products. Plots a graph 
-        for the identification of bad science frames. Also fits a gaussian 
-        function to the collapsed data for each IFU, for each object sky pair.  
+        Def:
+        Executes the kmo_sci_red recipe with skytweak
+        for each of the individual object sky pairs and then
+        applies compareSky to the science products. Plots a graph
+        for the identification of bad science frames. Also fits a gaussian
+        function to the collapsed data for each IFU, for each object sky pair.
 
-        Input:  reconstructed object cube from the current set
-                skyCube - any reconstructed sky cube 
-                frameNames - list of object/sky pairs with 
-                the names in the first column and type in second 
+        Input:
+                reconstructed object cube from the current set
+                skyCube - any reconstructed sky cube
+                frameNames - list of object/sky pairs with
+                the names in the first column and type in second
 
-        Outpt: Plot of frame performance against ID
+        Outpt:
+                Plot of frame performance against ID
         """
 
-        #Need the sci_reduc.sof file in the directory 
+        # Need the sci_reduc.sof file in the directory
+
         if ((not (os.path.isfile('sci_reduc.sof')))):
+
             raise ValueError("Missing reduction .sof file")
 
-        #remove the temporary sof file if it exists
+        # remove the temporary sof file if it exists
+
         if os.path.isfile('sci_reduc_temp.sof'):
+
             os.system('rm sci_reduc_temp.sof')
+
         if os.path.isfile('tracked.txt'):
+
             os.system('rm tracked.txt')
-        #Read in the data from the frameNames
+
+        # Read in the data from the frameNames
+
         data = np.genfromtxt(frameNames, dtype='str')
-        #Save the names and types as lists 
-        names = data[0:,0]
-        types = data[0:,1]
-        #Set the sci_comb names defined in the cubeclass  
+
+        # Save the names and types as lists
+        names = data[0:, 0]
+
+        types = data[0:, 1]
+
+        # Set the sci_comb names defined in the cubeclass
+
         if types[1] == 'O':
+
             combNames = cubeOps(names[1]).combNames
+
             rec_combNames = cubeOps(names[1]).rec_combNames
+
         elif types[2] == 'O':
+
             combNames = cubeOps(names[2]).combNames
+
             rec_combNames = cubeOps(names[2]).rec_combNames
+
         elif types[3] == 'O':
+
             combNames = cubeOps(names[3]).combNames
+
             rec_combNames = cubeOps(names[3]).rec_combNames
+
         else:
+
             print 'Having difficulty setting sci_comb names'
 
-        #Star straight from the fits header. Will hardwire it in a-priori now 
         track_name = tracked_name
-        #Loop round the list of combNames until the track_name appears 
+
+        # Loop round the list of combNames until the track_name appears
+
         for entry in combNames:
+
             if entry.find(track_name) != -1:
+
                 tracked_star = sci_dir + '/' + entry
 
-        #Remove tracked.txt if it already exists
+        # Remove tracked.txt if it already exists
+
         if os.path.isfile('tracked.txt'):
+
             os.system('rm tracked.txt')
+
         with open('tracked.txt', 'a') as f:
-            #Hard-Wired in right now - would need to change for different data set 
-            #And different object names. How can the brightest star be detected 
-            #automatically? Is there a S/N parameter in the header?
+
             f.write(tracked_star)
 
-        ID, offList, namesVec, IFUValVec, frameValVec, fwhmValVec, fwhmDict = self.frameCheck(sci_dir, frameNames, tracked_name)
-        ########################################################################################################
-        #PLOTTING
-        ########################################################################################################
-        #There are the IFU sky tweak performance plots 
-        #The mean sky tweak performance across each IFU
+        ID, offList, namesVec, IFUValVec, \
+            frameValVec, fwhmValVec, fwhmDict = self.frameCheck(sci_dir,
+                                                                frameNames,
+                                                                tracked_name)
+
+        # There are the IFU sky tweak performance plots
+        # The mean sky tweak performance across each IFU
+
         print '[INFO]: Plotting frame performance against IFU number'
+
         self.meanIFUPlot(offList, namesVec, IFUValVec)
-        #The performance of skytweak in each IFU
+
+        # The performance of skytweak in each IFU
+
         print '[INFO]: Plotting Individual IFU performance with frame'
+
         self.indIFUPlot(offList, ID, IFUValVec)
-        #Mean skytweak as a function of frame
+
+        # Mean skytweak as a function of frame
+
         print '[INFO]: Plotting mean sky subtraction performance'
+
         self.meanFramePlot(ID, frameValVec)
 
-        #FWHM PLOT - monitoring seeing across the frames
-        print '[INFO]: Plotting evolution of tracked star FWHM' 
+        # FWHM PLOT - monitoring seeing across the frames
+
+        print '[INFO]: Plotting evolution of tracked star FWHM'
+
         self.meanFWHMPlot(ID, fwhmValVec)
 
-        #If supplying an additional list of files, construct the double plots 
+        # If supplying an additional list of files, construct the double plots
         if kwargs:
-            print '[INFO]: Additional keyword arguments supplied - Checking additional frames and double plotting'
+
+            print '[INFO]: Additional keyword arguments supplied' \
+                  + ' - Checking additional frames and double plotting'
+
             additional_frameNames = kwargs.values()[0]
-            ID1, offList1, namesVec1, IFUValVec1, frameValVec1, fwhmValVec1, fwhmDict1 = self.frameCheck(sci_dir, additional_frameNames, tracked_name)
-            #Now have two sets of all the parameters and can make the double plots using the multiplot methods 
+
+            ID1, offList1, namesVec1, IFUValVec1, frameValVec1, \
+                fwhmValVec1, fwhmDict1 = self.frameCheck(sci_dir,
+                                                         additional_frameNames,
+                                                         tracked_name)
+
+            # Now have two sets of all the parameters
+            # and can make the double plots using the multiplot methods
+
             print '[INFO]: Plotting multi mean IFU performance'
+
             self.multiMeanFramePlot(ID, frameValVec, frameValVec1)
+
             print '[INFO]: Plotting multi IFU subplots'
+
             self.multiIndIFUPlot(offList, ID, IFUValVec, IFUValVec1)
+
             print '[INFO]: Plotting multi FWHM plot'
+
             self.multiMeanFWHMPlot(ID, fwhmValVec, fwhmValVec1)
 
+        # list the objects in the different seeing bins
 
-
-###########################################################################################
-###########################################################################################
-#PLOTS CREATED - NOW TO ANALYSE THE BINS OF DIFFERENT FWHM
-###########################################################################################
-###########################################################################################
-#Takes into account the name of each fwhm bin and appends to the names of the final 
-#combined products, e.g. 'best_sci_combined_n55_19__skytweak.fits'
-
-
-        #Now combine the different PSF bins 
-        #Start with best - check to see if this bin is empty or not 
         print '[INFO]: These are the best names: %s ' % fwhmDict['Best']
-        print '[INFO]: These are the Good names: %s ' % fwhmDict['Good']
-        print '[INFO]: These are the Okay names: %s ' % fwhmDict['Okay']
-        print '[INFO]: These are the Bad names: %s ' % fwhmDict['Bad']
 
-        #Extract the spectra in each of the fwhm bins and save
-        #self.extractSpec(sci_dir, fwhmDict, combNames, rec_combNames, tracked_name)
+        print '[INFO]: These are the Good names: %s ' % fwhmDict['Good']
+
+        print '[INFO]: These are the Okay names: %s ' % fwhmDict['Okay']
+
+        print '[INFO]: These are the Bad names: %s ' % fwhmDict['Bad']
 
     def saveSpec(self,
                  sci_dir,
@@ -3888,64 +6111,97 @@ class pipelineOps(object):
         spec = cube.centralSpec()
 
         # Save to fits file
-        tbhdu = fits.new_table(fits.ColDefs(\
-            [fits.Column(name='Wavelength', format='E', array=wave_arr),\
-             fits.Column(name='Flux', format='E', array=spec)]))
+        tbhdu = fits.new_table(fits.ColDefs(
+            [fits.Column(name='Wavelength',
+                         format='E',
+                         array=wave_arr),
+             fits.Column(name='Flux',
+                         format='E',
+                         array=spec)]))
+
         prihdu = fits.PrimaryHDU(header=cube.primHeader)
+
         thdulist = fits.HDUList([prihdu, tbhdu])
+
         # Find the name of the cube
+
         if cubeName.find("/") == -1:
+
             sky_name = sci_dir + '/' + cubeName
+
         # Otherwise the directory structure is included and have to
         # search for the backslash and omit up to the last one
+
         else:
+
             objName = cubeName[len(cubeName) - cubeName[::-1].find("/"):]
-            sky_name = sci_dir + '/'  + objName
+            sky_name = sci_dir + '/' + objName
+
         thdulist.writeto(sky_name[:-5] + '_spectrum.fits', clobber=True)
-         
 
-
-
-    def plotSpecs(self, sci_dir, objSpec, skyCube, n):
-
+    def plotSpecs(self,
+                  sci_dir,
+                  objSpec,
+                  skyCube,
+                  n):
 
         """
-        Def: 
-        Takes the object and sky spectra, bins according to n 
-        which must be a factor of the wavelength array and plots both 
-        on the same axes 
-        Input - objSpec: Input spectrum, must be in the fits format specified 
-        in the frameCheck recipe i.e. Table data with one column that has header 
-        FLUX and one with header WAVELENGTH
-              - skySpec: Input sky spectrum in the same format 
+        Def:
+        Takes the object and sky spectra, bins according to n
+        which must be a factor of the wavelength array and plots both
+        on the same axes
+        Input
+                - objSpec: Input spectrum, must be in the fits format specified
+                            in the frameCheck recipe
+                            i.e. Table data with one column that has header
+                            FLUX and one with header WAVELENGTH
+              - skySpec: Input sky spectrum in the same format
               - n: Binning order, must be an integer
         """
 
         if type(n) != int:
-            raise TypeError('n must be an integer')
-        if n <= 0:
-            raise ValueError("You have specified a value less than or equal 0 for n")
 
-        #Read in the files 
+            raise TypeError('n must be an integer')
+
+        if n <= 0:
+
+            raise ValueError('You have specified a value'
+                             + ' less than or equal 0 for n')
+
+        # Read in the files
+
         objTable = fits.open(objSpec)
+
         obj_spec = objTable[1].data['Flux']
+
         obj_wave = objTable[1].data['Wavelength']
 
-        #skyCube
-        self.saveSpec(sci_dir, skyCube) 
-        #Find the name of the skyCube in the science directory 
+        # skyCube
+
+        self.saveSpec(sci_dir, skyCube)
+
+        # Find the name of the skyCube in the science directory
+
         if skyCube.find("/") == -1:
+
             sky_name = sci_dir + '/' + skyCube
-        #Otherwise the directory structure is included and have to 
-        #search for the backslash and omit up to the last one 
+
+        # Otherwise the directory structure is included and have to
+        # search for the backslash and omit up to the last one
+
         else:
+
             objName = skyCube[len(skyCube) - skyCube[::-1].find("/"):]
-            sky_name = sci_dir + '/'  + objName     
+            sky_name = sci_dir + '/' + objName
+
         skyTable = fits.open(sky_name[:-5] + '_spectrum.fits')
+
         sky_spec = skyTable[1].data['Flux']
+
         sky_wave = skyTable[1].data['Wavelength']
 
         if n == 1:
+
             new_obj_spec = copy(obj_spec)
             new_obj_wave = copy(obj_wave)
             new_sky_spec = copy(sky_spec)
@@ -3953,68 +6209,93 @@ class pipelineOps(object):
 
         elif n > 1:
 
-            #Variables to house the new binned spectra
+            # Variables to house the new binned spectra
+
             new_obj_spec = []
             new_obj_wave = []
             new_sky_spec = []
-            new_sky_wave = [] 
+            new_sky_wave = []
 
-            #Counters for the binning 
-            lower = 0 
+            # Counters for the binning
+            lower = 0
             upper = copy(n)
 
-            #Bin the data 
+            # Bin the data
+
             for i in range(len(obj_wave) / n):
-                #The binned spectra are the sum over the ranges
+
+                # The binned spectra are the sum over the ranges
+
                 new_obj_spec.append(sum(obj_spec[lower:upper]))
+
                 new_sky_spec.append(sum(sky_spec[lower:upper]))
-                #The binned wavelengths are the median over the ranges
+
+                # The binned wavelengths are the median over the ranges
+
                 new_obj_wave.append(np.median(obj_wave[lower:upper]))
-                new_sky_wave.append(np.median(sky_wave[lower:upper]))   
-                lower += n 
-                upper += n 
-            #Print to make sure they are the same length 
+
+                new_sky_wave.append(np.median(sky_wave[lower:upper]))
+
+                lower += n
+                upper += n
+
+            # Print to make sure they are the same length
+
             print len(new_obj_spec), len(new_sky_spec)
+
             new_obj_spec = np.array(new_obj_spec)
             new_obj_wave = np.array(new_obj_wave)
             new_sky_spec = np.array(new_sky_spec)
             new_sky_wave = np.array(new_sky_wave)
 
-        #Plot the results 
-        #Now make the plots for both nights, want the same x-axis for all three layers
+        # Plot the results
+        # Now make the plots for both nights,
+        # want the same x-axis for all three layers
+
         f, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(18.0, 10.0))
+
         ax1.plot(new_obj_wave, new_obj_spec, color='b')
         ax1.set_title('Object and Sky Comparison', fontsize=24)
         ax1.set_ylim(0, 4.0)
         ax1.tick_params(axis='y', which='major', labelsize=15)
+
+        nbins = len(ax1.get_xticklabels())
+
         ax2.plot(new_sky_wave, new_sky_spec, color='g')
         ax2.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
         ax2.tick_params(axis='both', which='major', labelsize=15)
-        #ax2.set_ylim(0, 80)
-        nbins = len(ax1.get_xticklabels())
         ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
         ax2.set_xlim(1.4, 2.5)
-        #ax2.set_xlim(1.1,1.25)
+
         f.subplots_adjust(hspace=0.001)
         f.tight_layout()
-        # plt.show()
+
+        #  plt.show()
         f.savefig(objSpec[:-5] + '.png')
 
-    def arrayCompare(self, profile, imData):
+    def arrayCompare(self,
+                     profile,
+                     imData):
+
         """
         Def: Function to compare the shapes of the optimal extraction profile
         and the object image data which may not necessarily be the same. But in
-        order for the optimal extraction from profile to work they have to be. This
-        method spits out an adjusted profile so that the shape matches that of the
-        object data, allowing them to be multiplied together
-        Input: profile - the optimal extraction profile
+        order for the optimal extraction from
+        profile to work they have to be. This
+        method spits out an adjusted profile so that
+        the shape matches that of the
+        object data, allowing them to be multiplied together.
+
+        Input:
+                profile - the optimal extraction profile
                 imData - the object cube data
-        Output: new_profile - adjusted profile with shape matches the last two indices
-        of the object data
+
+        Output:
+                new_profile - adjusted profile with
+                              shape matches the last two indices
+                              of the object data
         """
-        print imData.shape
-        print profile.shape
-        print len(profile)
+
         if imData.shape[1] != profile.shape[0]:
 
             print 'Must adjust rows'
@@ -4097,73 +6378,103 @@ class pipelineOps(object):
                    n):
 
         """
-        Def: Function for extracting the optimal spectrum from a galaxy at the 
-        location specified by the user, after examining the object cube in qfits. 
-        Recovers the object spectrum and makes a plot of this in the usual way 
-        with the sky spectrum beneath. 
-        Input: std_cube - data cube for the IFU dedicated to observing a star 
-                obj_cube - the cube containing the galaxy to extract a spectrum from 
-                sky_cube - one of the sky cubes extracted in the runPipeline.py analysis 
-                note that this is only used in the plotting part. 
-                center_x - x coordinate of the object center determined from qfits 
-                center_y - y coordinate of the object center determined from qfits 
+        Def: Function for extracting the optimal spectrum from a galaxy at the
+        location specified by the user, after
+        examining the object cube in qfits.
+        Recovers the object spectrum and makes a plot of this in the usual way
+        with the sky spectrum beneath.
+
+        Input:
+                std_cube - data cube for the IFU dedicated to observing a star
+                obj_cube - the cube containing the
+                             galaxy to extract a spectrum from
+                sky_cube - one of the sky cubes extracted
+                             in the runPipeline.py analysis
+                             note that this is only used in the plotting part.
+                center_x - x coordinate of the object
+                           center determined from qfits
+                center_y - y coordinate of the object
+                            center determined from qfits
                 n - binning for spectrum plot
 
         Output: Plot of the object and sky spectra using plotSpecs
-                If required, a data file containing the optimally 
-                extracted object spectrum 
-                returns - 1D optimally extracted spectrum 
+                If required, a data file containing the optimally
+                extracted object spectrum
+                returns - 1D optimally extracted spectrum
         """
-        # First extract the profile from the standard star cube 
+
+        # First extract the profile from the standard star cube
+
         std_star_cube = cubeOps(std_cube)
-        print 'The standard star cube shape is: %s ' % str(std_star_cube.data.shape)
+
         gal_obj_cube = cubeOps(obj_cube)
+
         wl = gal_obj_cube.wave_array
-        print 'The object cube has shape: %s ' % str(gal_obj_cube.data.shape)
+
         # Find the cube name
+
         if obj_cube.find("/") == -1:
+
             gal_name = sci_dir + '/' + obj_cube
+
         # Otherwise the directory structure is included and have to
         # search for the backslash and omit up to the last one
+
         else:
+
             objName = obj_cube[len(obj_cube) - obj_cube[::-1].find("/"):]
+
             gal_name = sci_dir + '/' + objName
+
         # Extract the PSF profile using the method in cubeClass
+
         params, std_profile, FWHM, offList = std_star_cube.psfMask()
-        # Print the profile and the center in the x/y directions
-        # print std_profile
-        print 'The x center is: %s' % params['center_x']
-        print 'The y center is: %s' % params['center_y']
 
         # Now roll this profile over to the central location of the object
         # Use numpy.roll to shift the psfMask to the location of the object
         # Find the shift values
+
         x_shift = int(center_x - params['center_x'])
+
         y_shift = int(center_y - params['center_y'])
+
         new_mask = np.roll(std_profile, x_shift, axis=0)
 
         # For the x_shift need to loop round the elements of the new_mask
+
         final_new_mask = []
+
         for arr in new_mask:
+
             final_new_mask.append(np.roll(arr, y_shift))
+
         final_new_mask = np.array(final_new_mask)
 
         # Check the shapes of the profile and object data, adjust accordingly
+
         final_new_mask = self.arrayCompare(final_new_mask, gal_obj_cube.data)
 
         # Check to see that the gaussian and shifted profile align
-        colFig, colAx = plt.subplots(1,1, figsize=(14.0,14.0))
+
+        colFig, colAx = plt.subplots(1, 1, figsize=(14.0, 14.0))
+
         colCax = colAx.imshow(final_new_mask, interpolation='bicubic')
+
         colFig.colorbar(colCax)
+
         # plt.show()
+
         plt.close('all')
+
         # Extract each optimal spectrum
+
         optimal_spec = gal_obj_cube.optimalSpecFromProfile(final_new_mask,
                                                            FWHM,
                                                            center_y,
                                                            center_x)
         # Save the optimal spectrum for each object
         # Need to create a new fits table for this
+
         tbhdu = fits.new_table(fits.ColDefs(
             [fits.Column(name='Wavelength',
                          format='E',
@@ -4183,574 +6494,899 @@ class pipelineOps(object):
 
         return optimal_spec, wl
 
-    def multiGalExtract(self, inFile, res):
+    def multiGalExtract(self,
+                        inFile,
+                        res):
+
         """
         Def: Function to perform galExtract for a selection of object supplied
-        within an infile
-        Input: inFile - with top line containing the gal_dir, std_cube_gal and
-        sky_gal. All other lines contain the object cube and x y central
-        positions
-               res - resolution with which to extract the spectra
+        within an infile.
+
+        Input:
+                inFile - with top line containing the gal_dir, std_cube_gal and
+                         sky_gal. All other lines contain the
+                         object cube and x y central positions
+                res - resolution with which to extract the spectra
         """
+
         # first read in the top line containing the standard quantities
+
         Table = np.genfromtxt(inFile, dtype='str')
-        
+
         gal_dir = Table[0, :][0]
+
         std_gal = Table[0, :][1]
+
         sky_gal = Table[0, :][2]
 
-        # Now assign the object names and x, y coordinates 
+        # Now assign the object names and x, y coordinates
+
         obj_names = Table[1:, 0]
+
         x_cen = Table[1:, 3]
+
         y_cen = Table[1:, 2]
 
-        # Loop around these objects and use galExtrac
+        # Loop around these objects and use galExtract
+
         for item in zip(obj_names, x_cen, y_cen):
 
-            optimal_spec, wl = self.galExtract(gal_dir, 
-                                           std_gal,
-                                           item[0], 
-                                           sky_gal, 
-                                           int(item[1]), 
-                                           int(item[2]), 
-                                           res)
+            optimal_spec, wl = self.galExtract(gal_dir,
+                                               std_gal,
+                                               item[0],
+                                               sky_gal,
+                                               int(item[1]),
+                                               int(item[2]),
+                                               res)
 
-        
+    def singlePixelExtract_OIII5008(self,
+                                    sci_dir,
+                                    obj_cube,
+                                    centre_x,
+                                    centre_y,
+                                    z,
+                                    n):
 
-    # beginning of the single pixel extract methods
-    # Starting to write some functions for extracting spectra from galaxies and measuring their properties  
-    def singlePixelExtract_OIII5008(self, sci_dir, obj_cube, centre_x, centre_y, z, n):
         """
-        Def: Function for extracting the spectrum from a stacked galaxy image pixel by pixel at  
-        locations specified by the user, after examining the object cube in qfits. 
-        Recovers the object spectrum and makes a plot of this in the usual way 
-        with the sky spectrum beneath. 
-        Input:  
-        obj_cube - the cube containing the galaxy to extract a spectrum from 
-        sky_cube - one of the sky cubes extracted in the runPipeline.py analysis
-        centre_x - galaxy central pixel location in x-direction
-        centre_y - galaxy central pixel location in y-direction   
-        n - binning for spectrum plot
+        Def: Function for extracting the spectrum
+        from a stacked galaxy image pixel by pixel at
+        locations specified by the user, after examining
+        the object cube in qfits.
+        Recovers the object spectrum and makes a plot of this in the usual way
+        with the sky spectrum beneath.
 
-        Output: Plot of the object and sky spectra using plotSpecs
-        If required, a data file containing the optimally extracted object spectrum 
-        Data file containing the optimally extracted sky spectrum 
+        Input:
+                obj_cube - galaxy cube to extract a spectrum from
+                sky_cube - sky cubes extracted in the runPipeline.py analysis
+                centre_x - galaxy central pixel location in x-direction
+                centre_y - galaxy central pixel location in y-direction
+                n - binning for spectrum plot
+
+        Output:
+                Plot of the object and sky spectra using plotSpecs
+                If required, a data file containing the
+                optimally extracted object spectrum
+                Data file containing the optimally extracted sky spectrum
         """
+
         z = float(z)
-        centre_x = int(centre_x)
-        centre_y = int(centre_y)
-        #Find the cube name
-        if obj_cube.find("/") == -1:
-            gal_name = sci_dir + '/' + obj_cube
-        #Otherwise the directory structure is included and have to 
-        #search for the backslash and omit up to the last one 
-        else:
-            objName = obj_cube[len(obj_cube) - obj_cube[::-1].find("/"):]
-            gal_name = sci_dir + '/'  + objName
 
-        #Literally all we need to do is extract the spectrum and compute S/N - do this by comparing 
-        #with the noise from a skycube extraction 
-        #First find the noise by extracting a spectrum from the skycube 
-        #Define the lower and upper wavelength ranges for the gaussian fit to the OIII line 
+        centre_x = int(centre_x)
+
+        centre_y = int(centre_y)
+
+        # Find the cube name
+
+        if obj_cube.find("/") == -1:
+
+            gal_name = sci_dir + '/' + obj_cube
+
+        # Otherwise the directory structure is included and have to
+        # search for the backslash and omit up to the last one
+
+        else:
+
+            objName = obj_cube[len(obj_cube) - obj_cube[::-1].find("/"):]
+
+            gal_name = sci_dir + '/' + objName
+
+        # First find the noise by extracting a
+        # spectrum from the skycube
+        # Define the lower and upper wavelength
+        # ranges for the gaussian fit to the OIII line
+
         OIII5008_lower = (0.5008 * (1 + z)) - 0.01
+
         OIII5008_upper = (0.5008 * (1 + z)) + 0.01
 
-        #Now compute the noise value. This will be done by extracting a spectrum from a single spaxel 
-        #where there is no object flux, restricting the pixel range to the region around the OIII line 
-        #plotting a histogram of the flux values, fitting with a gaussian and taking the sigma of the 
-        #gaussian as the noise level 
+        # Now compute the noise value. This will be done by
+        # extracting a spectrum from a single spaxel
+        # where there is no object flux, restricting
+        # the pixel range to the region around the OIII line
+        # plotting a histogram of the flux values, fitting
+        # with a gaussian and taking the sigma of the
+        # gaussian as the noise level
 
         objCube = cubeOps(obj_cube)
-        objWavelength = objCube.wave_array 
+
+        objWavelength = objCube.wave_array
+
         fluxArray = objCube.singlePixelExtract(5, 5)
 
-        indices = np.where(np.logical_and(objWavelength > OIII5008_lower - 0.05, objWavelength < OIII5008_upper + 0.05 ))[0]
+        indices = \
+            np.where(np.logical_and(objWavelength > OIII5008_lower - 0.05,
+                                    objWavelength < OIII5008_upper + 0.05))[0]
+
         fit_flux = fluxArray[indices]
 
-        #Have now the flux array, the bins will span from -2 to 2 in 0.2 intervals 
+        # Have now the flux array, the bins
+        # will span from -2 to 2 in 0.2 intervals
+
         bins = np.arange(-2, 2, 0.2)
+
         hist, edges = np.histogram(fit_flux, bins=bins)
 
-        #Now fit a gaussian to this data 
+        # Now fit a gaussian to this data
+
         gmod = GaussianModel()
-        #Guess and set the initial parameter values 
+
+        # Guess and set the initial parameter values
+
         pars = gmod.make_params()
         pars['center'].set(0)
         pars['sigma'].set(0.5)
         pars['amplitude'].set(1000)
-        #perform the fit 
+
+        # perform the fit
+
         out = gmod.fit(hist, pars, x=bins[0:-1])
-        #Quickly plot the results to make sure all good
+
+        # Quickly plot the results to make sure all good
+
         fig, ax = plt.subplots(1, figsize=(18, 10))
+
         ax.plot(bins[0:-1], hist, color='black')
         ax.plot(bins[0:-1], out.best_fit, color='green')
-        plt.show()
-        #Use the width of the fitted gaussian to find the noise value 
-        noise_value = out.best_values['sigma']
-        #print 'This is the noise value: %s' % (noise_value)
-        #Now have our estimate of the noise level of the measurements 
-        #Extract a spectrum using the cubeOps class
-        central_spec = objCube.singlePixelExtract(centre_x, centre_y)
-        #Now split the flux array into the region around the OIII emission line 
 
-        #Will construct x and y arrays housing the S/N value. Need to loop around 
-        #both of those and plug in the pixel values to extract the spectrum 
+        plt.show()
+
+        # Use the width of the fitted gaussian to find the noise value
+
+        noise_value = out.best_values['sigma']
+
+        # Now have our estimate of the noise level of the measurements
+        # Extract a spectrum using the cubeOps class
+
+        central_spec = objCube.singlePixelExtract(centre_x, centre_y)
+
+        # Now split the flux array into the
+        # region around the OIII emission line
+        # Will construct x and y arrays housing the S/N value.
+        # Need to loop around both of those
+        # and plug in the pixel values to extract the spectrum
+
         x_loop_array = np.arange(1, len(objCube.data[0][0]) - 1)
+
         y_loop_array = np.arange(1, len(objCube.data[0]) - 1)
+
         x_SN_array = []
+
         y_SN_array = []
 
         print 'Checking the S/N of object: %s' % (objName)
-        #for each of the values in the x_loop_array and y_loop_array compute the signal to noise of OIII 
+
+        # for each of the values in the x_loop_array
+        # and y_loop_array compute the signal to noise of OIII
 
         for item in x_loop_array:
+
             flux = objCube.singlePixelExtract(item, centre_y)
-            indices = np.where(np.logical_and(objWavelength > OIII5008_lower, objWavelength < OIII5008_upper))[0]
+
+            indices = \
+                np.where(np.logical_and(objWavelength > OIII5008_lower,
+                                        objWavelength < OIII5008_upper))[0]
+
             fit_wavelength = objWavelength[indices]
+
             fit_flux = flux[indices]
-            #print 'This is the fit flux: %s' % (fit_flux)
-            #Now have both the fit flux and wavelength - fit a gaussian to measure the amplitude of emission line 
-            best_values, covar = self.fitSingleGauss(fit_wavelength, fit_flux, 0.5008 * (1 + z))
-            #print covar
+
+            # Now have both the fit flux and wavelength
+            # - fit a gaussian to measure the amplitude of emission line
+
+            best_values, covar = self.fitSingleGauss(fit_wavelength,
+                                                     fit_flux,
+                                                     0.5008 * (1 + z))
+            # print covar
+
+            # define some maths helper variables
+
+            amp = abs(best_values['amplitude'])
+
+            num = 100 * np.sqrt(covar[1][1])
+
             if covar is None:
+
                 x_SN_array.append(0.0)
-            elif (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])) > 30) or (best_values['sigma'] > 0.007):
-                #print 'Fail: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                #print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
+
+            elif num / amp > 30 or best_values['sigma'] > 0.007:
+
                 x_SN_array.append(0.0)
+
             else:
-                #print 'Success: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                #print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
-                #print 'Appending: %s' % (abs(best_values['amplitude']) / (noise_value * 0.00028))
 
-                #Note the 0.00028 is the distance between adjacent wavelength pixels for normalisation
-                x_SN_array.append(abs(best_values['amplitude']) / (noise_value * 0.00028))
+                # Note the 0.00028 is the distance between
+                # adjacent wavelength pixels for normalisation
 
-        #Now for the y_array
-        print 'Moving onto y array'
-        for item in y_loop_array:
-            #print covar
-            flux = objCube.singlePixelExtract(centre_x, item)
-            indices = np.where(np.logical_and(objWavelength > OIII5008_lower, objWavelength < OIII5008_upper))[0]
-            fit_wavelength = objWavelength[indices]
-            fit_flux = flux[indices]
-            #Now have both the fit flux and wavelength - fit a gaussian to measure the amplitude of emission line 
-            best_values, covar = self.fitSingleGauss(fit_wavelength, fit_flux, 0.5008 * (1 + z))
-            if covar is None:
-                y_SN_array.append(0.0)
-            elif (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])) > 30) or (best_values['sigma'] > 0.007):
-                #print 'Fail: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                #print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
-                y_SN_array.append(0.0)
-            else:
-                #print 'Success: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                #print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
-                #print 'Appending: %s' % (abs(best_values['amplitude']) / (noise_value * 0.00028))
-
-                #Note the 0.00028 is the distance between adjacent wavelength pixels for normalisation
-                y_SN_array.append(abs(best_values['amplitude']) / (noise_value * 0.00028))
-
-        #print 'This is the x S/N Array: %s ' % x_SN_array
-        #print 'This is the y S/N Array: %s ' % y_SN_array
-        f, (ax1, ax2) = plt.subplots(2, 1, sharex=False, figsize=(18.0, 10.0))
-        ax1.plot(x_loop_array, x_SN_array, color='b')
-        ax1.set_title('%s x-direction S/N OIII5008' % objName[26:-5], fontsize=24)
-        ax1.set_xlabel(r'x-pixel Position at y = %s' % centre_y, fontsize=24)
-        #ax1.set_ylim(0, 4.0)
-        ax1.tick_params(axis='y', which='major', labelsize=15)
-        ax2.plot(y_loop_array, y_SN_array, color='g')
-        ax2.set_xlabel(r'y-pixel Position at x = %s' % centre_x, fontsize=24)
-        ax2.tick_params(axis='both', which='major', labelsize=15)
-        #ax2.set_ylim(0, 80)
-        nbins = len(ax1.get_xticklabels())
-        ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-        #ax2.set_xlim(1.95, 2.4)
-        #ax2.set_xlim(1.1,1.25)
-        f.subplots_adjust(hspace=0.001)
-        f.tight_layout()
-        plt.show()
-        f.savefig(gal_name[:-5] + '_OIII5008SN.png')
-
-        #Take the median of this array where the flux values don't exceed 50
-        #plot an initial evaluation of the spectrum 
-        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
-        ax1.plot(objWavelength, fluxArray, color='b')
-        ax1.plot(objWavelength, central_spec, color='red')
-        ax1.set_title('Sky Spectrum', fontsize=30)
-        #ax1.axhline(y=0.04405, xmin=min(objWavelength), xmax=max(objWavelength), linewidth=2, color = 'red')
-        ax1.set_ylim(-1, 10)
-        #ax1.set_xlim(2.05, 2.40)
-        ax1.tick_params(axis='y', which='major', labelsize=15)
-        ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
-        ax1.set_ylabel(r'Flux', fontsize=24)
-        f.tight_layout()    
-        #plt.savefig('/disk1/turner/DATA/Gals2/comb/Science/singleSpectrum.png')
-        plt.show()
-
-    def singlePixelExtractMulti_OIII5008(self, inFile, sci_dir):
-        """
-        Def:
-        Applies the singlePixelExtract function to a list of files, 
-        in the infile we have the name of the object to read in, the redshift and the x,y positions 
-        of the center of the galaxy from Qfits 
-        Input: inFile - Containing the object attributes listed above 
-        """
-        #Want to apply the above function to everything within a file 
-        #First read in the whole file as a Table 
-        Table = np.loadtxt(inFile, dtype='str')
-        for row in Table:
-            self.singlePixelExtract_OIII5008(sci_dir, row[0], row[2], row[3], row[1], 1)
-
-    # Starting to write some functions for extracting spectra from galaxies and measuring their properties  
-    def singlePixelExtract_OIII4960(self, sci_dir, obj_cube, centre_x, centre_y, z, n):
-        """
-        Def: Function for extracting the spectrum from a stacked galaxy image pixel by pixel at  
-        locations specified by the user, after examining the object cube in qfits. 
-        Recovers the object spectrum and makes a plot of this in the usual way 
-        with the sky spectrum beneath. 
-        Input:  
-        obj_cube - the cube containing the galaxy to extract a spectrum from 
-        sky_cube - one of the sky cubes extracted in the runPipeline.py analysis
-        centre_x - galaxy central pixel location in x-direction
-        centre_y - galaxy central pixel location in y-direction   
-        n - binning for spectrum plot
-
-        Output: Plot of the object and sky spectra using plotSpecs
-        If required, a data file containing the optimally extracted object spectrum 
-        Data file containing the optimally extracted sky spectrum 
-        """
-        z = float(z)
-        centre_x = int(centre_x)
-        centre_y = int(centre_y)
-        #Find the cube name
-        if obj_cube.find("/") == -1:
-            gal_name = sci_dir + '/' + obj_cube
-        #Otherwise the directory structure is included and have to 
-        #search for the backslash and omit up to the last one 
-        else:
-            objName = obj_cube[len(obj_cube) - obj_cube[::-1].find("/"):]
-            gal_name = sci_dir + '/'  + objName
-
-        #Literally all we need to do is extract the spectrum and compute S/N - do this by comparing 
-        #with the noise from a skycube extraction 
-        #First find the noise by extracting a spectrum from the skycube 
-        #Define the lower and upper wavelength ranges for the gaussian fit to the OIII line 
-        OIII4960_lower = (0.4960 * (1 + z)) - 0.01
-        OIII4960_upper = (0.4960 * (1 + z)) + 0.01
-
-        #Now compute the noise value. This will be done by extracting a spectrum from a single spaxel 
-        #where there is no object flux, restricting the pixel range to the region around the OIII line 
-        #plotting a histogram of the flux values, fitting with a gaussian and taking the sigma of the 
-        #gaussian as the noise level 
-
-        objCube = cubeOps(obj_cube)
-        objWavelength = objCube.wave_array 
-        fluxArray = objCube.singlePixelExtract(5, 5)
-
-        indices = np.where(np.logical_and(objWavelength > OIII4960_lower - 0.05, objWavelength < OIII4960_upper + 0.05 ))[0]
-        fit_flux = fluxArray[indices]
-
-        #Have now the flux array, the bins will span from -2 to 2 in 0.2 intervals 
-        bins = np.arange(-2, 2, 0.2)
-        hist, edges = np.histogram(fit_flux, bins=bins)
-
-        #Now fit a gaussian to this data 
-        gmod = GaussianModel()
-        #Guess and set the initial parameter values 
-        pars = gmod.make_params()
-        pars['center'].set(0)
-        pars['sigma'].set(0.5)
-        pars['amplitude'].set(1000)
-        #perform the fit 
-        out = gmod.fit(hist, pars, x=bins[0:-1])
-        #Quickly plot the results to make sure all good
-        fig, ax = plt.subplots(1, figsize=(18, 10))
-        ax.plot(bins[0:-1], hist, color='black')
-        ax.plot(bins[0:-1], out.best_fit, color='green')
-        plt.show()
-        #Use the width of the fitted gaussian to find the noise value 
-        noise_value = out.best_values['sigma']
-        #print 'This is the noise value: %s' % (noise_value)
-        #Now have our estimate of the noise level of the measurements 
-        #Extract a spectrum using the cubeOps class
-        central_spec = objCube.singlePixelExtract(centre_x, centre_y)
-        #Now split the flux array into the region around the OIII emission line 
-
-        #Will construct x and y arrays housing the S/N value. Need to loop around 
-        #both of those and plug in the pixel values to extract the spectrum 
-        x_loop_array = np.arange(1, len(objCube.data[0][0]) - 1)
-        y_loop_array = np.arange(1, len(objCube.data[0]) - 1)
-        x_SN_array = []
-        y_SN_array = []
-
-        print 'Checking the S/N of object: %s' % (objName)
-        #for each of the values in the x_loop_array and y_loop_array compute the signal to noise of OIII 
-
-        for item in x_loop_array:
-            flux = objCube.singlePixelExtract(item, centre_y)
-            indices = np.where(np.logical_and(objWavelength > OIII4960_lower, objWavelength < OIII4960_upper))[0]
-            fit_wavelength = objWavelength[indices]
-            fit_flux = flux[indices]
-            #print 'This is the fit flux: %s' % (fit_flux)
-            #Now have both the fit flux and wavelength - fit a gaussian to measure the amplitude of emission line 
-            best_values, covar = self.fitSingleGauss(fit_wavelength, fit_flux, 0.4960 * (1 + z))
-            #print covar
-            if covar is None:
-                x_SN_array.append(0.0)
-            elif (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])) > 30) or (best_values['sigma'] > 0.007):
-                #print 'Fail: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                #print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
-                x_SN_array.append(0.0)
-            else:
-                #print 'Success: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                #print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
-                #print 'Appending: %s' % (abs(best_values['amplitude']) / (noise_value * 0.00028))
-
-                #Note the 0.00028 is the distance between adjacent wavelength pixels for normalisation
-                x_SN_array.append(abs(best_values['amplitude']) / (noise_value * 0.00028))
-
-        #Now for the y_array
-        print 'Moving onto y array'
-        for item in y_loop_array:
-            #print covar
-            flux = objCube.singlePixelExtract(centre_x, item)
-            indices = np.where(np.logical_and(objWavelength > OIII4960_lower, objWavelength < OIII4960_upper))[0]
-            fit_wavelength = objWavelength[indices]
-            fit_flux = flux[indices]
-            #Now have both the fit flux and wavelength - fit a gaussian to measure the amplitude of emission line 
-            best_values, covar = self.fitSingleGauss(fit_wavelength, fit_flux, 0.4960 * (1 + z))
-            if covar is None:
-                y_SN_array.append(0.0)
-            elif (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])) > 30) or (best_values['sigma'] > 0.007):
-                #print 'Fail: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                #print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
-                y_SN_array.append(0.0)
-            else:
-                #print 'Success: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                #print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
-                #print 'Appending: %s' % (abs(best_values['amplitude']) / (noise_value * 0.00028))
-
-                #Note the 0.00028 is the distance between adjacent wavelength pixels for normalisation
-                y_SN_array.append(abs(best_values['amplitude']) / (noise_value * 0.00028))
-
-        #print 'This is the x S/N Array: %s ' % x_SN_array
-        #print 'This is the y S/N Array: %s ' % y_SN_array
-        f, (ax1, ax2) = plt.subplots(2, 1, sharex=False, figsize=(18.0, 10.0))
-        ax1.plot(x_loop_array, x_SN_array, color='b')
-        ax1.set_title('%s x-direction S/N OIII5008' % objName[26:-5], fontsize=24)
-        ax1.set_xlabel(r'x-pixel Position at y = %s' % centre_y, fontsize=24)
-        #ax1.set_ylim(0, 4.0)
-        ax1.tick_params(axis='y', which='major', labelsize=15)
-        ax2.plot(y_loop_array, y_SN_array, color='g')
-        ax2.set_xlabel(r'y-pixel Position at x = %s' % centre_x, fontsize=24)
-        ax2.tick_params(axis='both', which='major', labelsize=15)
-        #ax2.set_ylim(0, 80)
-        nbins = len(ax1.get_xticklabels())
-        ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-        #ax2.set_xlim(1.95, 2.4)
-        #ax2.set_xlim(1.1,1.25)
-        f.subplots_adjust(hspace=0.001)
-        f.tight_layout()
-        plt.show()
-        f.savefig(gal_name[:-5] + '_OIII4960SN.png')
-
-        #Take the median of this array where the flux values don't exceed 50
-        #plot an initial evaluation of the spectrum 
-        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
-        ax1.plot(objWavelength, fluxArray, color='b')
-        ax1.plot(objWavelength, central_spec, color='red')
-        ax1.set_title('Sky Spectrum', fontsize=30)
-        #ax1.axhline(y=0.04405, xmin=min(objWavelength), xmax=max(objWavelength), linewidth=2, color = 'red')
-        ax1.set_ylim(-1, 10)
-        #ax1.set_xlim(2.05, 2.40)
-        ax1.tick_params(axis='y', which='major', labelsize=15)
-        ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
-        ax1.set_ylabel(r'Flux', fontsize=24)
-        f.tight_layout()    
-        #plt.savefig('/disk1/turner/DATA/Gals2/comb/Science/singleSpectrum.png')
-        plt.show()
-
-    def singlePixelExtractMulti_OIII4960(self, inFile, sci_dir):
-        """
-        Def:
-        Applies the singlePixelExtract function to a list of files, 
-        in the infile we have the name of the object to read in, the redshift and the x,y positions 
-        of the center of the galaxy from Qfits 
-        Input: inFile - Containing the object attributes listed above 
-        """
-        #Want to apply the above function to everything within a file 
-        #First read in the whole file as a Table 
-        Table = np.loadtxt(inFile, dtype='str')
-        for row in Table:
-            self.singlePixelExtract_OIII4960(sci_dir, row[0], row[2], row[3], row[1], 1)
-
-    # Starting to write some functions for extracting spectra from galaxies and measuring their properties  
-    def singlePixelExtract_Hb(self, sci_dir, obj_cube, centre_x, centre_y, z, n):
-        """
-        Def: Function for extracting the spectrum from a stacked galaxy image pixel by pixel at  
-        locations specified by the user, after examining the object cube in qfits. 
-        Recovers the object spectrum and makes a plot of this in the usual way 
-        with the sky spectrum beneath. 
-        Input:  
-        obj_cube - the cube containing the galaxy to extract a spectrum from 
-        sky_cube - one of the sky cubes extracted in the runPipeline.py analysis
-        centre_x - galaxy central pixel location in x-direction
-        centre_y - galaxy central pixel location in y-direction   
-        n - binning for spectrum plot
-
-        Output: Plot of the object and sky spectra using plotSpecs
-        If required, a data file containing the optimally extracted object spectrum 
-        Data file containing the optimally extracted sky spectrum 
-        """
-        z = float(z)
-        centre_x = int(centre_x)
-        centre_y = int(centre_y)
-        #Find the cube name
-        if obj_cube.find("/") == -1:
-            gal_name = sci_dir + '/' + obj_cube
-        #Otherwise the directory structure is included and have to 
-        #search for the backslash and omit up to the last one 
-        else:
-            objName = obj_cube[len(obj_cube) - obj_cube[::-1].find("/"):]
-            gal_name = sci_dir + '/'  + objName
-
-        #Literally all we need to do is extract the spectrum and compute S/N - do this by comparing 
-        #with the noise from a skycube extraction 
-        #First find the noise by extracting a spectrum from the skycube 
-        #Define the lower and upper wavelength ranges for the gaussian fit to the OIII line 
-        Hb_lower = (0.48623 * (1 + z)) - 0.01
-        Hb_upper = (0.48623 * (1 + z)) + 0.01
-
-        #Now compute the noise value. This will be done by extracting a spectrum from a single spaxel 
-        #where there is no object flux, restricting the pixel range to the region around the OIII line 
-        #plotting a histogram of the flux values, fitting with a gaussian and taking the sigma of the 
-        #gaussian as the noise level 
-
-        objCube = cubeOps(obj_cube)
-        objWavelength = objCube.wave_array 
-        fluxArray = objCube.singlePixelExtract(5, 5)
-
-        indices = np.where(np.logical_and(objWavelength > Hb_lower - 0.05, objWavelength < Hb_upper + 0.05 ))[0]
-        fit_flux = fluxArray[indices]
-
-        #Have now the flux array, the bins will span from -2 to 2 in 0.2 intervals 
-        bins = np.arange(-2, 2, 0.2)
-        hist, edges = np.histogram(fit_flux, bins=bins)
-
-        #Now fit a gaussian to this data 
-        gmod = GaussianModel()
-        #Guess and set the initial parameter values 
-        pars = gmod.make_params()
-        pars['center'].set(0)
-        pars['sigma'].set(0.5)
-        pars['amplitude'].set(1000)
-        #perform the fit 
-        out = gmod.fit(hist, pars, x=bins[0:-1])
-        #Quickly plot the results to make sure all good
-        fig, ax = plt.subplots(1, figsize=(18, 10))
-        ax.plot(bins[0:-1], hist, color='black')
-        ax.plot(bins[0:-1], out.best_fit, color='green')
-        plt.show()
-        #Use the width of the fitted gaussian to find the noise value 
-        noise_value = out.best_values['sigma']
-        #print 'This is the noise value: %s' % (noise_value)
-        #Now have our estimate of the noise level of the measurements 
-        #Extract a spectrum using the cubeOps class
-        central_spec = objCube.singlePixelExtract(centre_x, centre_y)
-        #Now split the flux array into the region around the OIII emission line 
-
-        #Will construct x and y arrays housing the S/N value. Need to loop around 
-        #both of those and plug in the pixel values to extract the spectrum 
-        x_loop_array = np.arange(1, len(objCube.data[0][0]) - 1)
-        y_loop_array = np.arange(1, len(objCube.data[0]) - 1)
-        x_SN_array = []
-        y_SN_array = []
-
-        print 'Checking the S/N of object: %s' % (objName)
-        #for each of the values in the x_loop_array and y_loop_array compute the signal to noise of OIII 
-
-        for item in x_loop_array:
-            flux = objCube.singlePixelExtract(item, centre_y)
-            indices = np.where(np.logical_and(objWavelength > Hb_lower, objWavelength < Hb_upper))[0]
-            fit_wavelength = objWavelength[indices]
-            fit_flux = flux[indices]
-            #print 'This is the fit flux: %s' % (fit_flux)
-            #Now have both the fit flux and wavelength - fit a gaussian to measure the amplitude of emission line 
-            best_values, covar = self.fitSingleGauss(fit_wavelength, fit_flux, 0.48623 * (1 + z))
-            #print covar
-            if covar is None:
-                x_SN_array.append(0.0)
-            elif (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])) > 30) or (best_values['sigma'] > 0.007):
-                #print 'Fail: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                #print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
-                x_SN_array.append(0.0)
-            else:
-                #print 'Success: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                #print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
-                #print 'Appending: %s' % (abs(best_values['amplitude']) / (noise_value * 0.00028))
-
-                #Note the 0.00028 is the distance between adjacent wavelength pixels for normalisation
-                x_SN_array.append(abs(best_values['amplitude']) / (noise_value * 0.00028))
+                x_SN_array.append(abs(best_values['amplitude']) /
+                                  (noise_value * 0.00028))
 
         # Now for the y_array
+
         print 'Moving onto y array'
+
         for item in y_loop_array:
-            # print covar
-            flux = objCube.singlePixelExtract(centre_x, item)
-            indices = np.where(np.logical_and(objWavelength > Hb_lower, objWavelength < Hb_upper))[0]
+
+            flux = objCube.singlePixelExtract(item, centre_x)
+
+            indices = \
+                np.where(np.logical_and(objWavelength > OIII5008_lower,
+                                        objWavelength < OIII5008_upper))[0]
+
             fit_wavelength = objWavelength[indices]
+
             fit_flux = flux[indices]
-            # Now have both the fit flux and wavelength - fit a gaussian to measure the amplitude of emission line 
-            best_values, covar = self.fitSingleGauss(fit_wavelength, fit_flux, 0.48623 * (1 + z))
+
+            # Now have both the fit flux and wavelength
+            # - fit a gaussian to measure the amplitude of emission line
+
+            best_values, covar = self.fitSingleGauss(fit_wavelength,
+                                                     fit_flux,
+                                                     0.5008 * (1 + z))
+            # print covar
+
+            # define some maths helper variables
+
+            amp = abs(best_values['amplitude'])
+
+            num = 100 * np.sqrt(covar[1][1])
+
             if covar is None:
+
                 y_SN_array.append(0.0)
-            elif (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])) > 30) or (best_values['sigma'] > 0.007):
-                # print 'Fail: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                # print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
+
+            elif num / amp > 30 or best_values['sigma'] > 0.007:
+
                 y_SN_array.append(0.0)
+
             else:
-                # print 'Success: %s' % (100 * (np.sqrt(covar[1][1]) / abs(best_values['amplitude'])))
-                # print 'Amplitude is: %s Sigma is: %s' % (abs(best_values['amplitude']), best_values['sigma'])
-                # print 'Appending: %s' % (abs(best_values['amplitude']) / (noise_value * 0.00028))
 
-                # Note the 0.00028 is the distance between adjacent wavelength pixels for normalisation
-                y_SN_array.append(abs(best_values['amplitude']) / (noise_value * 0.00028))
+                # Note the 0.00028 is the distance between
+                # adjacent wavelength pixels for normalisation
 
-        # print 'This is the x S/N Array: %s ' % x_SN_array
-        # print 'This is the y S/N Array: %s ' % y_SN_array
+                y_SN_array.append(abs(best_values['amplitude']) /
+                                  (noise_value * 0.00028))
+
         f, (ax1, ax2) = plt.subplots(2, 1, sharex=False, figsize=(18.0, 10.0))
+
         ax1.plot(x_loop_array, x_SN_array, color='b')
-        ax1.set_title('%s x-direction S/N OIII5008' % objName[26:-5], fontsize=24)
+        ax1.set_title('%s x-direction S/N OIII5008' % objName[26:-5],
+                      fontsize=24)
         ax1.set_xlabel(r'x-pixel Position at y = %s' % centre_y, fontsize=24)
-        # ax1.set_ylim(0, 4.0)
         ax1.tick_params(axis='y', which='major', labelsize=15)
+
+        nbins = len(ax1.get_xticklabels())
+
         ax2.plot(y_loop_array, y_SN_array, color='g')
         ax2.set_xlabel(r'y-pixel Position at x = %s' % centre_x, fontsize=24)
         ax2.tick_params(axis='both', which='major', labelsize=15)
-        # ax2.set_ylim(0, 80)
-        nbins = len(ax1.get_xticklabels())
         ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-        # ax2.set_xlim(1.95, 2.4)
-        # ax2.set_xlim(1.1,1.25)
+
         f.subplots_adjust(hspace=0.001)
         f.tight_layout()
+
         plt.show()
+
+        f.savefig(gal_name[:-5] + '_OIII5008SN.png')
+
+        # Take the median of this array where the flux values don't exceed 50
+        # plot an initial evaluation of the spectrum
+
+        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+
+        ax1.plot(objWavelength, fluxArray, color='b')
+        ax1.plot(objWavelength, central_spec, color='red')
+        ax1.set_title('Sky Spectrum', fontsize=30)
+        ax1.set_ylim(-1, 10)
+        ax1.tick_params(axis='y', which='major', labelsize=15)
+        ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+        ax1.set_ylabel(r'Flux', fontsize=24)
+
+        f.tight_layout()
+
+        plt.show()
+
+    def singlePixelExtractMulti_OIII5008(self,
+                                         inFile,
+                                         sci_dir):
+
+        """
+        Def:
+        Applies the singlePixelExtract function to a list of files,
+        in the infile we have the name of the object to read in,
+        the redshift and the x,y positions
+        of the center of the galaxy from Qfits
+        Input:
+                inFile - Containing the object attributes listed above
+        """
+
+        # Want to apply the above function to everything within a file
+        # First read in the whole file as a Table
+
+        Table = np.loadtxt(inFile, dtype='str')
+
+        for row in Table:
+            self.singlePixelExtract_OIII5008(sci_dir,
+                                             row[0],
+                                             row[2],
+                                             row[3],
+                                             row[1],
+                                             1)
+
+    def singlePixelExtract_OIII4960(self,
+                                    sci_dir,
+                                    obj_cube,
+                                    centre_x,
+                                    centre_y,
+                                    z,
+                                    n):
+        """
+        Def: Function for extracting the spectrum from a
+        stacked galaxy image pixel by pixel at
+        locations specified by the user,
+        after examining the object cube in qfits.
+        Recovers the object spectrum and makes a plot of this in the usual way
+        with the sky spectrum beneath.
+
+        Input:
+                obj_cube - the cube containing the galaxy
+                            to extract a spectrum from
+                sky_cube - one of the sky cubes extracted
+                            in the runPipeline.py analysis
+                centre_x - galaxy central pixel location in x-direction
+                centre_y - galaxy central pixel location in y-direction
+                n - binning for spectrum plot
+
+        Output:
+                Plot of the object and sky spectra using plotSpecs
+                If required, a data file containing the
+                optimally extracted object spectrum.
+                Data file containing the optimally extracted sky spectrum
+
+        """
+
+        z = float(z)
+
+        centre_x = int(centre_x)
+
+        centre_y = int(centre_y)
+
+        # Find the cube name
+
+        if obj_cube.find("/") == -1:
+
+            gal_name = sci_dir + '/' + obj_cube
+
+        # Otherwise the directory structure is included and have to
+        # search for the backslash and omit up to the last one
+
+        else:
+
+            objName = obj_cube[len(obj_cube) - obj_cube[::-1].find("/"):]
+
+            gal_name = sci_dir + '/' + objName
+
+        # First find the noise by extracting a spectrum from the skycube
+        # Define the lower and upper wavelength ranges
+        # for the gaussian fit to the OIII line
+
+        OIII4960_lower = (0.4960 * (1 + z)) - 0.01
+
+        OIII4960_upper = (0.4960 * (1 + z)) + 0.01
+
+        # Now compute the noise value. This will be done by
+        # extracting a spectrum from a single spaxel
+        # where there is no object flux, restricting
+        # the pixel range to the region around the OIII line
+        # plotting a histogram of the flux values, fitting
+        # with a gaussian and taking the sigma of the
+        # gaussian as the noise level
+
+        objCube = cubeOps(obj_cube)
+
+        objWavelength = objCube.wave_array
+
+        fluxArray = objCube.singlePixelExtract(5, 5)
+
+        indices = \
+            np.where(np.logical_and(objWavelength > OIII4960_lower - 0.05,
+                                    objWavelength < OIII4960_upper + 0.05))[0]
+
+        fit_flux = fluxArray[indices]
+
+        # Have now the flux array, the bins will
+        # span from -2 to 2 in 0.2 intervals
+
+        bins = np.arange(-2, 2, 0.2)
+
+        hist, edges = np.histogram(fit_flux, bins=bins)
+
+        # Now fit a gaussian to this data
+
+        gmod = GaussianModel()
+
+        # Guess and set the initial parameter values
+
+        pars = gmod.make_params()
+        pars['center'].set(0)
+        pars['sigma'].set(0.5)
+        pars['amplitude'].set(1000)
+
+        # perform the fit
+
+        out = gmod.fit(hist, pars, x=bins[0:-1])
+
+        # Quickly plot the results to make sure all good
+
+        fig, ax = plt.subplots(1, figsize=(18, 10))
+
+        ax.plot(bins[0:-1], hist, color='black')
+
+        ax.plot(bins[0:-1], out.best_fit, color='green')
+
+        plt.show()
+
+        # Use the width of the fitted gaussian to find the noise value
+
+        noise_value = out.best_values['sigma']
+
+        # Now have our estimate of the noise level of the measurements
+        # Extract a spectrum using the cubeOps class
+
+        central_spec = objCube.singlePixelExtract(centre_x, centre_y)
+
+        # Now split the flux array into the
+        # region around the OIII emission line
+        # Will construct x and y arrays housing
+        # the S/N value. Need to loop around
+        # both of those and plug in the pixel values to extract the spectrum
+
+        x_loop_array = np.arange(1, len(objCube.data[0][0]) - 1)
+
+        y_loop_array = np.arange(1, len(objCube.data[0]) - 1)
+
+        x_SN_array = []
+
+        y_SN_array = []
+
+        print 'Checking the S/N of object: %s' % (objName)
+
+        # for each of the values in the x_loop_array
+        # and y_loop_array compute the signal to noise of OIII
+
+        for item in x_loop_array:
+
+            flux = objCube.singlePixelExtract(item, centre_y)
+
+            indices = \
+                np.where(np.logical_and(objWavelength > OIII4960_lower,
+                         objWavelength < OIII4960_upper))[0]
+
+            fit_wavelength = objWavelength[indices]
+
+            fit_flux = flux[indices]
+
+            # Now have both the fit flux and wavelength -
+            # fit a gaussian to measure the amplitude of emission line
+
+            best_values, covar = self.fitSingleGauss(fit_wavelength,
+                                                     fit_flux,
+                                                     0.4960 * (1 + z))
+
+            # define some maths helper variables
+
+            amp = abs(best_values['amplitude'])
+
+            num = 100 * np.sqrt(covar[1][1])
+
+            if covar is None:
+
+                x_SN_array.append(0.0)
+
+            elif num / amp > 30 or best_values['sigma'] > 0.007:
+
+                x_SN_array.append(0.0)
+
+            else:
+
+                # Note the 0.00028 is the distance between
+                # adjacent wavelength pixels for normalisation
+
+                x_SN_array.append(amp / (noise_value * 0.00028))
+
+        # Now for the y_array
+
+        print 'Moving onto y array'
+
+        for item in y_loop_array:
+
+            flux = objCube.singlePixelExtract(item, centre_x)
+
+            indices = \
+                np.where(np.logical_and(objWavelength > OIII4960_lower,
+                         objWavelength < OIII4960_upper))[0]
+
+            fit_wavelength = objWavelength[indices]
+
+            fit_flux = flux[indices]
+
+            # Now have both the fit flux and wavelength -
+            # fit a gaussian to measure the amplitude of emission line
+
+            best_values, covar = self.fitSingleGauss(fit_wavelength,
+                                                     fit_flux,
+                                                     0.4960 * (1 + z))
+
+            # define some maths helper variables
+
+            amp = abs(best_values['amplitude'])
+
+            num = 100 * np.sqrt(covar[1][1])
+
+            if covar is None:
+
+                y_SN_array.append(0.0)
+
+            elif num / amp > 30 or best_values['sigma'] > 0.007:
+
+                y_SN_array.append(0.0)
+
+            else:
+
+                # Note the 0.00028 is the distance between
+                # adjacent wavelength pixels for normalisation
+
+                y_SN_array.append(amp / (noise_value * 0.00028))
+
+        f, (ax1, ax2) = plt.subplots(2, 1, sharex=False, figsize=(18.0, 10.0))
+
+        ax1.plot(x_loop_array, x_SN_array, color='b')
+        ax1.set_title('%s x-direction S/N OIII4960' % objName[26:-5],
+                      fontsize=24)
+        ax1.set_xlabel(r'x-pixel Position at y = %s' % centre_y, fontsize=24)
+        ax1.tick_params(axis='y', which='major', labelsize=15)
+
+        nbins = len(ax1.get_xticklabels())
+
+        ax2.plot(y_loop_array, y_SN_array, color='g')
+        ax2.set_xlabel(r'y-pixel Position at x = %s' % centre_x, fontsize=24)
+        ax2.tick_params(axis='both', which='major', labelsize=15)
+        ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
+
+        f.subplots_adjust(hspace=0.001)
+        f.tight_layout()
+
+        plt.show()
+
+        f.savefig(gal_name[:-5] + '_OIII4960SN.png')
+
+        # Take the median of this array where the flux values don't exceed 50
+        # plot an initial evaluation of the spectrum
+
+        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+
+        ax1.plot(objWavelength, fluxArray, color='b')
+        ax1.plot(objWavelength, central_spec, color='red')
+        ax1.set_title('Sky Spectrum', fontsize=30)
+        ax1.set_ylim(-1, 10)
+        ax1.tick_params(axis='y', which='major', labelsize=15)
+        ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
+        ax1.set_ylabel(r'Flux', fontsize=24)
+
+        f.tight_layout()
+
+        plt.show()
+
+    def singlePixelExtractMulti_OIII4960(self,
+                                         inFile,
+                                         sci_dir):
+
+        """
+        Def:
+        Applies the singlePixelExtract function to a list of files,
+        in the infile we have the name of the object to read in,
+        the redshift and the x,y positions
+        of the center of the galaxy from Qfits.
+
+        Input:
+                inFile - Containing the object attributes listed above
+        """
+        # Want to apply the above function to everything within a file
+        # First read in the whole file as a Table
+
+        Table = np.loadtxt(inFile, dtype='str')
+
+        for row in Table:
+
+            self.singlePixelExtract_OIII4960(sci_dir,
+                                             row[0],
+                                             row[2],
+                                             row[3],
+                                             row[1],
+                                             1)
+
+    def singlePixelExtract_Hb(self,
+                              sci_dir,
+                              obj_cube,
+                              centre_x,
+                              centre_y,
+                              z,
+                              n):
+
+        """
+        Def: Function for extracting the spectrum from a
+        stacked galaxy image pixel by pixel at
+        locations specified by the user,
+        after examining the object cube in qfits.
+        Recovers the object spectrum and makes a plot of this in the usual way
+        with the sky spectrum beneath.
+
+        Input:
+                obj_cube - the cube containing the galaxy
+                            to extract a spectrum from
+                sky_cube - one of the sky cubes extracted
+                            in the runPipeline.py analysis
+                centre_x - galaxy central pixel location in x-direction
+                centre_y - galaxy central pixel location in y-direction
+                n - binning for spectrum plot
+
+        Output:
+                Plot of the object and sky spectra using plotSpecs
+                If required, a data file containing the
+                optimally extracted object spectrum.
+                Data file containing the optimally extracted sky spectrum
+
+        """
+
+        z = float(z)
+
+        centre_x = int(centre_x)
+
+        centre_y = int(centre_y)
+
+        # Find the cube name
+
+        if obj_cube.find("/") == -1:
+
+            gal_name = sci_dir + '/' + obj_cube
+
+        # Otherwise the directory structure is included and have to
+        # search for the backslash and omit up to the last one
+
+        else:
+
+            objName = obj_cube[len(obj_cube) - obj_cube[::-1].find("/"):]
+
+            gal_name = sci_dir + '/' + objName
+
+        # First find the noise by extracting a spectrum from the skycube
+        # Define the lower and upper wavelength ranges
+        # for the gaussian fit to the OIII line
+
+        Hb_lower = (0.4861 * (1 + z)) - 0.01
+
+        Hb_upper = (0.4861 * (1 + z)) + 0.01
+
+        # Now compute the noise value. This will be done by
+        # extracting a spectrum from a single spaxel
+        # where there is no object flux, restricting
+        # the pixel range to the region around the OIII line
+        # plotting a histogram of the flux values, fitting
+        # with a gaussian and taking the sigma of the
+        # gaussian as the noise level
+
+        objCube = cubeOps(obj_cube)
+
+        objWavelength = objCube.wave_array
+
+        fluxArray = objCube.singlePixelExtract(5, 5)
+
+        indices = \
+            np.where(np.logical_and(objWavelength > Hb_lower - 0.05,
+                                    objWavelength < Hb_upper + 0.05))[0]
+
+        fit_flux = fluxArray[indices]
+
+        # Have now the flux array, the bins will
+        # span from -2 to 2 in 0.2 intervals
+
+        bins = np.arange(-2, 2, 0.2)
+
+        hist, edges = np.histogram(fit_flux, bins=bins)
+
+        # Now fit a gaussian to this data
+
+        gmod = GaussianModel()
+
+        # Guess and set the initial parameter values
+
+        pars = gmod.make_params()
+        pars['center'].set(0)
+        pars['sigma'].set(0.5)
+        pars['amplitude'].set(1000)
+
+        # perform the fit
+
+        out = gmod.fit(hist, pars, x=bins[0:-1])
+
+        # Quickly plot the results to make sure all good
+
+        fig, ax = plt.subplots(1, figsize=(18, 10))
+
+        ax.plot(bins[0:-1], hist, color='black')
+
+        ax.plot(bins[0:-1], out.best_fit, color='green')
+
+        plt.show()
+
+        # Use the width of the fitted gaussian to find the noise value
+
+        noise_value = out.best_values['sigma']
+
+        # Now have our estimate of the noise level of the measurements
+        # Extract a spectrum using the cubeOps class
+
+        central_spec = objCube.singlePixelExtract(centre_x, centre_y)
+
+        # Now split the flux array into the
+        # region around the OIII emission line
+        # Will construct x and y arrays housing
+        # the S/N value. Need to loop around
+        # both of those and plug in the pixel values to extract the spectrum
+
+        x_loop_array = np.arange(1, len(objCube.data[0][0]) - 1)
+
+        y_loop_array = np.arange(1, len(objCube.data[0]) - 1)
+
+        x_SN_array = []
+
+        y_SN_array = []
+
+        print 'Checking the S/N of object: %s' % (objName)
+
+        # for each of the values in the x_loop_array
+        # and y_loop_array compute the signal to noise of OIII
+
+        for item in x_loop_array:
+
+            flux = objCube.singlePixelExtract(item, centre_y)
+
+            indices = \
+                np.where(np.logical_and(objWavelength > Hb_lower,
+                         objWavelength < Hb_upper))[0]
+
+            fit_wavelength = objWavelength[indices]
+
+            fit_flux = flux[indices]
+
+            # Now have both the fit flux and wavelength -
+            # fit a gaussian to measure the amplitude of emission line
+
+            best_values, covar = self.fitSingleGauss(fit_wavelength,
+                                                     fit_flux,
+                                                     0.4861 * (1 + z))
+
+            # define some maths helper variables
+
+            amp = abs(best_values['amplitude'])
+
+            num = 100 * np.sqrt(covar[1][1])
+
+            if covar is None:
+
+                x_SN_array.append(0.0)
+
+            elif num / amp > 30 or best_values['sigma'] > 0.007:
+
+                x_SN_array.append(0.0)
+
+            else:
+
+                # Note the 0.00028 is the distance between
+                # adjacent wavelength pixels for normalisation
+
+                x_SN_array.append(amp / (noise_value * 0.00028))
+
+        # Now for the y_array
+
+        print 'Moving onto y array'
+
+        for item in y_loop_array:
+
+            flux = objCube.singlePixelExtract(item, centre_x)
+
+            indices = \
+                np.where(np.logical_and(objWavelength > Hb_lower,
+                         objWavelength < Hb_upper))[0]
+
+            fit_wavelength = objWavelength[indices]
+
+            fit_flux = flux[indices]
+
+            # Now have both the fit flux and wavelength -
+            # fit a gaussian to measure the amplitude of emission line
+
+            best_values, covar = self.fitSingleGauss(fit_wavelength,
+                                                     fit_flux,
+                                                     0.4861 * (1 + z))
+
+            # define some maths helper variables
+
+            amp = abs(best_values['amplitude'])
+
+            num = 100 * np.sqrt(covar[1][1])
+
+            if covar is None:
+
+                y_SN_array.append(0.0)
+
+            elif num / amp > 30 or best_values['sigma'] > 0.007:
+
+                y_SN_array.append(0.0)
+
+            else:
+
+                # Note the 0.00028 is the distance between
+                # adjacent wavelength pixels for normalisation
+
+                y_SN_array.append(amp / (noise_value * 0.00028))
+
+        f, (ax1, ax2) = plt.subplots(2, 1, sharex=False, figsize=(18.0, 10.0))
+
+        ax1.plot(x_loop_array, x_SN_array, color='b')
+        ax1.set_title('%s x-direction S/N Hb' % objName[26:-5],
+                      fontsize=24)
+        ax1.set_xlabel(r'x-pixel Position at y = %s' % centre_y, fontsize=24)
+        ax1.tick_params(axis='y', which='major', labelsize=15)
+
+        nbins = len(ax1.get_xticklabels())
+
+        ax2.plot(y_loop_array, y_SN_array, color='g')
+        ax2.set_xlabel(r'y-pixel Position at x = %s' % centre_x, fontsize=24)
+        ax2.tick_params(axis='both', which='major', labelsize=15)
+        ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
+
+        f.subplots_adjust(hspace=0.001)
+        f.tight_layout()
+
+        plt.show()
+
         f.savefig(gal_name[:-5] + '_HbSN.png')
 
         # Take the median of this array where the flux values don't exceed 50
-        # plot an initial evaluation of the spectrum 
+        # plot an initial evaluation of the spectrum
+
         f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
+
         ax1.plot(objWavelength, fluxArray, color='b')
         ax1.plot(objWavelength, central_spec, color='red')
         ax1.set_title('Sky Spectrum', fontsize=30)
-        # ax1.axhline(y=0.04405, xmin=min(objWavelength), xmax=max(objWavelength), linewidth=2, color = 'red')
         ax1.set_ylim(-1, 10)
-        # ax1.set_xlim(2.05, 2.40)
         ax1.tick_params(axis='y', which='major', labelsize=15)
         ax1.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
         ax1.set_ylabel(r'Flux', fontsize=24)
-        f.tight_layout()    
-        # plt.savefig('/disk1/turner/DATA/Gals2/comb/Science/singleSpectrum.png')
+
+        f.tight_layout()
+
         plt.show()
 
     def singlePixelExtractMulti_Hb(self, inFile, sci_dir):
