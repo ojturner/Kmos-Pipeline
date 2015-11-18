@@ -19,8 +19,6 @@ from scipy.optimize import minimize
 from astropy.io import fits, ascii
 from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from scipy import stats
-
 
 # add the class file to the PYTHONPATH
 sys.path.append('/disk1/turner/PhD'
@@ -4433,7 +4431,7 @@ class pipelineOps(object):
     def frameCheck(self,
                    sci_dir,
                    frameNames,
-                   tracked_name):
+                   tracked_list):
 
         """
         Def:
@@ -4451,10 +4449,14 @@ class pipelineOps(object):
         in wavelength from frame to frame.
         Need to check this.
         Input:
+                sci_dir - path to the current science directory
                 frameNames - file containing a list of object and sky frames
                             in the standard format, with column 1
                             the file name and column 2 the file type
-                tracked_name - name of one of the stars being tracked
+                tracked_list - list of the names of three stars tracked
+                                by KMOS, 1 star per detector. If this isn't
+                                available write the name of one star three
+                                times
         Output:
                 IFUValVec - mean for each IFU of skytweak performance
                 frameValVec - mean for each frame of skytweak performance
@@ -4468,6 +4470,11 @@ class pipelineOps(object):
               cubeOps
 
         """
+        # Initially look for the sci_reduc.sof file
+
+        if not os.path.isfile('sci_reduc.sof'):
+
+            raise ValueError('Cannot find sci_reduc.sof file')
 
         # First read in the names and the types from frameNames
 
@@ -4506,20 +4513,38 @@ class pipelineOps(object):
         print 'This is the order of the combined names: %s' % combNames
 
         # Define the tracked star ID
-        # Writing out a temporary file containing the tracked star name
-        # Can probably in the future get the name
-        # of the IFU tracking a standard
-        # Star straight from the fits header. Will hardwire it in a-priori now
+        # As input to the method is a list of three names
+        # these are for the tracked stars on each detector
+        # if there is only a single tracked star then the names
+        # should all be the same and everything will work
 
-        track_name = tracked_name
+        track_name_one = tracked_list[0]
 
-        # Loop round the list of combNames until the track_name appears
+        track_name_two = tracked_list[1]
+
+        track_name_three = tracked_list[2]
+
+        # Loop round the list of combNames until each tracked_name appears
+        # these are used later on in the method to find the pixel
+        # scale of that standard star
 
         for entry in combNames:
 
-            if entry.find(track_name) != -1:
+            if entry.find(track_name_one) != -1:
 
-                tracked_star = entry
+                tracked_star_one = sci_dir + '/' + entry
+
+        for entry in combNames:
+
+            if entry.find(track_name_two) != -1:
+
+                tracked_star_two = sci_dir + '/' + entry
+
+        for entry in combNames:
+
+            if entry.find(track_name_three) != -1:
+
+                tracked_star_three = sci_dir + '/' + entry
 
         # Initialise loop counter and variables
 
@@ -4531,13 +4556,18 @@ class pipelineOps(object):
 
         namesVec = []
 
-        fwhmValVec = []
+        fwhmValVec_one = []
+        fwhmValVec_two = []
+        fwhmValVec_three = []
 
         # Set up the different bins for fwhm of tracked star
 
         a_fwhm_names = []
+
         b_fwhm_names = []
+
         c_fwhm_names = []
+
         d_fwhm_names = []
 
         # Remove the combine input file if it exists
@@ -4631,14 +4661,26 @@ class pipelineOps(object):
 
                 frameValVec.append(np.nanmedian(medVals))
 
-                # Move onto FWHM analysis of chosen tracked star
+                # Move onto FWHM analysis of chosen tracked stars
+                # The gaussian fitting will be executed three times
+                # once for each of the tracked stars
 
-                print 'Checking PSF of tracked star'
+                print 'Checking PSF of tracked stars'
 
-                fwhm, psfProfile, offList, params, shift_list = \
-                    self.gaussFit('tracked.txt')
+                fwhm_one, psfProfile_one, offList_one, params_one, \
+                    shift_list_one = self.gaussFit('tracked_one.txt')
 
-                fwhmValVec.append(fwhm)
+                fwhmValVec_one.append(fwhm_one)
+
+                fwhm_two, psfProfile_two, offList_two, params_two, \
+                    shift_list_two = self.gaussFit('tracked_two.txt')
+
+                fwhmValVec_two.append(fwhm_two)
+
+                fwhm_three, psfProfile_three, offList_three, params_three, \
+                    shift_list_three = self.gaussFit('tracked_three.txt')
+
+                fwhmValVec_three.append(fwhm_three)
 
                 # remove the temporary .sof file and
                 # go back to the start of the loop
@@ -4648,9 +4690,128 @@ class pipelineOps(object):
                 # Change FWHM to arcsecond scale, by using the pixel scale
                 # recover the pixel scale by creating a cubeClass instance
 
-                pixel_scale = float(cubeOps(
-                    sci_dir + '/' + tracked_star).pix_scale)
-                arc_fwhm = fwhm * pixel_scale
+                pixel_scale = float(cubeOps(tracked_star_one).pix_scale)
+
+                # define the three fwhm values from the stars
+
+                arc_fwhm_one = fwhm_one * pixel_scale
+
+                arc_fwhm_two = fwhm_two * pixel_scale
+
+                arc_fwhm_three = fwhm_three * pixel_scale
+
+                arc_fwhm = np.mean([arc_fwhm_one,
+                                    arc_fwhm_two,
+                                    arc_fwhm_three])
+
+                # Now since we are tracking three stars need to create arrays
+                # for writing to the file. Tricky as some of the arms aren't
+                # operational and this must be taken into account. Constructing
+                # arrays for the arc_fwhm, shift_list and params.
+
+                first = np.arange(1, 9, 1)
+
+                second = np.arange(9, 17, 1)
+
+                third = np.arange(17, 25, 1)
+
+                # loop round the offList and reduce the size of
+                # first second and third if they contain IFU numbers
+                # which are in the offList
+
+                for item in offList_one:
+                    if item in first:
+                        first = first[1:]
+
+                for item in offList_one:
+                    if item in second:
+                        second = second[1:]
+
+                for item in offList_one:
+                    if item in third:
+                        third = third[1:]
+
+                # now that the arrays are of the correct size
+                # create the overall arrays for each parameter
+
+                # the fwhm of the stars
+
+                arc_fwhm_one_array = np.repeat(arc_fwhm_one,
+                                               len(first))
+
+                arc_fwhm_two_array = np.repeat(arc_fwhm_two,
+                                               len(second))
+
+                arc_fwhm_three_array = np.repeat(arc_fwhm_three,
+                                                 len(third))
+
+                arc_fwhm_array = np.hstack([arc_fwhm_one_array,
+                                           arc_fwhm_two_array,
+                                           arc_fwhm_three_array])
+
+                print 'CHECKING FOR EQUAL LENGTHS'
+                print 'FWHM array has length %s' % len(arc_fwhm_array)
+                print 'cubelist has length %s' % len(cube_name_list)
+
+                # the x center of the gaussian fit
+
+                x_center_one_array = np.repeat(params_one['center_x'],
+                                               len(first))
+
+                x_center_two_array = np.repeat(params_two['center_x'],
+                                               len(second))
+
+                x_center_three_array = np.repeat(params_three['center_x'],
+                                                 len(third))
+
+                x_center_array = np.hstack([x_center_one_array,
+                                           x_center_two_array,
+                                           x_center_three_array])
+
+                # the y center of the gaussian fit
+
+                y_center_one_array = np.repeat(params_one['center_y'],
+                                               len(first))
+
+                y_center_two_array = np.repeat(params_two['center_y'],
+                                               len(second))
+
+                y_center_three_array = np.repeat(params_three['center_y'],
+                                                 len(third))
+
+                y_center_array = np.hstack([y_center_one_array,
+                                           y_center_two_array,
+                                           y_center_three_array])
+
+                # the x dither value
+
+                x_dither_one_array = np.repeat(shift_list_one[0],
+                                               len(first))
+
+                x_dither_two_array = np.repeat(shift_list_two[0],
+                                               len(second))
+
+                x_dither_three_array = np.repeat(shift_list_three[0],
+                                                 len(third))
+
+                x_dither_array = np.hstack([x_dither_one_array,
+                                           x_dither_two_array,
+                                           x_dither_three_array])
+
+                # the y dither value
+
+                y_dither_one_array = np.repeat(shift_list_one[1],
+                                               len(first))
+
+                y_dither_two_array = np.repeat(shift_list_two[1],
+                                               len(second))
+
+                y_dither_three_array = np.repeat(shift_list_three[1],
+                                                 len(third))
+
+                y_dither_array = np.hstack([y_dither_one_array,
+                                           y_dither_two_array,
+                                           y_dither_three_array])
 
                 # Define the reconstructed objFile name
                 # If the entry doesn't contain a backslash, the entry
@@ -4684,11 +4845,11 @@ class pipelineOps(object):
                                  IFU_number_array[i],
                                  cube_name_list[i],
                                  medVals[i],
-                                 arc_fwhm,
-                                 params['center_x'],
-                                 params['center_y'],
-                                 shift_list[0] / pixel_scale,
-                                 shift_list[1] / pixel_scale))
+                                 arc_fwhm_array[i],
+                                 x_center_array[i],
+                                 y_center_array[i],
+                                 x_dither_array[i] / pixel_scale,
+                                 y_dither_array[i] / pixel_scale))
 
                     if (arc_fwhm > 0.0 and arc_fwhm < 0.6):
 
@@ -4720,13 +4881,17 @@ class pipelineOps(object):
 
         IFUValVec = np.array(IFUValVec)
 
-        fwhmValVec = np.array(fwhmValVec)
+        fwhmValVec_one = np.array(fwhmValVec_one)
+        fwhmValVec_two = np.array(fwhmValVec_two)
+        fwhmValVec_three = np.array(fwhmValVec_three)
 
-        offList = np.array(offList)
+        offList = np.array(offList_one)
 
         # Convert the FWHM to arcseconds instead of pixels
 
-        fwhmValVec = pixel_scale * np.array(fwhmValVec)
+        fwhmValVec_one = pixel_scale * np.array(fwhmValVec_one)
+        fwhmValVec_two = pixel_scale * np.array(fwhmValVec_two)
+        fwhmValVec_three = pixel_scale * np.array(fwhmValVec_three)
 
         ID = np.arange(0.0, counter, 1.0)
 
@@ -4752,7 +4917,8 @@ class pipelineOps(object):
         # Return all of these values
 
         return ID, offList, namesVec, IFUValVec, \
-            frameValVec, fwhmValVec, fwhmDict
+            frameValVec, fwhmValVec_one, \
+            fwhmValVec_two, fwhmValVec_three, fwhmDict
 
     def meanIFUPlot(self,
                     offList,
@@ -5040,7 +5206,8 @@ class pipelineOps(object):
 
     def meanFWHMPlot(self,
                      ID,
-                     fwhmValVec):
+                     fwhmValVec,
+                     name):
 
         """
         Def:
@@ -5059,10 +5226,12 @@ class pipelineOps(object):
         ax.set_title('Average fwhm vs. Frame ID')
         ax.set_xlabel('Frame ID')
         ax.set_xlim(0, len(ID))
-        ax.set_xticks((np.arange(min(ID), max(ID)+ 1, 1.0)))
+        ax.set_xticks((np.arange(min(ID), max(ID) + 1, 1.0)))
         ax.grid(b=True, which='both', linestyle='--')
 
-        fig.savefig('frame_fwhm.png')
+        save_name = 'frame_fwhm' + name + '.png'
+
+        fig.savefig(save_name)
 
         # plt.show()
 
@@ -5071,7 +5240,8 @@ class pipelineOps(object):
     def multiMeanFWHMPlot(self,
                           ID,
                           fwhmValVec1,
-                          fwhmValVec2):
+                          fwhmValVec2,
+                          name):
 
         """
         Def:
@@ -5093,7 +5263,8 @@ class pipelineOps(object):
         ax.set_xticks((np.arange(min(ID), max(ID) + 1, 1.0)))
         ax.grid(b=True, which='both', linestyle='--')
 
-        fig.savefig('frame_fwhm_double.png')
+        save_name = 'fwhm_double_' + name + '.png' 
+        fig.savefig(save_name)
 
         # plt.show()
 
@@ -5504,12 +5675,12 @@ class pipelineOps(object):
         shorter list containing only objects appearing within the defined
         seeing limits.
 
-        Input: 
+        Input:
                 combine_file - one of the outputs from frameCheck
                 seeing_lower - lower limit for the seeing
                 seeing_upper - upper limit for the seeing
 
-        Output: 
+        Output:
                     new_Table - shortened version of the list containing
                                 the names and properties of objects to combine
         """
@@ -5932,7 +6103,7 @@ class pipelineOps(object):
     def multiExtractSpec(self,
                          sci_dir,
                          frameNames,
-                         tracked_name,
+                         tracked_list,
                          **kwargs):
 
         """
@@ -5947,7 +6118,11 @@ class pipelineOps(object):
                 reconstructed object cube from the current set
                 skyCube - any reconstructed sky cube
                 frameNames - list of object/sky pairs with
-                the names in the first column and type in second
+                            the names in the first column and type in second
+                tracked_list - list of the names of three stars tracked
+                                by KMOS, 1 star per detector. If this isn't
+                                available write the name of one star three
+                                times
 
         Outpt:
                 Plot of frame performance against ID
@@ -5960,6 +6135,7 @@ class pipelineOps(object):
             raise ValueError("Missing reduction .sof file")
 
         # remove the temporary sof file if it exists
+        # also remove the tracked star names
 
         if os.path.isfile('sci_reduc_temp.sof'):
 
@@ -5968,6 +6144,18 @@ class pipelineOps(object):
         if os.path.isfile('tracked.txt'):
 
             os.system('rm tracked.txt')
+
+        if os.path.isfile('tracked_one.txt'):
+
+            os.system('rm tracked_one.txt')
+
+        if os.path.isfile('tracked_two.txt'):
+
+            os.system('rm tracked_two.txt')
+
+        if os.path.isfile('tracked_three.txt'):
+
+            os.system('rm tracked_three.txt')
 
         # Read in the data from the frameNames
 
@@ -6002,30 +6190,54 @@ class pipelineOps(object):
 
             print 'Having difficulty setting sci_comb names'
 
-        track_name = tracked_name
+        track_name_one = tracked_list[0]
 
-        # Loop round the list of combNames until the track_name appears
+        track_name_two = tracked_list[1]
+
+        track_name_three = tracked_list[2]
+
+        # Loop round the list of combNames until each tracked_name appears
 
         for entry in combNames:
 
-            if entry.find(track_name) != -1:
+            if entry.find(track_name_one) != -1:
 
-                tracked_star = sci_dir + '/' + entry
+                tracked_star_one = sci_dir + '/' + entry
 
-        # Remove tracked.txt if it already exists
+        for entry in combNames:
 
-        if os.path.isfile('tracked.txt'):
+            if entry.find(track_name_two) != -1:
 
-            os.system('rm tracked.txt')
+                tracked_star_two = sci_dir + '/' + entry
 
-        with open('tracked.txt', 'a') as f:
+        for entry in combNames:
 
-            f.write(tracked_star)
+            if entry.find(track_name_three) != -1:
+
+                tracked_star_three = sci_dir + '/' + entry
+
+        # write to file each of these tracked names
+
+        with open('tracked_one.txt', 'a') as f:
+
+            f.write(tracked_star_one)
+
+        with open('tracked_two.txt', 'a') as f:
+
+            f.write(tracked_star_two)
+
+        with open('tracked_three.txt', 'a') as f:
+
+            f.write(tracked_star_three)
+
+        # execute the framecheck method to complete the science reduction
 
         ID, offList, namesVec, IFUValVec, \
-            frameValVec, fwhmValVec, fwhmDict = self.frameCheck(sci_dir,
-                                                                frameNames,
-                                                                tracked_name)
+            frameValVec, fwhmValVec_one, \
+            fwhmValVec_two, fwhmValVec_three, \
+            fwhmDict = self.frameCheck(sci_dir,
+                                       frameNames,
+                                       tracked_list)
 
         # There are the IFU sky tweak performance plots
         # The mean sky tweak performance across each IFU
@@ -6050,7 +6262,9 @@ class pipelineOps(object):
 
         print '[INFO]: Plotting evolution of tracked star FWHM'
 
-        self.meanFWHMPlot(ID, fwhmValVec)
+        self.meanFWHMPlot(ID, fwhmValVec_one, 'star_one')
+        self.meanFWHMPlot(ID, fwhmValVec_two, 'star_two')
+        self.meanFWHMPlot(ID, fwhmValVec_three, 'star_three')
 
         # If supplying an additional list of files, construct the double plots
         if kwargs:
@@ -6061,9 +6275,10 @@ class pipelineOps(object):
             additional_frameNames = kwargs.values()[0]
 
             ID1, offList1, namesVec1, IFUValVec1, frameValVec1, \
-                fwhmValVec1, fwhmDict1 = self.frameCheck(sci_dir,
-                                                         additional_frameNames,
-                                                         tracked_name)
+                fwhmValVec1_one, fwhmValVec1_two, fwhmValVec1_three, \
+                fwhmDict1 = self.frameCheck(sci_dir,
+                                            additional_frameNames,
+                                            tracked_list)
 
             # Now have two sets of all the parameters
             # and can make the double plots using the multiplot methods
@@ -6078,7 +6293,20 @@ class pipelineOps(object):
 
             print '[INFO]: Plotting multi FWHM plot'
 
-            self.multiMeanFWHMPlot(ID, fwhmValVec, fwhmValVec1)
+            self.multiMeanFWHMPlot(ID,
+                                   fwhmValVec_one,
+                                   fwhmValVec1_one,
+                                   'star_one')
+
+            self.multiMeanFWHMPlot(ID,
+                                   fwhmValVec_two,
+                                   fwhmValVec1_two,
+                                   'star_two')
+
+            self.multiMeanFWHMPlot(ID,
+                                   fwhmValVec_three,
+                                   fwhmValVec1_three,
+                                   'star_three')
 
         # list the objects in the different seeing bins
 
@@ -6265,12 +6493,12 @@ class pipelineOps(object):
         ax2.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
         ax2.tick_params(axis='both', which='major', labelsize=15)
         ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-        ax2.set_xlim(1.4, 2.5)
+        ax2.set_xlim(1.4, 1.9)
 
         f.subplots_adjust(hspace=0.001)
         f.tight_layout()
 
-        #  plt.show()
+        # plt.show()
         f.savefig(objSpec[:-5] + '.png')
 
     def arrayCompare(self,
@@ -7422,16 +7650,22 @@ class pipelineOps(object):
         Def:
         Supply wavelength and flux arrays as well as a guess
         at the central wavelength value of the gaussian to perform
-        a fit and recover the best fit parameters
-        Input: wavelength - wavelength array
+        a fit and recover the best fit parameters.
+
+        Input: 
+                wavelength - wavelength array
                 flux - corresponding flux array
                 center - central wavelength of emission line in microns
+
         Output: Best fitting parameters in dictionary
+
         """
         # Construct the gaussian model from lmfit
+
         mod = GaussianModel()
 
         # Guess and set the initial parameter values
+
         pars = mod.make_params()
         pars['center'].set(center)
         pars['center'].set(vary=False)
@@ -7439,6 +7673,7 @@ class pipelineOps(object):
         pars['amplitude'].set(0.8)
 
         # Perform the model fit
+
         out = mod.fit(flux, pars, x=wavelength)
 
         # print out.fit_report()
@@ -7765,12 +8000,17 @@ class pipelineOps(object):
               % ((5 * (len(np.unique(av_seeing)) - (len(np.unique(av_seeing))
                  - len(np.unique(ar))))) / 60.0)
 
-    def multi_plot_HK_sn_map(self, infile):
+    def multi_plot_HK_sn_map(self,
+                             infile):
+
         """
         Def:
-        Plot the sn maps for lots of cubes together
-        Input: infile - file listing the redshifts and cubenames
+        Plot the sn maps for lots of cubes together.
+
+        Input:
+                infile - file listing the redshifts and cubenames
         """
+
         # read in the table of cube names
         Table = ascii.read(infile)
 
@@ -7786,12 +8026,17 @@ class pipelineOps(object):
 
             cube.plot_HK_sn_map(redshift, savefig=True)
 
-    def multi_plot_K_sn_map(self, infile):
+    def multi_plot_K_sn_map(self,
+                            infile):
+
         """
         Def:
-        Plot the sn maps for lots of cubes together
-        Input: infile - file listing the redshifts and cubenames
+        Plot the sn maps for lots of cubes together.
+
+        Input:
+                infile - file listing the redshifts and cubenames
         """
+
         # read in the table of cube names
         Table = ascii.read(infile)
 
@@ -7807,12 +8052,17 @@ class pipelineOps(object):
 
             cube.plot_K_sn_map(redshift, savefig=True)
 
-    def multi_plot_HK_image(self, infile):
+    def multi_plot_HK_image(self,
+                            infile):
+
         """
         Def:
-        Plot the sn maps for lots of cubes together
-        Input: infile - file listing the redshifts and cubenames
+        Plot the sn maps for lots of cubes together.
+
+        Input:
+                infile - file listing the redshifts and cubenames
         """
+
         # read in the table of cube names
         Table = ascii.read(infile)
 
@@ -7828,12 +8078,17 @@ class pipelineOps(object):
 
             cube.plot_HK_image(redshift, savefig=True)
 
-    def multi_plot_K_image(self, infile):
+    def multi_plot_K_image(self,
+                           infile):
+
         """
         Def:
-        Plot the sn maps for lots of cubes together
-        Input: infile - file listing the redshifts and cubenames
+        Plot the sn maps for lots of cubes together.
+
+        Input:
+                infile - file listing the redshifts and cubenames
         """
+
         # read in the table of cube names
         Table = ascii.read(infile)
 
@@ -7854,10 +8109,16 @@ class pipelineOps(object):
 
         """
         Def:
-        Plot the velocity maps for lots of cubes together
-        Input: infile - file listing the redshifts and cubenames
+
+        Plot the velocity maps for lots of cubes together.
+
+        Input:
+                infile - file listing the redshifts and cubenames
+
         """
+
         # read in the table of cube names
+
         Table = ascii.read(infile)
 
         for entry in Table:
@@ -7880,16 +8141,19 @@ class pipelineOps(object):
                             interp):
         """
         Def:
-        Plot the velocity maps for lots of cubes together
-        Input: infile - file listing the redshifts and cubenames
-                  and also the x,y central position of the galaxy
-                  also needs to contain the 'standard star cube'
-                  and an associated 'skycube'
+        Plot the velocity maps for lots of cubes together.
+
+        Input:
+                infile - file listing the redshifts and cubenames
+                      and also the x,y central position of the galaxy
+                     also needs to contain the 'standard star cube'
+                    and an associated 'skycube'
                binning - whether to bin velocity field data or not
                xbin - what the x-direction bin size should be
                ybin - what the y-direction bin size should be
                interp - what the bin interpolation should be
         """
+
         # read in the table of cube names
         Table = ascii.read(infile)
 
@@ -7940,11 +8204,16 @@ class pipelineOps(object):
 
                     # add colourbar to each plot
                     divider = make_axes_locatable(ax)
-                    cax_new = divider.append_axes('right', size='10%', pad=0.05)
+
+                    cax_new = divider.append_axes('right',
+                                                  size='10%',
+                                                  pad=0.05)
+
                     plt.colorbar(im, cax=cax_new)
 
                 # name the plots
                 for name, ax in zip(sn_dict.keys(), axes[0]):
+
                     ax.set_title('%s_image' % name)
 
                 # top row populated, now add the OII & Hb

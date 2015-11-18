@@ -1896,7 +1896,6 @@ class cubeOps(object):
             vel_min, vel_max = [-100, 100]
             sig_min, sig_max = [0, 100]
 
-
         im_vel = vel_ax[0].imshow(OIII_vel_array, aspect='auto',
                                   vmin=vel_min,
                                   vmax=vel_max,
