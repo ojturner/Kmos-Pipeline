@@ -73,22 +73,27 @@ field_instance = vel_field('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/com
 #hobjframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
 #hskyframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-combine_input = '/disk1/turner/DATA/GOODS_K_P2_comb_0.6_5/Science/all_nights.txt'
-sci_dir = '/disk1/turner/DATA/GOODS_K_P2_comb_0.6_5/Science'
+combine_input = '/disk1/turner/DATA/GOODS_H_P2_comb_0.7/1.5_Science/all_nights.txt'
+sci_dir = '/disk1/turner/DATA/GOODS_H_P2_comb_0.7/1.5_Science'
 combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals_names.txt'
 obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
-gal_dir = '/disk1/turner/DATA/03-11-15_GOODS_H_P1_v2/Science'
+cal_dir = '/disk1/turner/DATA/esther_tester/Calibrations'
+gal_dir = '/disk1/turner/DATA/Gals1/K/comb/Science'
 sky_cube_gal = gal_dir + '/combine_sci_reconstructed_arm3_sky.fits'
 obj_cube_gal = gal_dir + '/combine_sci_reconstructed_bs008543.fits'
-std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_4833.fits'
+std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_7656.fits'
 raw_file = '/disk1/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS344_0018_Corrected.fits'
 badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
 object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
+vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_voronoi_test.txt'
+vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
-
+pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal, sky_cube_gal, 15, 22, 3.47328838, stack='sum', line='hb')
+#pipe_methods.apply_voronoi_binning(vor_infile, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi')
+#pipe_methods.telluric_correct('IZ', cal_dir)
 #field_instance.fit_kinematic_pa(plot=True, debug=False)
-pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt', binning=False, xbin=1, ybin=1, interp='sum')
+#pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/SSA_P1_New_Comb/all_names.txt', binning=False, xbin=1, ybin=1, interp='sum')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/goods_k_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/ssa22_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
@@ -98,7 +103,6 @@ pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt', binning=Fal
 # print 'this is the new shape: (%s, %s)' % (data.shape[1], data.shape[2])
 # print data[400:500,12,12]
 # print cube.data
-
 #spectrum, wl = pipe_methods.galExtract(gal_dir, std_cube_gal, obj_cube_gal, sky_cube_gal, 22, 15, 1)
 #oiii_values, hb_values = pipe_methods.fit_lines_K(spectrum, wl, redshift=3.4737420)
 #param_dict = {'centre': 2.24035, 'sigma': 0.00045, 'amplitude': 0.001}
@@ -127,7 +131,7 @@ pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/all_names.txt', binning=Fal
 #pipe_methods.galExtract(gal_dir, std_cube_gal, obj_cube_gal, sky_cube_gal, 9, 17, 1)
 #pipe_methods.multiGalExtract('/disk1/turner/DATA/all_names.txt', 1)
 #pipe_methods.frameCheck(sci_dir, obj_names, 'n55_19')
-#pipe_methods.combine_by_name(sci_dir, combine_input, 0, 0.6, 5.0)
+#pipe_methods.combine_by_name(sci_dir, combine_input, 0, 0.7, 1.5E-16)
 #pipe_methods.compareSky(sci_dir, combNames)
 #new_Table = pipe_methods.reduce_list_seeing(combine_input, 0.5, 1.0)
 #print 'length new_Table is: %s'  % len(new_Table)

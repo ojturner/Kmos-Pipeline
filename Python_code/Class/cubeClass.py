@@ -194,7 +194,7 @@ class cubeOps(object):
 
         for entry in self.combDict.keys():
 
-            combinedName = 'sci_combined_' + entry + '__skytweak.fits'
+            combinedName = 'sci_combined_' + entry + '__telluric_skytweak.fits'
             self.combNames.append(combinedName)
 
         # Also construct the list of kmo_combine recipe combined names
@@ -249,7 +249,7 @@ class cubeOps(object):
         Needs to check number digits before the decimal point,
         because the fits files doesn't always give 6
 
-        Input: Sexagesimal RA (HH:MM:SS.SS)
+        Input: Sexagesimal RA (HHMMSS.SS)
         Output: Ra in degrees
 
         """
@@ -297,7 +297,7 @@ class cubeOps(object):
         Needs to check number digits before the decimal point,
         because the fits files doesn't always give 6
 
-        Input: Sexagesimal dec (DD:MM:SS.SS)
+        Input: Sexagesimal dec (DDMMSS.SS)
         Output: Dec in degrees
 
         """
@@ -1030,6 +1030,8 @@ class cubeOps(object):
             ypixs = data.shape[2]
 
             sn_array = np.empty(shape=(xpixs, ypixs))
+            signal_array = np.empty(shape=(xpixs, ypixs))
+            noise_array = np.empty(shape=(xpixs, ypixs))
 
             for i, xpix in enumerate(np.arange(0, xpixs, 1)):
 
@@ -1040,9 +1042,18 @@ class cubeOps(object):
 
                     line_counts = np.median(spaxel_spec[line_idx - 3:
                                                         line_idx + 3])
+                    if np.isnan(line_counts):
+                        signal_array[i, j] = 0
+                    else:
+                        signal_array[i, j] = line_counts
 
                     line_noise = np.median(spaxel_noise[line_idx - 3:
                                                         line_idx + 3])
+
+                    if np.isnan(line_noise):
+                        noise_array[i, j] = 0
+                    else:
+                        noise_array[i, j] = line_noise
 
                     line_sn = line_counts / line_noise
 
@@ -1064,10 +1075,16 @@ class cubeOps(object):
         fig.colorbar(im, cax=cbar_ax)
 
         # plt.tight_layout()
-        # plt.show()
+        # noise plt.show()
 
         if savefig:
             fig.savefig('%s_sn_map.pdf' % self.fileName[:-5])
+
+        hdu = fits.PrimaryHDU(noise_array)
+        hdu.writeto('%s_noise_map.fits' % self.fileName[:-5], clobber=True)
+        hdu = fits.PrimaryHDU(signal_array)
+        hdu.writeto('%s_signal_map.fits' % self.fileName[:-5], clobber=True)
+
         return sn_dict
 
     def plot_HK_image(self,

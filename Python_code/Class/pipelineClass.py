@@ -7,10 +7,14 @@
 # import the relevant modules
 import os
 import sys
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import pyraf
+import numpy.ma as ma
+from scipy.spatial import distance
+from scipy import ndimage
 from copy import copy
 from lmfit import Model
 from itertools import cycle as cycle
@@ -1440,11 +1444,11 @@ class pipelineOps(object):
 
         objData[objData < 500] = np.nan
 
-        objData[objData > 2500] = np.nan
+        objData[objData > 10000] = np.nan
 
         skyData[skyData < 500] = np.nan
 
-        skyData[skyData > 2500] = np.nan
+        skyData[skyData > 10000] = np.nan
 
         newobjDataMedian = np.nanmedian(objData)
 
@@ -1531,11 +1535,11 @@ class pipelineOps(object):
 
         objData[objData < 500] = np.nan
 
-        objData[objData > 2500] = np.nan
+        objData[objData > 10000] = np.nan
 
         skyData[skyData < 500] = np.nan
 
-        skyData[skyData > 2500] = np.nan
+        skyData[skyData > 10000] = np.nan
 
         newobjDataMedian = np.nanmedian(objData)
 
@@ -1616,11 +1620,11 @@ class pipelineOps(object):
 
         objData[objData < 500] = np.nan
 
-        objData[objData > 2500] = np.nan
+        objData[objData > 10000] = np.nan
 
         skyData[skyData < 500] = np.nan
 
-        skyData[skyData > 2500] = np.nan
+        skyData[skyData > 10000] = np.nan
 
         newobjDataMedian = np.nanmedian(objData)
 
@@ -1688,11 +1692,11 @@ class pipelineOps(object):
 
         objData[objData < 500] = np.nan
 
-        objData[objData > 2500] = np.nan
+        objData[objData > 10000] = np.nan
 
         skyData[skyData < 500] = np.nan
 
-        skyData[skyData > 2500] = np.nan
+        skyData[skyData > 10000] = np.nan
 
         newobjDataMedian = np.nanmedian(objData)
 
@@ -4061,7 +4065,8 @@ class pipelineOps(object):
 
         for fileName in namesOfFiles:
 
-            # print fileName
+            print 'Fitting %s' % fileName
+
             tempCube = cubeOps(sci_dir + '/' + fileName)
 
             IFUNR = tempCube.IFUNR
@@ -4089,6 +4094,9 @@ class pipelineOps(object):
                     and np.nanmedian(wavelength) < 1.80:
 
                 # we're in the H-band
+                print 'H-band found'
+
+                filter_id = 'H'
 
                 filter_indices = np.where(np.logical_and(wavelength > 1.45,
                                                          wavelength < 1.75))[0]
@@ -4101,6 +4109,9 @@ class pipelineOps(object):
                     and np.nanmedian(wavelength) < 2.3:
 
                 # we're in the K-band
+                print 'K-band found'
+
+                filter_id = 'K'
 
                 filter_indices = np.where(np.logical_and(wavelength > 2.10,
                                                          wavelength < 2.3))[0]
@@ -4112,7 +4123,10 @@ class pipelineOps(object):
             elif np.nanmedian(wavelength) > 1.00 \
                     and np.nanmedian(wavelength) < 1.35:
 
-                # we're in the =J-band
+                # we're in the YJ-band
+                print 'YJ-band found'
+
+                filter_id = 'YJ'
 
                 filter_indices = np.where(np.logical_and(wavelength > 1.05,
                                                          wavelength < 1.35))[0]
@@ -4124,7 +4138,10 @@ class pipelineOps(object):
             elif np.nanmedian(wavelength) > 1.8 \
                     and np.nanmedian(wavelength) < 2.1:
 
-                # we're in the HK band
+                # we're in the HK-band
+                print 'HK-band found'
+
+                filter_id = 'HK'
 
                 filter_indices = np.where(np.logical_and(wavelength > 1.6,
                                                          wavelength < 2.3))[0]
@@ -4133,16 +4150,37 @@ class pipelineOps(object):
 
                 wavelength = wavelength[filter_indices]
 
+            elif np.nanmedian(wavelength) > 0.8 \
+                    and np.nanmedian(wavelength) < 1.05:
+
+                # we're in the IZ-band
+                print 'IZ-band found'
+
+                filter_id = 'IZ'
+
+                filter_indices = np.where(np.logical_and(wavelength > 0.8,
+                                                         wavelength < 1.05))[0]
+
+                sky_flux = sky_flux[filter_indices]
+
+                wavelength = wavelength[filter_indices]
+
             # Could be a different wavelength, will just
             # leave the flux and wavelength unchanged right now
             # Check for where the flux exceeds a certain number of counts
-            emission_indices = np.where(sky_flux > 1000)[0]
-            # print emission_indices
 
-            # print 'initially the emission_indices
-            # have value: %s' % emission_indices
+            if filter_id == 'HK' or filter_id == 'YJ' or \
+                    filter_id == 'H' or filter_id == 'K':
+
+                emission_indices = np.where(sky_flux > 1000)[0]
+
+            else:
+
+                emission_indices = np.where(sky_flux > 50)[0]
+
             # Grow the emission_indices to
-            # include values either side of each > 500 index
+            # include values either side
+
             add_array = []
 
             for i in range(len(emission_indices)):
@@ -4285,7 +4323,10 @@ class pipelineOps(object):
             # as the sky subtraction performance indicator
             pos_spec = np.abs(new_object_spectrum)
 
-            pos_spec = np.nanmedian(np.array(pos_spec[np.where(pos_spec > 2)]))
+            std_dev = np.std(pos_spec)
+
+            pos_spec = \
+                np.nanmedian(np.array(pos_spec[np.where(pos_spec > std_dev)]))
 
             # print 'This is the positive object_spectrum: %s' % pos_spec
             medVals[int(tempCube.IFUNR)] = pos_spec
@@ -4399,7 +4440,7 @@ class pipelineOps(object):
 
             new_names = []
 
-            with open( sci_dir + '/sci_combine.sof', 'a') as f:
+            with open(sci_dir + '/sci_combine.sof', 'a') as f:
 
                 for entry in frame_array:
 
@@ -5974,6 +6015,7 @@ class pipelineOps(object):
 
                 os.system('esorex --output-dir=%s' % sci_dir
                           + ' kmos_combine --name=%s' % name
+                          + ' --cmethod=median'
                           + ' --cpos_rej=2.0'
                           + ' --cneg_rej=2.0'
                           + ' --method="user"'
@@ -6484,7 +6526,7 @@ class pipelineOps(object):
 
         ax1.plot(new_obj_wave, new_obj_spec, color='b')
         ax1.set_title('Object and Sky Comparison', fontsize=24)
-        ax1.set_ylim(0, 4.0)
+        ax1.set_ylim(-0.25E-17, 3E-17)
         ax1.tick_params(axis='y', which='major', labelsize=15)
 
         nbins = len(ax1.get_xticklabels())
@@ -6493,13 +6535,143 @@ class pipelineOps(object):
         ax2.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
         ax2.tick_params(axis='both', which='major', labelsize=15)
         ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-        ax2.set_xlim(1.4, 1.9)
+        ax2.set_xlim(2.1, 2.3)
 
         f.subplots_adjust(hspace=0.001)
         f.tight_layout()
 
         # plt.show()
         f.savefig(objSpec[:-5] + '.png')
+
+    def telluric_correct(self,
+                         grating,
+                         cal_dir):
+
+        """
+        Def: Currently the standard pipeline telluric correction isn't
+        working properly - it doesn't do a good job for the absorption
+        features. This method fits a polynomial to the three telluric
+        spectra stored in IFUs 3, 12 and 18 and replaces the more detailed
+        telluric correction with this fit.
+
+        Input:
+                grating - the grating ID in the fits header
+
+        Output:
+                telluric_XXX - where X is the grating value
+        """
+
+        # start by checking the value of the grating
+        if grating == 'K':
+
+            table = fits.open(cal_dir + '/telluric_KKK.fits', mode='update')
+
+        elif grating == 'HK':
+
+            table = fits.open(cal_dir + '/telluric_HKHKHK.fits', mode='update')
+
+        elif grating == 'H':
+
+            table = fits.open(cal_dir + '/telluric_HHH.fits', mode='update')
+
+        elif grating == 'YJ':
+
+            table = fits.open(cal_dir + '/telluric_YJYJYJ.fits', mode='update')
+
+        elif grating == 'IZ':
+
+            table = fits.open(cal_dir + '/telluric_IZIZIZ.fits', mode='update')
+
+        else:
+
+            raise ValueError('The supplied grating ID'
+                             + ' is not recognised')
+
+        # construct the wavelength array 
+
+        header = table[5].header
+
+        start_l = header['CRVAL1']
+
+        delta = header['CDELT1']
+
+        wave_array = start_l + np.arange(0, 2048*delta, delta)
+
+        # assign the data for IFUs 3, 12, 18
+
+        data_1 = table[5].data
+
+        data_2 = table[23].data
+
+        data_3 = table[35].data
+
+        # create masked versions of these for the polynomial fit
+
+        data_1_masked = ma.masked_where(np.isnan(data_1), data_1, copy=True)
+
+        data_2_masked = ma.masked_where(np.isnan(data_2), data_2, copy=True)
+
+        data_3_masked = ma.masked_where(np.isnan(data_3), data_3, copy=True)
+
+        # construct polynomial model from lmfit
+
+        mod = PolynomialModel(6)
+
+        pars = mod.guess(data_1_masked, x=wave_array)
+
+        # for the masked array to work need to assign the parameters
+
+        pars['c0'].set(value=0)
+        pars['c1'].set(value=0)
+        pars['c2'].set(value=0)
+        pars['c3'].set(value=0)
+        pars['c4'].set(value=0)
+        pars['c5'].set(value=0)
+        pars['c6'].set(value=0)
+        # pars['c7'].set(value=0)
+
+        # these will be the initial parameters for all the fits
+
+        out_1 = mod.fit(data_1_masked, pars, x=wave_array)
+        out_1_spec = out_1.best_fit
+
+        out_2 = mod.fit(data_2_masked, pars, x=wave_array)
+        out_2_spec = out_2.best_fit
+
+        out_3 = mod.fit(data_3_masked, pars, x=wave_array)
+        out_3_spec = out_3.best_fit
+
+        # quickly plot these
+
+        fig, ax = plt.subplots(3, 1, figsize=(18, 18))
+
+        ax[0].plot(wave_array, data_1_masked)
+        ax[0].plot(wave_array, out_1_spec)
+
+        ax[1].plot(wave_array, data_2_masked)
+        ax[1].plot(wave_array, out_2_spec)
+
+        ax[2].plot(wave_array, data_3_masked)
+        ax[2].plot(wave_array, out_3_spec)
+
+        # plt.show()
+
+        # now re-insert these data into the telluric file
+        # and overwrite the values that are there currently
+
+        table[5].data = out_1_spec
+
+        table[23].data = out_2_spec
+
+        table[35].data = out_3_spec
+
+        table.flush()
+
+        table.close()
+
+        # original file has now been updated and closed
+
+
 
     def arrayCompare(self,
                      profile,
@@ -8596,13 +8768,13 @@ class pipelineOps(object):
         pars = gmod.make_params()
 
         pars['center'].set(value=oiii_central)
-        pars['sigma'].set(0.0004)
-        pars['amplitude'].set(0.001)
+        pars['sigma'].set(0.0008)
+        pars['amplitude'].set(1E-20)
 
         # perform the fit
         out = gmod.fit(fit_flux, pars, x=fit_wl)
 
-#        # plot the results
+        # plot the results
 #        f, ax1 = plt.subplots(1, 1, sharex=True, figsize=(18.0, 10.0))
 #        ax1.plot(fit_wl, fit_flux, color='b')
 #        ax1.plot(fit_wl, out.best_fit, 'r-')
@@ -8613,6 +8785,8 @@ class pipelineOps(object):
 #        ax1.set_ylabel(r'Flux', fontsize=24)
 #        f.tight_layout()
 #        plt.show()
+
+        # print out.fit_report()
 
         # create an oiii dictionary to house the best parameters
         oiii_values = {'centre_oiii': out.best_values['center'],
@@ -8633,8 +8807,8 @@ class pipelineOps(object):
         pars = gmod.make_params()
 
         pars['center'].set(value=hb_central)
-        pars['sigma'].set(0.0004)
-        pars['amplitude'].set(0.001)
+        pars['sigma'].set(0.0008)
+        pars['amplitude'].set(1E-20)
 
         # perform the fit
         out = gmod.fit(fit_flux, pars, x=fit_wl)
@@ -8697,8 +8871,8 @@ class pipelineOps(object):
         pars = gmod.make_params()
 
         pars['center'].set(value=oiii_central)
-        pars['sigma'].set(0.0004)
-        pars['amplitude'].set(0.001)
+        pars['sigma'].set(0.0008)
+        pars['amplitude'].set(1E-20)
 
         # perform the fit
         out = gmod.fit(fit_flux, pars, x=fit_wl)
@@ -8734,8 +8908,8 @@ class pipelineOps(object):
         pars = gmod.make_params()
 
         pars['center'].set(value=hb_central)
-        pars['sigma'].set(0.0004)
-        pars['amplitude'].set(0.001)
+        pars['sigma'].set(0.0008)
+        pars['amplitude'].set(1E-20)
 
         # perform the fit
         out = gmod.fit(fit_flux, pars, x=fit_wl)
@@ -8775,8 +8949,8 @@ class pipelineOps(object):
         pars = gmod.make_params()
 
         pars['center'].set(value=oii_central)
-        pars['sigma'].set(0.0004)
-        pars['amplitude'].set(0.001)
+        pars['sigma'].set(0.0008)
+        pars['amplitude'].set(1E-20)
 
         # perform the fit
         out = gmod.fit(fit_flux, pars, x=fit_wl)
@@ -8799,3 +8973,1025 @@ class pipelineOps(object):
                       'amplitude_oii': out.best_values['amplitude']}
 
         return oiii_values, hb_values, oii_values
+
+    """
+    #####################################################################
+
+    Copyright (C) 2001-2014, Michele Cappellari
+    E-mail: michele.cappellari_at_physics.ox.ac.uk
+
+    Updated versions of the software are available from my web page
+    http://purl.org/cappellari/software
+
+    If you have found this software useful for your
+    research, we would appreciate an acknowledgment to use of
+    `the Voronoi binning method by Cappellari & Copin (2003)'.
+
+    This software is provided as is without any warranty whatsoever.
+    Permission to use, for non-commercial purposes is granted.
+    Permission to modify for personal or internal use is granted,
+    provided this copyright and disclaimer are included unchanged
+    at the beginning of the file. All other rights are reserved.
+
+    #####################################################################
+
+    NAME:
+        VORONOI_2D_BINNING
+
+    AUTHOR:
+          Michele Cappellari, University of Oxford
+          michele.cappellari_at_physics.ox.ac.uk
+
+    PURPOSE:
+          Perform adaptive spatial binning of Integral-Field Spectroscopic
+          (IFS) data to reach a chosen constant signal-to-noise ratio per bin.
+          This method is required for the proper analysis of IFS
+          observations, but can also be used for standard photometric
+          imagery or any other two-dimensional data.
+          This program precisely implements the algorithm described in
+          section 5.1 of the reference below.
+
+    EXPLANATION:
+          Further information on VORONOI_2D_BINNING algorithm can be found in
+          Cappellari M., Copin Y., 2003, MNRAS, 342, 345
+          http://adsabs.harvard.edu/abs/2003MNRAS.342..345C
+
+    CALLING SEQUENCE:
+
+        binNum, xBin, yBin, xBar, yBar, sn, nPixels, scale = voronoi_2d_binning(
+                    x, y, signal, noise, targetSN, plot=True, quiet=False,
+                    wvt=False, cvt=True, pixelsize=None)
+
+        The function _sn_func() below returns the S/N of a bin and it can be
+        changed by the user if needed.
+
+    INPUTS:
+               X: Vector containing the X coordinate of the pixels to bin.
+                  Arbitrary units can be used (e.g. arcsec or pixels).
+                  In what follows the term "pixel" refers to a given
+                  spatial element of the dataset (sometimes called "spaxel" in
+                  the IFS community): it can be an actual pixel of a CCD
+                  image, or a spectrum position along the slit of a long-slit
+                  spectrograph or in the field of view of an IFS
+                  (e.g. a lenslet or a fiber).
+                  It is assumed here that pixels are arranged in a regular
+                  grid, so that the pixel size is a well defined quantity.
+                  The pixel grid however can contain holes (some pixels can be
+                  excluded from the binning) and can have an irregular boundary.
+                  See the above reference for an example and details.
+               Y: Vector (same size as X) containing the Y coordinate
+                  of the pixels to bin.
+          SIGNAL: Vector (same size as X) containing the signal
+                  associated with each pixel, having coordinates (X,Y).
+                  If the `pixels' are actually the apertures of an
+                  integral-field spectrograph, then the signal can be
+                  defined as the average flux in the spectral range under
+                  study, for each aperture.
+                  If pixels are the actual pixels of the CCD in a galaxy
+                  image, the signal will be simply the counts in each pixel.
+           NOISE: Vector (same size as X) containing the corresponding
+                  noise (1 sigma error) associated with each pixel.
+        TARGETSN: The desired signal-to-noise ratio in the final
+                  2D-binned data. E.g. a S/N~50 per pixel may be a
+                  reasonable value to extract stellar kinematics
+                  information from galaxy spectra.
+
+    KEYWORDS:
+             CVT: Set this keyword to skip the Centroidal Voronoi Tessellation
+                  (CVT) step (vii) of the algorithm in Section 5.1 of
+                  Cappellari & Copin (2003).
+                  This may be useful if the noise is strongly non Poissonian,
+                  the pixels are not optimally weighted, and the CVT step
+                  appears to introduces significant gradients in the S/N.
+                  A similar alternative consists of using the /WVT keyword below.
+            PLOT: Set this keyword to produce a plot of the two-dimensional
+                  bins and of the corresponding S/N at the end of the
+                  computation.
+         PIXSIZE: Optional pixel scale of the input data.
+                  This can be the size of a pixel of an image or the size
+                  of a spaxel or lenslet in an integral-field spectrograph.
+                - The value is computed automatically by the program, but
+                  this can take a long times when (X, Y) have many elements.
+                  In those cases the PIXSIZE keyword should be given.
+           QUIET: by default the program shows the progress while accreting
+                  pixels and then while iterating the CVT. Set this keyword
+                  to avoid printing progress results.
+             WVT: When this keyword is set, the routine bin2d_cvt_equal_mass is
+                  modified as proposed by Diehl & Statler (2006, MNRAS, 368, 497).
+                  In this case the final step of the algorithm, after the bin-accretion
+                  stage, is not a modified Centroidal Voronoi Tessellation, but it uses
+                  a Weighted Voronoi Tessellation.
+                  This may be useful if the noise is strongly non Poissonian,
+                  the pixels are not optimally weighted, and the CVT step
+                  appears to introduces significant gradients in the S/N.
+                  A similar alternative consists of using the /NO_CVT keyword above.
+                  If you use the /WVT keyword you should also include a reference to
+                  `the WVT modification proposed by Diehl & Statler (2006).'
+
+    OUTPUTS:
+       BINNUMBER: Vector (same size as X) containing the bin number assigned
+                  to each input pixel. The index goes from zero to Nbins-1.
+                  This vector alone is enough to make *any* subsequent
+                  computation on the binned data. Everything else is optional!
+            XBIN: Vector (size Nbins) of the X coordinates of the bin generators.
+                  These generators uniquely define the Voronoi tessellation.
+            YBIN: Vector (size Nbins) of Y coordinates of the bin generators.
+            XBAR: Vector (size Nbins) of X coordinates of the bins luminosity
+                  weighted centroids. Useful for plotting interpolated data.
+            YBAR: Vector (size Nbins) of Y coordinates of the bins luminosity
+                  weighted centroids.
+              SN: Vector (size Nbins) with the final SN of each bin.
+         NPIXELS: Vector (size Nbins) with the number of pixels of each bin.
+           SCALE: Vector (size Nbins) with the scale length of the Weighted
+                  Voronoi Tessellation, when the /WVT keyword is set.
+                  In that case SCALE is *needed* together with the coordinates
+                  XBIN and YBIN of the generators, to compute the tessellation
+                  (but one can also simply use the BINNUMBER vector).
+
+    PROCEDURES USED:
+          The following procedures are contained in the main VORONOI_2D_BINNING program.
+              SN_FUNC           -- Example routine to calculate the S/N of a bin.
+              WEIGHTED_CENTROID -- computes weighted centroid of one bin
+              BIN_ROUNDNESS     -- equation (5) of Cappellari & Copin (2003)
+              BIN_ACCRETION     -- steps (i)-(v) in section 5.1
+              REASSIGN_BAD_BINS -- steps (vi)-(vii) in section 5.1
+              CVT_EQUAL_MASS    -- the modified Lloyd algorithm in section 4.1
+              COMPUTE_USEFUL_BIN_QUANTITIES -- self explanatory
+              DISPLAY_PIXELS    -- plotting of colored pixels
+
+    MODIFICATION HISTORY:
+          V1.0.0: First implementation. Michele Cappellari, Leiden, June 2001
+          V2.0.0: Major revisions. Stable version. MC, Leiden, 11 September 2001
+          V2.1.0: First released version. Written documentation.
+              MC, Vicenza, 13 February 2003
+          V2.2.0: Added computation of useful bin quantities in output. Deleted some
+              safety checks for zero size bins in CVT. Minor polishing of the code.
+              MC, Leiden, 11 March 2003
+          V2.3.0: Unified the three tests to stop the accretion of one bin.
+              This can improve some bins at the border. MC, Leiden, 9 April 2003
+          V2.3.1: Do *not* assume the first bin is made of one single pixel.
+              Added computation of S/N scatter and plotting of 1-pixel bins.
+              MC, Leiden, 13 April 2003
+          V2.4.0: Addedd basic error checking of input S/N. Reintroduced the
+              treatment for zero-size bins in CVT, which was deleted in V2.2.
+              Thanks to Robert Sharp and Kambiz Fathi for reporting problems.
+              MC, Leiden, 10 December 2003.
+          V2.4.1: Added /QUIET keyword and verbose output during the computation.
+              After suggestion by Richard McDermid. MC, Leiden, 14 December 2003
+          V2.4.2: Use LONARR instead of INTARR to define the CLASS vector,
+              to be able to deal with big images. Thanks to Tom Statler.
+              MC, Leiden, 4 August 2004
+          V2.4.3: Corrected bug introduced in version 2.3.1. It went undetected
+              for a long time because it could only happen in special conditions.
+              Now we recompute the index of the good bins after computing all
+              centroids of the reassigned bins in reassign_bad_bins. Many thanks
+              to Simona Ghizzardi for her clear analysis of the problem and
+              the solution. MC, Leiden, 29 November 2004
+          V2.4.4: Prevent division by zero for pixels with signal=0
+              and noise=sqrt(signal)=0, as can happen from X-ray data.
+              MC, Leiden, 30 November 2004
+          V2.4.5: Added BIN2D prefix to internal routines to avoid possible
+              naming conflicts. MC, Leiden, 3 December 2004
+          V2.4.6: Added /NO_CVT keyword to optionally skip the CVT step of
+              the algorithm. MC, Leiden, 27 August 2005
+          V2.4.7: Verify that SIGNAL and NOISE are non negative vectors.
+              MC, Leiden, 27 September 2005
+          V2.4.8: Use geometric centroid of a bin during the bin-accretion stage,
+              to allow the routine to deal with negative signal (e.g. in
+              background-subtracted X-ray images). Thanks to Steven Diehl for
+              pointing out the usefulness of dealing with negative signal.
+              MC, Leiden, 23 December 2005
+          V2.5.0: Added two new lines of code and the corresponding /WVT keyword
+              to implement the nice modification to the algorithm proposed by
+              Diehl & Statler (2006). MC, Leiden, 9 March 2006
+          V2.5.1: Updated documentation. MC, Oxford, 3 November 2006
+          V2.5.2: Print number of unbinned pixels. MC, Oxford, 28 March 2007
+          V2.5.3: Fixed program stop, introduced in V2.5.0, with /NO_CVT keyword.
+              MC, Oxford, 3 December 2007
+          V2.5.4: Improved color shuffling for final plot.
+              MC, Oxford, 30 November 2009
+          V2.5.5: Added PIXSIZE keyword. MC, Oxford, 28 April 2010
+          V2.5.6: Use IDL intrinsic function DISTANCE_MEASURE for
+              automatic pixelSize, when PIXSIZE keyword is not given.
+              MC, Oxford, 11 November 2011
+          V2.5.7: Included safety termination criterion of Lloyd algorithm
+              to prevent loops using /WVT. MC, Oxford, 24 March 2012
+          V2.5.8: Update Voronoi tessellation at the exit of bin2d_cvt_equal_mass.
+              This is only done when using /WVT, as DIFF may not be zero at the
+              last iteration. MC, La Palma, 15 May 2012
+          V2.6.0: Included new SN_FUNCTION to illustrate the fact that the user can
+              define his own function to estimate the S/N of a bin if needed.
+              MC, London, 19 March 2014
+          V3.0.0: Translated from IDL into Python and tested against the original.
+              MC, London, 19 March 2014
+          V3.0.1: Support both Python 2.6/2.7 and Python 3. MC, Oxford, 25 May 2014
+          V3.0.2: Avoid potential runtime warning while plotting.
+              MC, Oxford, 2 October 2014
+
+    """
+
+    # ----------------------------------------------------------------------------
+
+
+    def _sn_func(self, signal, noise, index):
+        """
+        Generic function to calculate the S/N of a bin with spaxels "index".
+        The Voronoi binning algorithm does not require this function to have a
+        specific form and this generic one can be changed by the user if needed.
+
+        The S/N returned by this function does not need to be an analytic function
+        of S and N. There is no need for this function to return the actual S/N.
+        Instead this function could return any quantity the user needs to equalize.
+
+        For example _sn_func could be a procedure which uses ppxf to measure the
+        velocity dispersion from the coadded spectrum of spaxels "index" and
+        returns the relative error in the dispersion.
+        Of course an analytic approximation of S/N speeds up the calculation.
+
+        """
+        return np.sum(signal[index]) / np.sqrt(np.sum(noise[index] ** 2))
+
+    # ----------------------------------------------------------------------
+
+
+    def _weighted_centroid(self, x, y, density):
+        """
+        Computes weighted centroid of one bin.
+        Equation (4) of Cappellari & Copin (2003)
+
+        """
+        mass = np.sum(density)
+        xBar = np.sum(x * density) / mass
+        yBar = np.sum(y * density) / mass
+
+        return xBar, yBar
+
+    # ----------------------------------------------------------------------
+
+    def _roundness(self, x, y, pixelSize):
+        """
+        Implements equation (5) of Cappellari & Copin (2003)
+
+        """
+        n = x.size
+        equivalentRadius = np.sqrt(n / np.pi) * pixelSize
+        xBar, yBar = np.mean(x), np.mean(y)  # Geometric centroid here!
+        maxDistance = np.sqrt(np.max((x - xBar) ** 2 + (y - yBar) ** 2))
+        roundness = maxDistance / equivalentRadius - 1.
+
+        return roundness
+
+    # ----------------------------------------------------------------------
+
+    def _accretion(self, x, y, signal, noise, targetSN, pixelSize, quiet):
+        """
+        Implements steps (i)-(v) in section 5.1 of Cappellari & Copin (2003)
+
+        """
+        n = x.size
+
+        # will contain the bin number of each given pixel
+
+        classe = np.zeros(n, dtype=int)
+
+        # will contain 1 if the bin has been accepted as good
+
+        good = np.zeros(n, dtype=bool)
+
+        # For each point, find the distance to all other
+        # points and select the minimum.
+        # This is a robust but slow way of determining
+        # the pixel size of unbinned data.
+        
+        if pixelSize is None:
+            pixelSize = np.min(distance.pdist(np.column_stack([x, y])))
+
+        # Start from the pixel with highest S/N
+
+        currentBin = np.argmax(signal / noise)
+
+        SN = signal[currentBin] / noise[currentBin]
+
+        # Rough estimate of the expected final bin number.
+        # This value is only used to give an idea of the expected
+        # remaining computation time when binning very big dataset.
+        #
+        w = signal / noise < targetSN
+        maxnum = int(np.sum((signal[w] / noise[w]) ** 2)
+        / targetSN ** 2 + np.sum(~w))
+
+        # The first bin will be assigned CLASS = 1
+        # With N pixels there will be at most N bins
+        #
+        for ind in range(1, n + 1):
+
+            if not quiet:
+                print(ind, ' / ', maxnum)
+
+            classe[currentBin] = ind  # Here currentBin is still made of one pixel
+            xBar, yBar = x[currentBin], y[currentBin]    # Centroid of one pixels
+
+            while True:
+
+                if np.all(classe):
+                    break  # Stops if all pixels are binned
+
+                # Find the unbinned pixel closest to the centroid of the current bin
+                #
+                unBinned = np.where(classe == 0)[0]
+                k = np.argmin((x[unBinned] - xBar)**2 + (y[unBinned] - yBar)**2)
+
+                # (1) Find the distance from the closest pixel to the current bin
+                #
+                minDist = np.min((x[currentBin] - x[unBinned[k]])**2 + (y[currentBin] - y[unBinned[k]])**2)
+
+                # (2) Estimate the `roundness' of the POSSIBLE new bin
+                #
+                nextBin = np.append(currentBin, unBinned[k])
+                roundness = self._roundness(x[nextBin], y[nextBin], pixelSize)
+
+                # (3) Compute the S/N one would obtain by adding
+                # the CANDIDATE pixel to the current bin
+                #
+                SNOld = SN
+                SN = self._sn_func(signal, noise, nextBin)
+
+                # Test whether (1) the CANDIDATE pixel is connected to the
+                # current bin, (2) whether the POSSIBLE new bin is round enough
+                # and (3) whether the resulting S/N would get closer to targetSN
+                #
+                if (np.sqrt(minDist) > 1.2*pixelSize or roundness > 0.3
+                    or abs(SN - targetSN) > abs(SNOld - targetSN)):
+                    if SNOld > 0.8*targetSN:
+                        good[currentBin] = 1
+                    break
+
+                # If all the above 3 tests are negative then accept the CANDIDATE
+                # pixel, add it to the current bin, and continue accreting pixels
+                #
+                classe[unBinned[k]] = ind
+                currentBin = nextBin
+
+                # Update the centroid of the current bin
+                #
+                xBar, yBar = np.mean(x[currentBin]), np.mean(y[currentBin])
+
+            # Get the centroid of all the binned pixels
+            #
+            binned = classe > 0
+            if np.all(binned):
+                break  # Stop if all pixels are binned
+            xBar, yBar = np.mean(x[binned]), np.mean(y[binned])
+
+            # Find the closest unbinned pixel to the centroid of all
+            # the binned pixels, and start a new bin from that pixel.
+            #
+            unBinned = np.where(classe == 0)[0]
+            k = np.argmin((x[unBinned] - xBar)**2 + (y[unBinned] - yBar)**2)
+            currentBin = unBinned[k]    # The bin is initially made of one pixel
+            SN = signal[currentBin]/noise[currentBin]
+
+        classe *= good  # Set to zero all bins that did not reach the target S/N
+
+        return classe, pixelSize
+
+    #----------------------------------------------------------------------------
+
+    def _reassign_bad_bins(self, classe, x, y):
+        """
+        Implements steps (vi)-(vii) in section 5.1 of Cappellari & Copin (2003)
+
+        """
+        # Find the centroid of all successful bins.
+        # CLASS = 0 are unbinned pixels which are excluded.
+        #
+        good = np.unique(classe[classe > 0])
+        xnode = ndimage.mean(x, labels=classe, index=good)
+        ynode = ndimage.mean(y, labels=classe, index=good)
+
+        # Reassign pixels of bins with S/N < targetSN
+        # to the closest centroid of a good bin
+        #
+        bad = classe == 0
+        index = np.argmin((x[bad, None] - xnode)**2 + (y[bad, None] - ynode)**2, axis=1)
+        classe[bad] = good[index]
+
+        # Recompute all centroids of the reassigned bins.
+        # These will be used as starting points for the CVT.
+        #
+        good = np.unique(classe)
+        xnode = ndimage.mean(x, labels=classe, index=good)
+        ynode = ndimage.mean(y, labels=classe, index=good)
+
+        return xnode, ynode
+
+    #----------------------------------------------------------------------------
+
+    def _cvt_equal_mass(self, x, y, signal, noise, xnode, ynode, quiet, wvt):
+        """
+        Implements the modified Lloyd algorithm
+        in section 4.1 of Cappellari & Copin (2003).
+
+        NB: When the keyword WVT is set this routine includes
+        the modification proposed by Diehl & Statler (2006).
+
+        """
+        if wvt:
+            dens = np.ones_like(signal)
+        else:
+            dens = (signal/noise)**2  # See beginning of section 4.1 of CC03
+        scale = np.ones_like(xnode)   # Start with the same scale length for all bins
+
+        for it in range(1, xnode.size):  # Do at most xnode.size iterations
+
+            xnodeOld, ynodeOld = xnode.copy(), ynode.copy()
+
+            # Computes (Weighted) Voronoi Tessellation of the pixels grid
+            #
+            classe = np.argmin(((x[:, None] - xnode)**2 + (y[:, None] - ynode)**2)/scale**2, axis=1)
+
+            # Computes centroids of the bins, weighted by dens**2.
+            # Exponent 2 on the density produces equal-mass Voronoi bins.
+            # The geometric centroids are computed if WVT keyword is set.
+            #
+            good = np.unique(classe)
+            for k in good:
+                index = classe == k   # Find subscripts of pixels in bin k.
+                xnode[k], ynode[k] = self._weighted_centroid(x[index], y[index], dens[index]**2)
+                if wvt:
+                    sn = self._sn_func(signal, noise, index)
+                    scale[k] = np.sqrt(index.sum()/sn)  # Eq. (4) of Diehl & Statler (2006)
+
+            diff = np.sum((xnode - xnodeOld)**2 + (ynode - ynodeOld)**2)
+
+            if not quiet:
+                print('Iter: %4i  Diff: %.4g' % (it, diff))
+
+            if diff == 0:
+                break
+
+        # If coordinates have changed, re-compute (Weighted) Voronoi Tessellation of the pixels grid
+        #
+        if diff > 0:
+            classe = np.argmin(((x[:, None] - xnode)**2 + (y[:, None] - ynode)**2)/scale**2, axis=1)
+            good = np.unique(classe)  # Check for zero-size Voronoi bins
+
+        # Only return the generators and scales of the nonzero Voronoi bins
+
+        return xnode[good], ynode[good], scale[good], it
+
+    #-----------------------------------------------------------------------
+
+    def _compute_useful_bin_quantities(self, x, y, signal, noise, xnode, ynode, scale):
+        """
+        Recomputes (Weighted) Voronoi Tessellation of the pixels grid to make sure
+        that the class number corresponds to the proper Voronoi generator.
+        This is done to take into account possible zero-size Voronoi bins
+        in output from the previous CVT (or WVT).
+
+        """
+        # classe will contain the bin number of each given pixel
+        #
+        classe = np.argmin(((x[:, None] - xnode)**2 + (y[:, None] - ynode)**2)/scale**2, axis=1)
+
+        # At the end of the computation evaluate the bin luminosity-weighted
+        # centroids (xbar, ybar) and the corresponding final S/N of each bin.
+        #
+        xbar = np.empty_like(xnode)
+        ybar = np.empty_like(xnode)
+        sn = np.empty_like(xnode)
+        area = np.empty_like(xnode)
+        good = np.unique(classe)
+        for k in good:
+            index = classe == k   # Find subscripts of pixels in bin k.
+            xbar[k], ybar[k] = self._weighted_centroid(x[index], y[index], signal[index])
+            sn[k] = self._sn_func(signal, noise, index)
+            area[k] = index.sum()
+
+        return classe, xbar, ybar, sn, area
+
+    #-----------------------------------------------------------------------
+
+    def _display_pixels(self, x, y, counts, pixelSize):
+        """
+        Display pixels at coordinates (x, y) coloured with "counts".
+        This routine is fast but not fully general as it assumes the spaxels
+        are on a regular grid. This needs not be the case for Voronoi binning.
+
+        """
+        xmin, xmax = np.min(x), np.max(x)
+        ymin, ymax = np.min(y), np.max(y)
+        nx = round((xmax - xmin)/pixelSize) + 1
+        ny = round((ymax - ymin)/pixelSize) + 1
+        img = np.full((nx, ny), np.nan)  # use nan for missing data
+        j = np.round((x - xmin)/pixelSize).astype(int)
+        k = np.round((y - ymin)/pixelSize).astype(int)
+        img[j, k] = counts
+
+        plt.imshow(np.rot90(img), interpolation='none', cmap='prism',
+                   extent=[xmin - pixelSize/2, xmax + pixelSize/2,
+                           ymin - pixelSize/2, ymax + pixelSize/2])
+
+    #----------------------------------------------------------------------
+
+    def voronoi_2d_binning(self, x, y, signal, noise, targetSN, cvt=True,
+                             pixelsize=None, plot=True, quiet=True, wvt=True):
+        """
+        PURPOSE:
+              Perform adaptive spatial binning of Integral-Field Spectroscopic
+              (IFS) data to reach a chosen constant signal-to-noise ratio per bin.
+              This method is required for the proper analysis of IFS
+              observations, but can also be used for standard photometric
+              imagery or any other two-dimensional data.
+              This program precisely implements the algorithm described in
+              section 5.1 of the reference below.
+
+        EXPLANATION:
+              Further information on VORONOI_2D_BINNING algorithm can be found in
+              Cappellari M., Copin Y., 2003, MNRAS, 342, 345
+
+        CALLING SEQUENCE:
+
+            binNum, xBin, yBin, xBar, yBar, sn, nPixels, scale = \
+                voronoi_2d_binning(x, y, signal, noise, targetSN,
+                                   plot=True, quiet=False, wvt=False,
+                                   cvt=True, pixelsize=None)
+
+        """
+        # This is the main program that has to be called from external programs.
+        # It simply calls in sequence the different steps of the algorithms
+        # and optionally plots the results at the end of the calculation.
+
+        if not (x.size == y.size == signal.size == noise.size):
+            raise ValueError('Input vectors (x, y, signal, noise) must have the same size')
+        if not np.all((noise > 0) & np.isfinite(noise)):
+            raise ValueError('NOISE must be a positive vector')
+
+        # Perform basic tests to catch common input errors
+        #
+        if np.sum(signal)/np.sqrt(np.sum(noise**2)) < targetSN:
+            raise ValueError("""Not enough S/N in the whole set of pixels.
+                Many pixels may have noise but virtually no signal.
+                They should not be included in the set to bin,
+                or the pixels should be optimally weighted.
+                See Cappellari & Copin (2003, Sec.2.1) and README file.""")
+        if np.min(signal/noise) > targetSN:
+            raise ValueError('All pixels have enough S/N and binning is not needed')
+
+        # Prevent division by zero for pixels with signal=0 and
+        # noise=sqrt(signal)=0 as can happen with X-ray data
+        #
+        noise = noise.clip(np.min(noise[noise > 0])*1e-9)
+
+        print('Bin-accretion...')
+        classe, pixelsize = self._accretion(x, y, signal, noise, targetSN, pixelsize, quiet)
+        print(np.max(classe), ' initial bins.')
+        print('Reassign bad bins...')
+        xNode, yNode = self._reassign_bad_bins(classe, x, y)
+        print(xNode.size, ' good bins.')
+        if cvt:
+            print('Modified Lloyd algorithm...')
+            xNode, yNode, scale, it = self._cvt_equal_mass(x, y, signal, noise, xNode, yNode, quiet, wvt)
+            print(it-1, ' iterations.')
+        else:
+            scale = 1.
+        classe, xBar, yBar, sn, area = self._compute_useful_bin_quantities(x, y, signal, noise, xNode, yNode, scale)
+        w = area == 1
+        print('Unbinned pixels: ', np.sum(w), ' / ', x.size)
+        print('Fractional S/N scatter (%):', np.std(sn[~w] - targetSN, ddof=1)/targetSN*100)
+
+        if plot:
+            plt.clf()
+            plt.subplot(211)
+            rnd = np.argsort(np.random.random(xNode.size))  # Randomize bin colors
+            self._display_pixels(x, y, rnd[classe], pixelsize)
+            plt.plot(xNode, yNode, '+w', scalex=False, scaley=False) # do not rescale after imshow()
+            plt.xlabel('R (arcsec)')
+            plt.ylabel('R (arcsec)')
+            plt.title('Map of Voronoi bins')
+
+            plt.subplot(212)
+            rad = np.sqrt(xBar**2 + yBar**2)  # Use centroids, NOT generators
+            plt.plot(rad[~w], sn[~w], 'or', label='Voronoi bins')
+            plt.xlabel('R (arcsec)')
+            plt.ylabel('Bin S/N')
+            plt.axis([np.min(rad), np.max(rad), 0, np.max(sn)])  # x0, x1, y0, y1
+            if np.sum(w) > 0:
+                plt.plot(rad[w], sn[w], 'xb', label='single spaxels')
+            plt.axhline(targetSN)
+            plt.legend()
+            plt.show()  # allow plot to appear in certain cases
+
+        return classe, xNode, yNode, xBar, yBar, sn, area, scale
+
+    #----------------------------------------------------------------------------
+    def apply_voronoi_binning(self, infile, out_dir):
+
+        """
+        Usage example for the procedure VORONOI_2D_BINNING.
+
+        It is assumed below that the file voronoi_2d_binning_example.txt
+        resides in the current directory. Here columns 1-4 of the text file
+        contain respectively the x, y coordinates of each SAURON lens
+        and the corresponding Signal and Noise.
+
+        """
+
+        x, y, signal, noise = np.loadtxt(infile,
+                                         unpack=1,
+                                         skiprows=3)
+        targetSN = 1.5
+
+        # Perform the actual computation. The vectors
+        # (binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale)
+        # are all generated in *output*
+        #
+        binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = self.voronoi_2d_binning(
+            x, y, signal, noise, targetSN, plot=1, quiet=0)
+
+        # Save to a text file the initial coordinates of each pixel together
+        # with the corresponding bin number computed by this procedure.
+        # binNum uniquely specifies the bins and for this reason it is the only
+        # number required for any subsequent calculation on the bins.
+        #
+        np.savetxt(out_dir + '/voronoi_2d_binning_output.txt', np.column_stack([x, y, binNum]),
+                   fmt=b'%10.6f %10.6f %8i')
+
+    # BACK TO OWEN CODE
+    def vor_output_fitting(self,
+                           sci_dir,
+                           vor_output,
+                           incube,
+                           std_cube,
+                           sky_cube,
+                           centre_x,
+                           centre_y,
+                           z,
+                           stack='sum',
+                           line='oiii'):
+
+        """
+        Def: Take the output from the above voronoi binning methods
+        which is a txt file containing the pixel coordinates and the
+        allocated bins, extract each pixel from the incube by assigned bin,
+        stack these together using the chosen stack method and then
+        fit a gaussian to the appropriate emission line which should now
+        be stacked to the apppropriate s/n level. Finally return to the output
+        file and add a new column giving the relevant velocity value for each
+        of the bin numbers. Each pixel should have a velocity value associated
+        with it - can then choose later to ignore some of these which clearly
+        don't make any sense. Note the vor_output file shouldn't have any
+        column names so that the bin_values are assigned to 'col3'
+
+        Input:
+                vor_output - txt file produced from the voronoi binning alg.
+                                it contains the pixel coordinates and the
+                                bin allocated to each coordinate.
+                incube - The combined cube to which this analysis applies.
+                z - the redshift of the object in question, used to determine
+                    the position of different emission lines.
+                stack - method used to stack the spaxels together in each bin
+                line - the emission line under scrutiny for this test.
+        Output:
+                output.txt - file containing the same information as the
+                            vor_output txt file but with an additional column
+                            to show the velocity value associated with each
+                            pixel.
+        """
+        # sanity checks
+
+        if not(line != 'oiii' or line != 'oii' or line != 'hb'):
+
+            raise ValueError('Please ensure that you have'
+                             + ' chosen an appropriate emission line')
+
+        if not(stack != 'sum' or stack != 'median' or stack != 'average'):
+
+            raise ValueError('Please ensure that you have'
+                             + ' chosen an appropriate stacking method')
+        # first load the output file
+
+        table = ascii.read(vor_output)
+
+        # assign the bin_numbers
+
+        bin_arr = table['col3']
+
+        # now have the bin list in array form. Look for unique bin entries
+        # and start a dictionary containing a unique bin key and a tuple of
+        # spaxel coordinates which correpsond to this.
+
+        bin_dict = dict()
+
+        for entry in table:
+
+            if entry[2] in bin_dict:
+
+                bin_dict[entry[2]].append([entry[0], entry[1]])
+
+            else:
+
+                bin_dict[entry[2]] = [[entry[0], entry[1]]]
+
+        print bin_dict[277]
+
+        # the bin dictionary is now populated with the pixel coordinates
+        # and has the bin numbers as keys. Time for first external function
+        # vor_pixel_stack which will create stacks of these pixels in each bin
+        # for the chosen cube
+
+        wave_array, stack_dict = self.vor_pixel_stack(incube,
+                                                      bin_dict,
+                                                      stack)
+        print len(stack_dict[277])
+
+        # now need to fit the spectrum around the chosen emission line
+        # for each of the spectra in stack_dict. use vor_gauss_fit.
+        # first optimally extract the spectrum using
+        # no binning for the wavelength axis (could do this)
+
+        spectrum, wl = self.galExtract(sci_dir,
+                                       std_cube,
+                                       incube,
+                                       sky_cube,
+                                       centre_y,
+                                       centre_x,
+                                       1)
+
+        # get the dictionary of initial gaussian params for chosen line
+
+        if line == 'oiii':
+
+            params, blank \
+                = self.fit_lines_K(spectrum,
+                                   wl,
+                                   redshift=z)
+
+            central_wl = 0.500824 * (1. + z)
+
+            input_params = dict()
+
+            input_params['centre'] = params['centre_oiii']
+            input_params['sigma'] = params['sigma_oiii']
+            input_params['amplitude'] = params['amplitude_oiii']
+
+        elif line == 'hb':
+
+            blank, params \
+                = self.fit_lines_K(spectrum,
+                                   wl,
+                                   redshift=z)
+
+            central_wl = 0.486268 * (1. + z)
+
+            input_params = dict()
+
+            input_params['centre'] = params['centre_hb']
+            input_params['sigma'] = params['sigma_hb']
+            input_params['amplitude'] = params['amplitude_hb']
+
+        elif line == 'oii':
+
+            blank_1, blank_2, params \
+                = self.fit_lines_HK(spectrum,
+                                    wl,
+                                    redshift=z)
+
+            central_wl = 0.3729875 * (1. + z)
+
+            input_params = dict()
+
+            input_params['centre'] = params['centre_oii']
+            input_params['sigma'] = params['sigma_oii']
+            input_params['amplitude'] = params['amplitude_oii']
+
+        # now loop around the stack dictionary entries and prepare the
+        # fit_wl and fit_flux for input into the vor_gauss_fit method
+        # initialise the velocity dictionary
+
+        vel_dict = dict()
+        sig_dict = dict()
+
+        for entry in stack_dict:
+
+            spec = stack_dict[entry]
+
+            # print spec
+
+            # find the appropriate line index and perform the fit
+            line_idx = np.argmin(np.abs(wave_array - central_wl))
+
+            fit_wl = wave_array[line_idx - 8: line_idx + 8]
+            fit_flux = spec[line_idx - 8: line_idx + 8]
+
+            best_values = self.vor_gauss_fit(fit_wl,
+                                             fit_flux,
+                                             input_params)
+
+            # assuming that the redshift measured in qfits is the
+            # correct one - subtract the fitted centre and convert
+            # to kms-1
+
+            c = 2.99792458E5
+
+            vel = c * ((best_values['center']
+                        - central_wl) / central_wl)
+
+            sig = c * ((best_values['sigma']) / central_wl)
+
+            vel_dict[entry] = vel
+            sig_dict[entry] = sig
+
+        plt.close('all')
+
+        # have the velocity values for each bin now. Need to return and
+        # assign to every pixel the correct velocity value and sigma value
+
+        vel_list = []
+        sig_list = []
+
+        for entry in bin_arr:
+
+            vel_list.append(vel_dict[entry])
+            sig_list.append(sig_dict[entry])
+
+        vel_list = np.array(vel_list)
+        sig_list = np.array(sig_list)
+
+        # and reshape to the 2D format
+
+        cube_data_x = cubeOps(incube).data.shape[1]
+        cube_data_y = cubeOps(incube).data.shape[2]
+
+        vel_2d = vel_list.reshape((cube_data_x, cube_data_y))
+        sig_2d = sig_list.reshape((cube_data_x, cube_data_y))
+
+        # plot the results
+
+        vel_fig, vel_ax = plt.subplots(figsize=(14, 6), nrows=1, ncols=2)
+
+        vel_ax[0].minorticks_on()
+        vel_ax[1].minorticks_on()
+
+        # sometimes this throws a TypeError if hardly any data points
+        try:
+
+            vel_min, vel_max = np.nanpercentile(vel_2d, [10.0, 90.0])
+            sig_min, sig_max = np.nanpercentile(sig_2d, [10.0, 90.0])
+
+        except TypeError:
+
+            # origin of the error is lack of good S/N data
+            # can set the max and min at whatever
+            vel_min, vel_max = [-100, 100]
+            sig_min, sig_max = [0, 100]
+
+        im_vel = vel_ax[0].imshow(vel_2d, aspect='auto',
+                                  vmin=-100,
+                                  vmax=80,
+                                  interpolation='bicubic',
+                                  cmap=plt.get_cmap('jet'))
+
+        vel_ax[0].set_title(line + ' velocity')
+
+        # add colourbar to each plot
+        divider_vel = make_axes_locatable(vel_ax[0])
+        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_vel, cax=cax_vel)
+
+        im_sig = vel_ax[1].imshow(sig_2d, aspect='auto',
+                                  vmin=sig_min,
+                                  vmax=sig_max,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+        vel_ax[1].set_title(line + ' dispersion')
+
+        # add colourbar to each plot
+        divider_sig = make_axes_locatable(vel_ax[1])
+        cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_sig, cax=cax_sig)
+
+        # vel_fig.colorbar(im)
+
+        # plt.tight_layout()
+        plt.show()
+
+    def vor_pixel_stack(self, incube, bin_dict, stack):
+
+        """
+        Def: Take the bin_dict - look at each individual key, extract the
+        spectra from the given set of pixel coordinates and combine these
+        with the given stacking method. End product is a dictionary with the
+        same unique keys as before but with one 2048 long spectrum as the
+        value. This is a helper function for vor_output_fitting.
+
+        Input:
+                incube - the cube to which the pixel coordinates apply
+                bin_dict - output from vor_output_fitting
+                stack - stacking method set in vor_output_fitting
+
+        Output:
+                stack_dict - the resultant dictionary with bin numbers as
+                            the keys and stacked spectra as values
+                wave_array - the wavelength array corresponding to the flux
+        """
+        # open the incube
+
+        cube_data = fits.open(incube)[1].data
+
+        # grab the wavelength array from the incube
+
+        wave_array = cubeOps(incube).wave_array
+
+        # intialise new stacking dictionary
+
+        stack_dict = dict()
+
+        # loop around the bin_dict entries
+
+        for entry in bin_dict:
+
+            # initialise temporary stacking list
+
+            temp_list = []
+
+            # loop around the sets of coordinates for each entry
+
+            for coords in bin_dict[entry]:
+
+                temp_list.append(cube_data[:, coords[0], coords[1]])
+
+            # stack the spectra with the chosen stacking method
+
+            if stack == 'sum':
+
+                stacked_flux = np.nansum(temp_list, axis=0)
+
+            elif stack == 'average':
+
+                stacked_flux = np.nanmean(temp_list, axis=0)
+
+            elif stack == 'median':
+
+                stacked_flux = np.nanmedian(temp_list, axis=0)
+
+            # add the stacked flux to the stack_dict
+
+            stack_dict[entry] = stacked_flux
+
+        # return the wave_array and the stack_dict
+
+        return wave_array, stack_dict
+
+    def vor_gauss_fit(self, fit_wl, fit_flux, params):
+
+        """
+        Def:
+        Performs simple gaussian fit, given initial dictionary of parameters
+        and the input wavelength and input flux values.
+
+        Input:
+                fit_wl - wavelength of spectrum to fit
+                fit_flux - flux of spectrum to fitsWavelength
+                params - dictionary containing the keys
+                        centre, sigma and amplitude which are initial guesses
+                        at the gaussian parameters determined from an
+                        integrated fit to the spectrum
+
+        Output:
+                fit_params - dictionary containing the best fit parameters
+                            for each of the spectra
+        """
+
+        # construct gaussian model using lmfit
+
+        gmod = GaussianModel()
+
+        # set the initial parameter values
+
+        pars = gmod.make_params()
+
+        pars['center'].set(value=params['centre'],
+                           min=params['centre'] - 0.0015,
+                           max=params['centre'] + 0.0015)
+
+        pars['sigma'].set(value=params['sigma'],
+                          min=params['sigma'] - (0.5 * params['sigma']),
+                          max=params['sigma'] + (0.5 * params['sigma']))
+
+        pars['amplitude'].set(value=params['amplitude'])
+
+        # perform the fit
+        out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+        # print the fit report
+        # print out.fit_report()
+
+        # plot to make sure things are working
+        fig, ax = plt.subplots(figsize=(14, 6))
+        ax.plot(fit_wl, fit_flux, color='blue')
+        ax.plot(fit_wl, out.best_fit, color='red')
+        # plt.show()
+
+        return out.best_values
