@@ -8,9 +8,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy import poly1d
 import scipy
+import numpy.ma as ma
 from lmfit.models import GaussianModel
 from lmfit import Model
 from astropy.io import fits
+from astropy.modeling import models, fitting
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pylab import *
 
@@ -241,6 +243,7 @@ class cubeOps(object):
         self.num = np.nanargmax(self.med_array)
         self.ind1 = self.num / len(self.med_array)
         self.ind2 = self.num - (len(self.med_array) * self.ind1)
+        self.filter = self.primHeader['HIERARCH ESO INS FILT1 ID']
 
     def raToDeg(self, ra):
         """
@@ -1833,7 +1836,7 @@ class cubeOps(object):
                     OIII_vel_array[i, j] = np.nan
                     OIII_sigma_array[i, j] = np.nan
 
-                elif line_sn < 1.8:
+                elif line_sn < 1.0:
                     OIII_vel_array[i, j] = np.nan
                     OIII_sigma_array[i, j] = np.nan
 
@@ -2522,3 +2525,213 @@ class cubeOps(object):
 
         # return the velocity array
         return Hb_vel_array, Hb_sigma_array
+
+    def make_sn_map(self,
+                    line,
+                    redshift):
+
+        """
+        Def:
+        Make a 2D grid of the s/n in the datacube, return this as output.
+        This is done for the chosen emission line specified by line.
+        Will throw an error if the line is outside the wavelength range.
+        Also returns the signal array and the noise array, which really are
+        the important outputs for doing the voronoi binning.
+
+        Input:
+                line - emission line to fit, must be either oiii, oii, hb
+                redshift - the redshift value of the incube
+        """
+
+        if not(line != 'oiii' or line != 'oii' or line != 'hb'):
+
+            raise ValueError('Please ensure that you have'
+                             + ' chosen an appropriate emission line')
+
+        # open the data
+        data = self.data
+        noise = self.Table[2].data
+
+        # get the wavelength array
+        wave_array = self.wave_array
+
+        if line == 'oiii':
+
+            central_wl = 0.500824 * (1. + redshift)
+
+        elif line == 'hb':
+
+            central_wl = 0.486268 * (1. + redshift)
+
+        elif line == 'oii':
+
+            central_wl = 0.3729875 * (1. + redshift)
+
+        # find the index of the chosen emission line
+        line_idx = np.argmin(np.abs(wave_array - central_wl))
+
+        # the shape of the data is (spectrum, xpixel, ypixel)
+        # loop through each x and y pixel and get the OIII5007 S/N
+        xpixs = data.shape[1]
+        ypixs = data.shape[2]
+
+        sn_array = np.empty(shape=(xpixs, ypixs))
+        signal_array = np.empty(shape=(xpixs, ypixs))
+        noise_array = np.empty(shape=(xpixs, ypixs))
+
+        for i, xpix in enumerate(np.arange(0, xpixs, 1)):
+
+            for j, ypix in enumerate(np.arange(0, ypixs, 1)):
+
+                spaxel_spec = data[:, i, j]
+                spaxel_noise = noise[:, i, j]
+
+                line_counts = np.median(spaxel_spec[line_idx - 3:
+                                                    line_idx + 3])
+
+                if np.isnan(line_counts):
+
+                    signal_array[i, j] = 0
+
+                else:
+
+                    signal_array[i, j] = line_counts
+
+                # mask out the skylines to compute the noise
+                wavelength_masked, noise_masked = self.mask_k_sky(wave_array,
+                                                                  spaxel_spec)
+
+                # look only at the unmasked flux values
+                noise_data = noise_masked.compressed() / 1E-18
+
+                # construct histogram of the noise values and fit
+                mod = GaussianModel()
+                hist, edges = np.histogram(noise_data, bins=10)
+                edges = edges[0: -1]
+                params = mod.guess(hist, x=edges)
+
+                # try the fitting with astropy
+#                g1 = models.Gaussian1D(amplitude=params['amplitude'].value,
+#                                       mean=params['center'].value,
+#                                       stddev=params['sigma'].value)
+#                fit_g = fitting.LevMarLSQFitter()
+#                g_out = fit_g(g1, x=edges, y=hist)
+#                print g_out.stddev.value
+
+                out = mod.fit(hist, params, x=edges)
+                fig, ax = plt.subplots(1, 1, figsize=(12, 12))
+                ax.plot(edges, hist)
+                ax.plot(edges, out.best_fit)
+                # plt.show()
+                plt.close('all')
+#                print out.fit_report()
+                if list(np.where(np.isnan(noise_data))[0]):
+                    print 'found nan'
+                    line_noise = np.nan
+                else:
+                    line_noise = out.best_values['sigma'] * 1E-18
+
+                # line_noise = g_out.stddev.value
+                # print line_noise, i, j
+
+                noise_array[i, j] = line_noise
+
+                line_sn = line_counts / line_noise
+
+                if np.isnan(line_sn):
+
+                    sn_array[i, j] = -99.
+
+                else:
+
+                    sn_array[i, j] = line_sn
+
+        # loop around noise array to clean up nan entries
+        for i in range(0, len(noise_array)):
+            for j in range(0, len(noise_array[0])):
+                if np.isnan(noise_array[i][j]):
+                    print 'Fixing nan value'
+                    noise_array[i][j] = np.nanmedian(noise_array)
+
+        print noise_array
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        ax.imshow(signal_array)
+        # plt.show()
+
+        return signal_array, noise_array
+
+    def mask_k_sky(self, wavelength, flux):
+
+        """
+        Def:
+        Purpose is to mask the sky emission lines so that a proper estimation
+        of the noise of a spaxel can be found. Uses a pre-determined set of
+        values at which the skylines are known to exist, masks the wavelength
+        array and then applies the mask to the flux array.
+        Returns the masked versions of both wavelength and flux arrays.
+
+        Input:
+                wavelength - k-band wavelength array
+                flux - corresponding flux values
+
+        Output:
+                wavelength_masked - np.masked_array version with sky masked
+                flux_masked - as above, corresponding
+        """
+        
+        # first hardwire in the known wavelength ranges of the skylines
+        initial_value = 1.995
+        final_value = 2.30
+
+        # pairs of limits to use in the forloop
+        sky_dict = {1: [1.9994, 2.00447],
+                    2: [2.00618, 2.00783],
+                    3: [2.01817, 2.02044],
+                    4: [2.02631, 2.02893],
+                    5: [2.03304, 2.0348],
+                    6: [2.0398, 2.04237],
+                    7: [2.04903, 2.0508],
+                    8: [2.05491, 2.05755],
+                    9: [2.0718, 2.07444],
+                    10: [2.08533, 2.08707],
+                    11: [2.08951, 2.09204],
+                    12: [2.10123, 2.13916],
+                    13: [2.14931, 2.15943],
+                    14: [2.1628, 2.16447],
+                    15: [2.17038, 2.17207],
+                    16: [2.17541, 2.17713],
+                    17: [2.17845, 2.18133],
+                    18: [2.18639, 2.18809],
+                    19: [2.19471, 2.20045],
+                    20: [2.20407, 2.2066],
+                    21: [2.21167, 2.21366],
+                    22: [2.22336, 2.22608],
+                    23: [2.23019, 2.23521],
+                    24: [2.24529, 2.24702],
+                    25: [2.25039, 2.25296]
+                    }
+
+        # now do the masking of the wavelength array
+        wavelength_masked = ma.masked_where(wavelength < initial_value,
+                                            wavelength,
+                                            copy=True)
+
+        # now loop through and mask off all of the offending regions
+
+        for entry in sky_dict:
+
+            wavelength_masked = ma.masked_where(
+                np.logical_and(wavelength_masked > sky_dict[entry][0],
+                               wavelength_masked < sky_dict[entry][1]),
+                wavelength_masked, copy=True)
+
+        wavelength_masked = ma.masked_where(wavelength_masked > final_value,
+                                            wavelength_masked,
+                                            copy=True)
+
+        # apply the final mask to the flux array
+
+        flux_masked = ma.MaskedArray(flux,
+                                     mask=wavelength_masked.mask)
+
+        return wavelength_masked, flux_masked

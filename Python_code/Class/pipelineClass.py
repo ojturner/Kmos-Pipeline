@@ -23,6 +23,7 @@ from scipy.optimize import minimize
 from astropy.io import fits, ascii
 from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from numpy import poly1d
 
 # add the class file to the PYTHONPATH
 sys.path.append('/disk1/turner/PhD'
@@ -6535,7 +6536,7 @@ class pipelineOps(object):
         ax2.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
         ax2.tick_params(axis='both', which='major', labelsize=15)
         ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-        ax2.set_xlim(2.1, 2.3)
+        ax2.set_xlim(1.95, 2.35)
 
         f.subplots_adjust(hspace=0.001)
         f.tight_layout()
@@ -6587,7 +6588,7 @@ class pipelineOps(object):
             raise ValueError('The supplied grating ID'
                              + ' is not recognised')
 
-        # construct the wavelength array 
+        # construct the wavelength array
 
         header = table[5].header
 
@@ -6595,7 +6596,7 @@ class pipelineOps(object):
 
         delta = header['CDELT1']
 
-        wave_array = start_l + np.arange(0, 2048*delta, delta)
+        wave_array = start_l + np.arange(0, 2048 * delta, delta)
 
         # assign the data for IFUs 3, 12, 18
 
@@ -8353,7 +8354,7 @@ class pipelineOps(object):
 
             # check whether we're looking at HK or K band
 
-            if min(cube.wave_array) < 1.9:
+            if cube.filter == 'HK':
 
                 # we're in the HK band, use the methods which include OII
                 # and construct a 3 x 2 grid of plots
@@ -8572,7 +8573,7 @@ class pipelineOps(object):
                 fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
                 plt.close('all')
 
-            else:
+            elif cube.filter == 'K':
 
                 # we're in the K band, use the methods which dont include OII
                 # and construct a 2 x 2 grid of plots
@@ -9585,7 +9586,7 @@ class pipelineOps(object):
         return classe, xNode, yNode, xBar, yBar, sn, area, scale
 
     #----------------------------------------------------------------------------
-    def apply_voronoi_binning(self, infile, out_dir):
+    def apply_voronoi_binning(self, infile, out_dir, target_sn):
 
         """
         Usage example for the procedure VORONOI_2D_BINNING.
@@ -9600,14 +9601,13 @@ class pipelineOps(object):
         x, y, signal, noise = np.loadtxt(infile,
                                          unpack=1,
                                          skiprows=3)
-        targetSN = 1.5
 
         # Perform the actual computation. The vectors
         # (binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale)
         # are all generated in *output*
         #
         binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = self.voronoi_2d_binning(
-            x, y, signal, noise, targetSN, plot=1, quiet=0)
+            x, y, signal, noise, target_sn, plot=1, quiet=0)
 
         # Save to a text file the initial coordinates of each pixel together
         # with the corresponding bin number computed by this procedure.
@@ -9693,8 +9693,6 @@ class pipelineOps(object):
 
                 bin_dict[entry[2]] = [[entry[0], entry[1]]]
 
-        print bin_dict[277]
-
         # the bin dictionary is now populated with the pixel coordinates
         # and has the bin numbers as keys. Time for first external function
         # vor_pixel_stack which will create stacks of these pixels in each bin
@@ -9703,7 +9701,6 @@ class pipelineOps(object):
         wave_array, stack_dict = self.vor_pixel_stack(incube,
                                                       bin_dict,
                                                       stack)
-        print len(stack_dict[277])
 
         # now need to fit the spectrum around the chosen emission line
         # for each of the spectra in stack_dict. use vor_gauss_fit.
@@ -9771,6 +9768,7 @@ class pipelineOps(object):
 
         vel_dict = dict()
         sig_dict = dict()
+        flux_dict = dict()
 
         for entry in stack_dict:
 
@@ -9801,6 +9799,7 @@ class pipelineOps(object):
 
             vel_dict[entry] = vel
             sig_dict[entry] = sig
+            flux_dict[entry] = best_values['amplitude']
 
         plt.close('all')
 
@@ -9809,14 +9808,17 @@ class pipelineOps(object):
 
         vel_list = []
         sig_list = []
+        flux_list = []
 
         for entry in bin_arr:
 
             vel_list.append(vel_dict[entry])
             sig_list.append(sig_dict[entry])
+            flux_list.append(flux_dict[entry])
 
         vel_list = np.array(vel_list)
         sig_list = np.array(sig_list)
+        flux_list = np.array(flux_list)
 
         # and reshape to the 2D format
 
@@ -9825,19 +9827,22 @@ class pipelineOps(object):
 
         vel_2d = vel_list.reshape((cube_data_x, cube_data_y))
         sig_2d = sig_list.reshape((cube_data_x, cube_data_y))
+        flux_2d = flux_list.reshape((cube_data_x, cube_data_y))
 
         # plot the results
 
-        vel_fig, vel_ax = plt.subplots(figsize=(14, 6), nrows=1, ncols=2)
+        vel_fig, vel_ax = plt.subplots(figsize=(18, 6), nrows=1, ncols=3)
 
         vel_ax[0].minorticks_on()
         vel_ax[1].minorticks_on()
+        vel_ax[2].minorticks_on()
 
         # sometimes this throws a TypeError if hardly any data points
         try:
 
             vel_min, vel_max = np.nanpercentile(vel_2d, [10.0, 90.0])
             sig_min, sig_max = np.nanpercentile(sig_2d, [10.0, 90.0])
+            flux_min, flux_max = np.nanpercentile(flux_2d, [10.0, 90.0])
 
         except TypeError:
 
@@ -9845,11 +9850,12 @@ class pipelineOps(object):
             # can set the max and min at whatever
             vel_min, vel_max = [-100, 100]
             sig_min, sig_max = [0, 100]
+            flux_min, flux_max = [0, 5E-19]
 
         im_vel = vel_ax[0].imshow(vel_2d, aspect='auto',
-                                  vmin=-100,
-                                  vmax=80,
-                                  interpolation='bicubic',
+                                  vmin=vel_min,
+                                  vmax=vel_max,
+                                  interpolation='nearest',
                                   cmap=plt.get_cmap('jet'))
 
         vel_ax[0].set_title(line + ' velocity')
@@ -9872,10 +9878,23 @@ class pipelineOps(object):
         cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
         plt.colorbar(im_sig, cax=cax_sig)
 
+        im_vel = vel_ax[2].imshow(flux_2d, aspect='auto',
+                                  vmin=flux_min,
+                                  vmax=flux_max,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+        vel_ax[2].set_title(line + ' flux')
+
+        # add colourbar to each plot
+        divider_vel = make_axes_locatable(vel_ax[2])
+        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_vel, cax=cax_vel)
         # vel_fig.colorbar(im)
 
         # plt.tight_layout()
         plt.show()
+        return flux_2d
 
     def vor_pixel_stack(self, incube, bin_dict, stack):
 
@@ -9993,5 +10012,145 @@ class pipelineOps(object):
         ax.plot(fit_wl, fit_flux, color='blue')
         ax.plot(fit_wl, out.best_fit, color='red')
         # plt.show()
+        plt.close('all')
 
         return out.best_values
+
+    def hb_metallicity(self, oiii_flux, hb_flux):
+
+        """
+        Def:
+        take two 2d flux arrays, one of which is oiii and one of which is
+        hb and then compute the 2d metallicity distribution from that. Uses
+        the maiolino 2008 calibration.
+
+        Input:
+                oiii_flux - 2d oiii flux distribution
+                hb_flux - 2d hb flux distribution
+
+        Output: 
+                met_2d - 2d metallicity plot
+        """
+        # take the ratio of the two 2d arrays
+        overall_met = oiii_flux / hb_flux
+
+        x_shape = overall_met.shape[0]
+        y_shape = overall_met.shape[1]
+
+        hb_met_array = np.empty(shape=(x_shape, y_shape))
+
+        # initialise the coefficients, given in Maiolino 2008
+        c_0_hb = 0.1549
+        c_1_hb = -1.5031
+        c_2_hb = -0.9790
+        c_3_hb = -0.0297
+
+        for i, xpix in enumerate(np.arange(0, x_shape, 1)):
+
+            for j, ypix in enumerate(np.arange(0, y_shape, 1)):
+                # print 'This is the number: %s' % overall_met[i, j]
+
+                # if the number is nan, leave it as nan
+
+                if np.isnan(overall_met[i, j]) \
+                   or np.isinf(overall_met[i, j]) \
+                   or (overall_met[i, j]) < 0:
+
+                    hb_met_array[i, j] = np.nan
+
+                # else subtract the log10(number) from
+                # c_0_Hb and set up the polynomial from poly1D
+
+                else:
+
+                    c_0_hb_new = c_0_hb - np.log10(overall_met[i, j])
+
+                    p = poly1d([c_3_hb, c_2_hb, c_1_hb, c_0_hb_new])
+                    # print p.r
+                    # the roots of the polynomial are given in units
+                    # of metallicity relative to solar. add 8.69
+                    # met_value = p.r[0] + 8.69
+                    # if the root has an imaginary component, just take
+                    # the real part
+                    hb_met_array[i, j] = p.r[2].real + 8.69
+
+        # plot the results
+
+        fig, ax = plt.subplots(1, figsize=(14, 14))
+
+        im = ax.imshow(hb_met_array,
+                       aspect='auto',
+                       vmin=7.5,
+                       vmax=9.0,
+                       interpolation='bicubic',
+                       cmap=plt.get_cmap('jet'))
+
+        ax.set_title('log([OIII] / Hb)')
+
+        fig.colorbar(im)
+        plt.show()
+        plt.close('all')
+
+    def voronoi_binning_by_line(self,
+                                line,
+                                incube,
+                                redshift,
+                                target_sn,
+                                out_dir):
+
+        """
+        Def:
+        Find the signal and noise columns for each pixel, as well as the pixel
+        values themselves and apply the voronoi binning method.
+        Write the output from the voronoi binning to an output file.
+        This can then be fed directly into the above voronoi fitting method
+        """
+        # create cube object
+
+        cube = cubeOps(incube)
+
+        # use the cubeclass method to make the signal and noise maps
+
+        signal_2d, noise_2d = cube.make_sn_map(line, redshift)
+
+        # ravel to make into 1d vectors
+
+        signal_1d = np.ravel(signal_2d)
+        noise_1d = np.ravel(noise_2d)
+
+        # make the coordinate arrays
+        xbin_shape = signal_2d.shape[0]
+        ybin_shape = signal_2d.shape[1]
+
+        xbin = np.arange(0, xbin_shape, 1)
+        ybin = np.arange(0, ybin_shape, 1)
+
+        ybin, xbin = np.meshgrid(ybin, xbin)
+
+        xbin = np.ravel(xbin)
+        ybin = np.ravel(ybin)
+
+        # now have everything required to run the voronoi_binning method
+
+        # Perform the actual computation. The vectors
+        # (binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale)
+        # are all generated in *output*
+        #
+        binNum, xNode, yNode, \
+            xBar, yBar, sn, nPixels, \
+            scale = self.voronoi_2d_binning(xbin,
+                                            ybin,
+                                            signal_1d,
+                                            noise_1d,
+                                            target_sn,
+                                            plot=1,
+                                            quiet=0)
+
+        # Save to a text file the initial coordinates of each pixel together
+        # with the corresponding bin number computed by this procedure.
+        # binNum uniquely specifies the bins and for this reason it is the only
+        # number required for any subsequent calculation on the bins.
+        #
+        np.savetxt(out_dir + '/voronoi_2d_binning_output.txt',
+                   np.column_stack([xbin, ybin, binNum]),
+                   fmt=b'%10.6f %10.6f %8i')

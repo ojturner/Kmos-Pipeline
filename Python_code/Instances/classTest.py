@@ -73,8 +73,8 @@ field_instance = vel_field('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/com
 #hobjframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
 #hskyframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-combine_input = '/disk1/turner/DATA/GOODS_H_P2_comb_0.7/1.5_Science/all_nights.txt'
-sci_dir = '/disk1/turner/DATA/GOODS_H_P2_comb_0.7/1.5_Science'
+combine_input = '/disk1/turner/DATA/GOODS_K_P2_comb_calibrated_2E17/Science/all_nights.txt'
+sci_dir = '/disk1/turner/DATA/GOODS_K_P2_comb_calibrated_2E17/Science'
 combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals_names.txt'
 obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
@@ -85,15 +85,21 @@ obj_cube_gal = gal_dir + '/combine_sci_reconstructed_bs008543.fits'
 std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_7656.fits'
 raw_file = '/disk1/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS344_0018_Corrected.fits'
 badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
-object_spectrum = gal_dir + '/combine_sci_reconstructed_bs008543_spectrum.fits'
+object_spectrum = gal_dir + '/combine_sci_reconstructed_b17453_spectrum.fits'
 vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_voronoi_test.txt'
 vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
-pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal, sky_cube_gal, 15, 22, 3.47328838, stack='sum', line='hb')
-#pipe_methods.apply_voronoi_binning(vor_infile, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi')
+#pipe_methods.combine_by_name(sci_dir, combine_input, 0, 0.8, 2E-17)
+#pipe_methods.voronoi_binning_by_line('oiii', obj_cube_gal, 3.47328838, 2.0, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi')
+#pipe_methods.apply_voronoi_binning(vor_infile, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi', 1.5)
+#hb_flux = pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal, sky_cube_gal, 19, 20, 3.47328838, stack='median', line='hb')
+#oiii_flux = pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal, sky_cube_gal, 19, 20, 3.47328838, stack='median', line='oiii')
+#pipe_methods.hb_metallicity(oiii_flux, hb_flux)
+#print np.nansum(oiii_flux)
+#print np.nansum(oiii_flux[15:25, 10:20])
 #pipe_methods.telluric_correct('IZ', cal_dir)
 #field_instance.fit_kinematic_pa(plot=True, debug=False)
-#pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/SSA_P1_New_Comb/all_names.txt', binning=False, xbin=1, ybin=1, interp='sum')
+pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/SSA_HK_P2_comb_calibrated_1E16/all_names.txt', binning=False, xbin=1, ybin=1, interp='sum')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/goods_k_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/ssa22_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
@@ -131,7 +137,6 @@ pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal,
 #pipe_methods.galExtract(gal_dir, std_cube_gal, obj_cube_gal, sky_cube_gal, 9, 17, 1)
 #pipe_methods.multiGalExtract('/disk1/turner/DATA/all_names.txt', 1)
 #pipe_methods.frameCheck(sci_dir, obj_names, 'n55_19')
-#pipe_methods.combine_by_name(sci_dir, combine_input, 0, 0.7, 1.5E-16)
 #pipe_methods.compareSky(sci_dir, combNames)
 #new_Table = pipe_methods.reduce_list_seeing(combine_input, 0.5, 1.0)
 #print 'length new_Table is: %s'  % len(new_Table)
@@ -142,7 +147,7 @@ pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal,
 #stuff, stuff1, stuff2 = pipe_methods.compareSky(sci_dir='/disk1/turner/DATA/688/H/Science', combNames='co_names.txt')
 
 #pipe_methods.saveSpec('/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/May_20th_tests/corr_with/sci_combined_s152__skytweak.fits')
-#pipe_methods.plotSpecs('/disk1/turner/DATA/NGC55/2013/Science/Best/Best_sci_combined_n55_58__skytweak_spectrum.fits', '/disk1/turner/DATA/NGC55/2013/Science/combine_cube_science_arm18_sky.fits', 3)
+#pipe_methods.plotSpecs(gal_dir, object_spectrum, sky_cube_gal, 3)
 
 #pipe_methods.multiExtractSpec(skyCube=hskyCube, frameNames=h_names)
 #Now try the subtraction method 
