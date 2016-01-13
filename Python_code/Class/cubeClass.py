@@ -2653,7 +2653,7 @@ class cubeOps(object):
                     print 'Fixing nan value'
                     noise_array[i][j] = np.nanmedian(noise_array)
 
-        print noise_array
+        # print noise_array
         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
         ax.imshow(signal_array)
         # plt.show()

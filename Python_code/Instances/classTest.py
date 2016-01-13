@@ -89,17 +89,19 @@ object_spectrum = gal_dir + '/combine_sci_reconstructed_b17453_spectrum.fits'
 vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_voronoi_test.txt'
 vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
+
+pipe_methods.multi_apply_voronoi_binning('/disk1/turner/DATA/all_names_calibrated.txt', 1.5)
 #pipe_methods.combine_by_name(sci_dir, combine_input, 0, 0.8, 2E-17)
 #pipe_methods.voronoi_binning_by_line('oiii', obj_cube_gal, 3.47328838, 2.0, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi')
 #pipe_methods.apply_voronoi_binning(vor_infile, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi', 1.5)
-#hb_flux = pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal, sky_cube_gal, 19, 20, 3.47328838, stack='median', line='hb')
-#oiii_flux = pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal, sky_cube_gal, 19, 20, 3.47328838, stack='median', line='oiii')
-#pipe_methods.hb_metallicity(oiii_flux, hb_flux)
+#hb_flux, hb_vel, hb_sig = pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal, sky_cube_gal, 19, 20, 3.47328838, stack='median', line='hb')
+#oiii_flux, oiii_vel, oiii_sig = pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal, sky_cube_gal, 19, 20, 3.47328838, stack='median', line='oiii')
+#hb_met = pipe_methods.hb_metallicity(oiii_flux, hb_flux)
 #print np.nansum(oiii_flux)
 #print np.nansum(oiii_flux[15:25, 10:20])
 #pipe_methods.telluric_correct('IZ', cal_dir)
 #field_instance.fit_kinematic_pa(plot=True, debug=False)
-pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/SSA_HK_P2_comb_calibrated_1E16/all_names.txt', binning=False, xbin=1, ybin=1, interp='sum')
+#pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/SSA_HK_P2_comb_calibrated_1E16/all_names.txt', binning=False, xbin=1, ybin=1, interp='sum')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/goods_k_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/ssa22_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')

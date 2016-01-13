@@ -8363,7 +8363,23 @@ class pipelineOps(object):
                 # cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
 
                 # now this is set up, get the data to populate the plots
-                sn_dict = cube.plot_HK_sn_map(redshift, savefig=True)
+                oiii_signal, oiii_noise = cube.make_sn_map('oiii',
+                                                           redshift)
+
+                oiii_sn = oiii_signal / oiii_noise
+
+                oii_signal, oii_noise = cube.make_sn_map('oii',
+                                                         redshift)
+
+                oii_sn = oii_signal / oii_noise
+
+                hb_signal, hb_noise = cube.make_sn_map('hb',
+                                                       redshift)
+
+                hb_sn = hb_signal / hb_noise
+
+                # construct dictionary for these entries
+                sn_dict = {'[OII]': oii_sn, 'Hb': hb_sn, '[OIII]': oiii_sn}
 
                 # these are the sn images of the lines
                 # add these to the first
@@ -8580,7 +8596,18 @@ class pipelineOps(object):
                 fig, axes = plt.subplots(figsize=(10, 12), nrows=3, ncols=2)
 
                 # now this is set up, get the data to populate the plots
-                sn_dict = cube.plot_K_sn_map(redshift, savefig=True)
+                oiii_signal, oiii_noise = cube.make_sn_map('oiii',
+                                                           redshift)
+
+                oiii_sn = oiii_signal / oiii_noise
+
+                hb_signal, hb_noise = cube.make_sn_map('hb',
+                                                       redshift)
+
+                hb_sn = hb_signal / hb_noise
+
+                # construct dictionary for these entries
+                sn_dict = {'Hb': hb_sn, '[OIII]': oiii_sn}
 
                 # these are the sn images of the lines
                 # add these to the first
@@ -9607,7 +9634,7 @@ class pipelineOps(object):
         # are all generated in *output*
         #
         binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = self.voronoi_2d_binning(
-            x, y, signal, noise, target_sn, plot=1, quiet=0)
+            x, y, signal, noise, target_sn, plot=0, quiet=0)
 
         # Save to a text file the initial coordinates of each pixel together
         # with the corresponding bin number computed by this procedure.
@@ -9893,8 +9920,8 @@ class pipelineOps(object):
         # vel_fig.colorbar(im)
 
         # plt.tight_layout()
-        plt.show()
-        return flux_2d
+        # plt.show()
+        return flux_2d, vel_2d, sig_2d
 
     def vor_pixel_stack(self, incube, bin_dict, stack):
 
@@ -10085,11 +10112,91 @@ class pipelineOps(object):
                        interpolation='bicubic',
                        cmap=plt.get_cmap('jet'))
 
-        ax.set_title('log([OIII] / Hb)')
+        ax.set_title('([OIII] / Hb) metallicity')
 
         fig.colorbar(im)
-        plt.show()
+        # plt.show()
         plt.close('all')
+        return hb_met_array
+
+    def oii_metallicity(self, oiii_flux, oii_flux):
+
+        """
+        Def:
+        take two 2d flux arrays, one of which is oiii and one of which is
+        oii and then compute the 2d metallicity distribution from that. Uses
+        the maiolino 2008 calibration.
+
+        Input:
+                oiii_flux - 2d oiii flux distribution
+                oii_flux - 2d oii flux distribution
+
+        Output:
+                met_2d - 2d metallicity plot
+        """
+        # take the ratio of the two 2d arrays
+        overall_met_OII = oiii_flux / oii_flux
+
+        # Next the OII ratio, set up a new array to house the results
+
+        x_shape = overall_met_OII.shape[0]
+        y_shape = overall_met_OII.shape[1]
+
+        OII_met_array = np.empty(shape=(x_shape, y_shape))
+
+        # initialise the coefficients, given in Maiolino 2008
+        c_0_OII = -0.2839
+        c_1_OII = -1.3881
+        c_2_OII = -0.3172
+
+        for i, xpix in enumerate(np.arange(0, x_shape, 1)):
+
+            for j, ypix in enumerate(np.arange(0, y_shape, 1)):
+
+                # if the number is nan, leave it as nan
+                if np.isnan(overall_met_OII[i, j]) \
+                   or np.isinf(overall_met_OII[i, j]) \
+                   or (overall_met_OII[i, j]) < 0:
+
+                    OII_met_array[i, j] = np.nan
+
+                # else subtract the number from
+                # c_0_OII and set up the polynomial from poly1D
+
+                else:
+                    # print 'This is the number: %s' % overall_met_OII[i, j]
+                    c_0_OII_new = c_0_OII - np.log10(overall_met_OII[i, j])
+
+                    p = poly1d([c_2_OII, c_1_OII, c_0_OII_new])
+                    # print p.r
+                    # the roots of the polynomial are given in units
+                    # of metallicity relative to solar. add 8.69
+                    # met_value = p.r[0] + 8.69
+                    # if the root has an imaginary component, just take
+                    # the real part
+                    if np.isreal(p.r[1]):
+                        OII_met_array[i, j] = p.r[1] + 8.69
+                    else:
+                        OII_met_array[i, j] = -100
+
+        # plot the results
+
+        fig, ax = plt.subplots(1, figsize=(14, 14))
+
+        im = ax.imshow(OII_met_array,
+                       aspect='auto',
+                       vmin=7.5,
+                       vmax=9.0,
+                       interpolation='bicubic',
+                       cmap=plt.get_cmap('jet'))
+
+        ax.set_title('([OIII] / [OII]) metallicity')
+
+        fig.colorbar(im)
+        # plt.show()
+        plt.close('all')
+        return OII_met_array
+
 
     def voronoi_binning_by_line(self,
                                 line,
@@ -10151,6 +10258,542 @@ class pipelineOps(object):
         # binNum uniquely specifies the bins and for this reason it is the only
         # number required for any subsequent calculation on the bins.
         #
+        # check for the existence of the output file
+        output_name = out_dir + '/voronoi_2d_binning_output.txt'
+
+        if os.path.isfile(output_name):
+
+            os.system('rm %s' % output_name)
+
         np.savetxt(out_dir + '/voronoi_2d_binning_output.txt',
                    np.column_stack([xbin, ybin, binNum]),
                    fmt=b'%10.6f %10.6f %8i')
+
+    def multi_apply_voronoi_binning(self,
+                                    infile,
+                                    target_sn,
+                                    stack='median'):
+        """
+        Def:
+        Apply the voronoi binning method, using the same list of files
+        as in the multi_plot_all_maps function
+
+        Input:
+               infile - file listing the redshifts and cubenames
+                      and also the x,y central position of the galaxy
+                     also needs to contain the 'standard star cube'
+                    and an associated 'skycube'
+               target_sn - required s/n for tesselation
+               stack - stacking method for combining the bins
+        """
+
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            cube = cubeOps(obj_name)
+
+            redshift = entry[1]
+
+            centre_x = entry[2]
+
+            centre_y = entry[3]
+
+            std_cube = entry[4]
+
+            sky_cube = entry[5]
+
+            # define the science directory for each cube
+            sci_dir = obj_name[:len(obj_name) - obj_name[::-1].find("/") - 1]
+
+            print "\nDoing %s (redshift = %.3f) ..." % (obj_name, redshift)
+
+            # check whether we're looking at HK or K band
+
+            if cube.filter == 'HK':
+
+                # need to apply the voronoi method to all three emission lines
+                # start off with the oiii line
+
+                # compute the signal to noise and the bins
+                self.voronoi_binning_by_line('oiii',
+                                             obj_name,
+                                             redshift,
+                                             target_sn,
+                                             sci_dir)
+
+                vor_output = sci_dir + '/voronoi_2d_binning_output.txt'
+
+                # fit the output to get the velocity map
+                oiii_flux, \
+                    oiii_vel, oiii_sig = self.vor_output_fitting(sci_dir,
+                                                                 vor_output,
+                                                                 obj_name,
+                                                                 std_cube,
+                                                                 sky_cube,
+                                                                 centre_x,
+                                                                 centre_y,
+                                                                 redshift,
+                                                                 stack,
+                                                                 'oiii')
+
+                # next the oii line
+
+                # compute the signal to noise and the bins
+                self.voronoi_binning_by_line('oii',
+                                             obj_name,
+                                             redshift,
+                                             target_sn,
+                                             sci_dir)
+
+                vor_output = sci_dir + '/voronoi_2d_binning_output.txt'
+
+                # fit the output to get the velocity map
+                oii_flux, \
+                    oii_vel, oii_sig = self.vor_output_fitting(sci_dir,
+                                                               vor_output,
+                                                               obj_name,
+                                                               std_cube,
+                                                               sky_cube,
+                                                               centre_x,
+                                                               centre_y,
+                                                               redshift,
+                                                               stack,
+                                                               'oii')
+
+                # next the hb line
+
+                # compute the signal to noise and the bins
+                self.voronoi_binning_by_line('hb',
+                                             obj_name,
+                                             redshift,
+                                             target_sn,
+                                             sci_dir)
+
+                vor_output = sci_dir + '/voronoi_2d_binning_output.txt'
+
+                # fit the output to get the velocity map
+                hb_flux, \
+                    hb_vel, hb_sig = self.vor_output_fitting(sci_dir,
+                                                             vor_output,
+                                                             obj_name,
+                                                             std_cube,
+                                                             sky_cube,
+                                                             centre_x,
+                                                             centre_y,
+                                                             redshift,
+                                                             stack,
+                                                             'hb')
+
+                # now have all of the components required
+                # first compute the metallicities
+
+                oii_met = self.oii_metallicity(oiii_flux, oii_flux)
+
+                hb_met = self.hb_metallicity(oiii_flux, hb_flux)
+
+                # now plot the required graphs in a 3x3 grid
+                fig, axes = plt.subplots(figsize=(14, 14), nrows=3, ncols=3)
+
+                # set the limits for the plotting routine
+                # sometimes this throws a TypeError if hardly any data points
+                try:
+
+                    oiii_vel_min, oiii_vel_max = np.nanpercentile(oiii_vel,
+                                                                  [10.0, 90.0])
+
+                    oiii_sig_min, oiii_sig_max = np.nanpercentile(oiii_sig,
+                                                                  [10.0, 90.0])
+
+                    oiii_f_min, oiii_f_max = np.nanpercentile(oiii_flux,
+                                                              [10.0, 90.0])
+
+                except TypeError:
+
+                    # origin of the error is lack of good S/N data
+                    # can set the max and min at whatever
+                    oiii_vel_min, oiii_vel_max = [-100, 100]
+                    oiii_sig_min, oiii_sig_max = [0, 100]
+                    oiii_f_min, oiii_f_max = [0, 5E-19]
+
+                try:
+
+                    oii_vel_min, oii_vel_max = np.nanpercentile(oii_vel,
+                                                                [10.0, 90.0])
+
+                    oii_sig_min, oii_sig_max = np.nanpercentile(oii_sig,
+                                                                [10.0, 90.0])
+
+                    oii_f_min, oii_f_max = np.nanpercentile(oii_flux,
+                                                            [10.0, 90.0])
+
+                except TypeError:
+
+                    # origin of the error is lack of good S/N data
+                    # can set the max and min at whatever
+                    oii_vel_min, oii_vel_max = [-100, 100]
+                    oii_sig_min, oii_sig_max = [0, 100]
+                    oii_f_min, oii_f_max = [0, 5E-19]
+
+                try:
+
+                    hb_vel_min, hb_vel_max = np.nanpercentile(hb_vel,
+                                                              [10.0, 90.0])
+
+                    hb_sig_min, hb_sig_max = np.nanpercentile(hb_sig,
+                                                              [10.0, 90.0])
+
+                    hb_f_min, hb_f_max = np.nanpercentile(hb_flux,
+                                                          [10.0, 90.0])
+
+                except TypeError:
+
+                    # origin of the error is lack of good S/N data
+                    # can set the max and min at whatever
+                    hb_vel_min, hb_vel_max = [-100, 100]
+                    hb_sig_min, hb_sig_max = [0, 100]
+                    hb_f_min, hb_f_max = [0, 5E-19]
+
+                im = axes[1][0].imshow(oii_met,
+                                       aspect='auto',
+                                       vmin=7.5,
+                                       vmax=9.0,
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[1][0])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the name
+                axes[1][0].set_title('OIII / OII Metallicity')
+
+                # OII
+                im = axes[1][1].imshow(hb_met,
+                                       aspect='auto',
+                                       vmin=7.5,
+                                       vmax=9.0,
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[1][1])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[1][1].set_title('OIII / Hb Metallicity')
+
+                # now the velocity and flux maps
+                # OIII
+
+                im = axes[0][2].imshow(oiii_flux,
+                                       aspect='auto',
+                                       vmin=oiii_f_min,
+                                       vmax=oiii_f_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[0][2])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[0][2].set_title('OIII Flux')
+
+                im = axes[1][2].imshow(oiii_vel,
+                                       aspect='auto',
+                                       vmin=oiii_vel_min,
+                                       vmax=oiii_vel_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[1][2])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[1][2].set_title('OIII Velocity')
+
+                im = axes[2][2].imshow(oiii_sig,
+                                       aspect='auto',
+                                       vmin=oiii_sig_min,
+                                       vmax=oiii_sig_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[2][2])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[2][2].set_title('OIII Dispersion')
+
+                # OII
+
+                im = axes[0][0].imshow(oii_flux,
+                                       aspect='auto',
+                                       vmin=oii_f_min,
+                                       vmax=oii_f_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[0][0])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[0][0].set_title('OII Flux')
+
+                im = axes[2][0].imshow(oii_vel,
+                                       aspect='auto',
+                                       vmin=oii_vel_min,
+                                       vmax=oii_vel_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[2][0])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[2][0].set_title('OII Velocity')
+
+                # hb
+
+                im = axes[0][1].imshow(hb_flux,
+                                       aspect='auto',
+                                       vmin=hb_f_min,
+                                       vmax=hb_f_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[0][1])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[0][1].set_title('hb Flux')
+
+                im = axes[2][1].imshow(hb_vel,
+                                       aspect='auto',
+                                       vmin=hb_vel_min,
+                                       vmax=hb_vel_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[2][1])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[2][1].set_title('hb Velocity')
+
+                fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
+                plt.close('all')
+
+            elif cube.filter == 'K':
+
+                # only apply to oiii and Hb
+
+                # compute the signal to noise and the bins
+                self.voronoi_binning_by_line('oiii',
+                                             obj_name,
+                                             redshift,
+                                             target_sn,
+                                             sci_dir)
+
+                vor_output = sci_dir + '/voronoi_2d_binning_output.txt'
+
+                # fit the output to get the velocity map
+                oiii_flux, \
+                    oiii_vel, oiii_sig = self.vor_output_fitting(sci_dir,
+                                                                 vor_output,
+                                                                 obj_name,
+                                                                 std_cube,
+                                                                 sky_cube,
+                                                                 centre_x,
+                                                                 centre_y,
+                                                                 redshift,
+                                                                 stack,
+                                                                 'oiii')
+
+                # next the hb line
+
+                # compute the signal to noise and the bins
+                self.voronoi_binning_by_line('hb',
+                                             obj_name,
+                                             redshift,
+                                             target_sn,
+                                             sci_dir)
+
+                vor_output = sci_dir + '/voronoi_2d_binning_output.txt'
+
+                # fit the output to get the velocity map
+                hb_flux, \
+                    hb_vel, hb_sig = self.vor_output_fitting(sci_dir,
+                                                             vor_output,
+                                                             obj_name,
+                                                             std_cube,
+                                                             sky_cube,
+                                                             centre_x,
+                                                             centre_y,
+                                                             redshift,
+                                                             stack,
+                                                             'hb')
+
+                # now have all of the components required
+                # first compute the metallicities
+
+                hb_met = self.hb_metallicity(oiii_flux, hb_flux)
+
+                # now plot the required graphs in a 3x3 grid
+                fig, axes = plt.subplots(figsize=(14, 14), nrows=3, ncols=2)
+
+                # set the limits for the plotting routine
+                # sometimes this throws a TypeError if hardly any data points
+                try:
+
+                    oiii_vel_min, oiii_vel_max = np.nanpercentile(oiii_vel,
+                                                                  [10.0, 90.0])
+
+                    oiii_sig_min, oiii_sig_max = np.nanpercentile(oiii_sig,
+                                                                  [10.0, 90.0])
+
+                    oiii_f_min, oiii_f_max = np.nanpercentile(oiii_flux,
+                                                              [10.0, 90.0])
+
+                except TypeError:
+
+                    # origin of the error is lack of good S/N data
+                    # can set the max and min at whatever
+                    oiii_vel_min, oiii_vel_max = [-100, 100]
+                    oiii_sig_min, oiii_sig_max = [0, 100]
+                    oiii_f_min, oiii_f_max = [0, 5E-19]
+
+                try:
+
+                    hb_vel_min, hb_vel_max = np.nanpercentile(hb_vel,
+                                                              [10.0, 90.0])
+
+                    hb_sig_min, hb_sig_max = np.nanpercentile(hb_sig,
+                                                              [10.0, 90.0])
+
+                    hb_f_min, hb_f_max = np.nanpercentile(hb_flux,
+                                                          [10.0, 90.0])
+
+                except TypeError:
+
+                    # origin of the error is lack of good S/N data
+                    # can set the max and min at whatever
+                    hb_vel_min, hb_vel_max = [-100, 100]
+                    hb_sig_min, hb_sig_max = [0, 100]
+                    hb_f_min, hb_f_max = [0, 5E-19]
+
+                # OII
+                im = axes[1][0].imshow(hb_met,
+                                       aspect='auto',
+                                       vmin=7.5,
+                                       vmax=9.0,
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[1][0])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[1][0].set_title('OIII / Hb Metallicity')
+
+                # now the velocity and flux maps
+                # OIII
+
+                im = axes[0][1].imshow(oiii_flux,
+                                       aspect='auto',
+                                       vmin=oiii_f_min,
+                                       vmax=oiii_f_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[0][1])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[0][1].set_title('OIII Flux')
+
+                im = axes[1][1].imshow(oiii_vel,
+                                       aspect='auto',
+                                       vmin=oiii_vel_min,
+                                       vmax=oiii_vel_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[1][1])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[1][1].set_title('OIII Velocity')
+
+                im = axes[2][1].imshow(oiii_sig,
+                                       aspect='auto',
+                                       vmin=oiii_sig_min,
+                                       vmax=oiii_sig_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[2][1])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[2][1].set_title('OIII Dispersion')
+
+                # hb
+
+                im = axes[0][0].imshow(hb_flux,
+                                       aspect='auto',
+                                       vmin=hb_f_min,
+                                       vmax=hb_f_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[0][0])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[0][0].set_title('hb Flux')
+
+                im = axes[2][0].imshow(hb_vel,
+                                       aspect='auto',
+                                       vmin=hb_vel_min,
+                                       vmax=hb_vel_max,
+                                       interpolation='nearest',
+                                       cmap=plt.get_cmap('jet'))
+
+                # add colourbar to each plot
+                divider = make_axes_locatable(axes[2][0])
+                cax_new = divider.append_axes('right', size='10%', pad=0.05)
+                plt.colorbar(im, cax=cax_new)
+
+                # set the title
+                axes[2][0].set_title('hb Velocity')
+
+                fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
+                plt.close('all')
