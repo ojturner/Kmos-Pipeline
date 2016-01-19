@@ -2549,8 +2549,8 @@ class cubeOps(object):
                              + ' chosen an appropriate emission line')
 
         # open the data
-        data = self.data
-        noise = self.Table[2].data
+        data = self.data[:, 2:-2, 2:-2]
+        noise = self.Table[2].data[:, 2:-2, 2:-2]
 
         # get the wavelength array
         wave_array = self.wave_array
@@ -2586,8 +2586,20 @@ class cubeOps(object):
                 spaxel_spec = data[:, i, j]
                 spaxel_noise = noise[:, i, j]
 
-                line_counts = np.median(spaxel_spec[line_idx - 3:
-                                                    line_idx + 3])
+                # account for different spectral resolutions
+                if self.filter == 'K':
+
+                    line_counts = np.max(spaxel_spec[line_idx - 5:
+                                                     line_idx + 5])
+
+                elif self.filter == 'HK':
+
+                    line_counts = np.max(spaxel_spec[line_idx - 3:
+                                                     line_idx + 3])
+                else:
+
+                    line_counts = np.max(spaxel_spec[line_idx - 5:
+                                                     line_idx + 5])
 
                 if np.isnan(line_counts):
 
@@ -2598,8 +2610,14 @@ class cubeOps(object):
                     signal_array[i, j] = line_counts
 
                 # mask out the skylines to compute the noise
-                wavelength_masked, noise_masked = self.mask_k_sky(wave_array,
-                                                                  spaxel_spec)
+                if self.filter == 'K':
+                    wavelength_masked, \
+                        noise_masked = self.mask_k_sky(wave_array,
+                                                       spaxel_spec)
+                elif self.filter == 'HK':
+                    wavelength_masked, \
+                        noise_masked = self.mask_hk_sky(wave_array,
+                                                        spaxel_spec)
 
                 # look only at the unmasked flux values
                 noise_data = noise_masked.compressed() / 1E-18
@@ -2681,7 +2699,7 @@ class cubeOps(object):
         
         # first hardwire in the known wavelength ranges of the skylines
         initial_value = 1.995
-        final_value = 2.30
+        final_value = 2.253
 
         # pairs of limits to use in the forloop
         sky_dict = {1: [1.9994, 2.00447],
@@ -2709,6 +2727,132 @@ class cubeOps(object):
                     23: [2.23019, 2.23521],
                     24: [2.24529, 2.24702],
                     25: [2.25039, 2.25296]
+                    }
+
+        # now do the masking of the wavelength array
+        wavelength_masked = ma.masked_where(wavelength < initial_value,
+                                            wavelength,
+                                            copy=True)
+
+        # now loop through and mask off all of the offending regions
+
+        for entry in sky_dict:
+
+            wavelength_masked = ma.masked_where(
+                np.logical_and(wavelength_masked > sky_dict[entry][0],
+                               wavelength_masked < sky_dict[entry][1]),
+                wavelength_masked, copy=True)
+
+        wavelength_masked = ma.masked_where(wavelength_masked > final_value,
+                                            wavelength_masked,
+                                            copy=True)
+
+        # apply the final mask to the flux array
+
+        flux_masked = ma.MaskedArray(flux,
+                                     mask=wavelength_masked.mask)
+
+        return wavelength_masked, flux_masked
+
+    def mask_hk_sky(self, wavelength, flux):
+
+        """
+        Def:
+        Purpose is to mask the sky emission lines so that a proper estimation
+        of the noise of a spaxel can be found. Uses a pre-determined set of
+        values at which the skylines are known to exist, masks the wavelength
+        array and then applies the mask to the flux array.
+        Returns the masked versions of both wavelength and flux arrays.
+
+        Input:
+                wavelength - hk-band wavelength array
+                flux - corresponding flux values
+
+        Output:
+                wavelength_masked - np.masked_array version with sky masked
+                flux_masked - as above, corresponding
+        """
+        
+        # first hardwire in the known wavelength ranges of the skylines
+        initial_value = 1.50059
+        final_value = 2.253
+
+        # pairs of limits to use in the forloop
+        sky_dict = {1: [1.50402, 1.51215],
+                    2: [1.51733, 1.51992],
+                    3: [1.52272, 1.52546],
+                    4: [1.52763, 1.53001],
+                    5: [1.53197, 1.53484],
+                    6: [1.53834, 1.54059],
+                    7: [1.54213, 1.54444],
+                    8: [1.5492, 1.56678],
+                    9: [1.56923, 1.57127],
+                    10: [1.56923, 1.57127],
+                    11: [1.59598, 1.59822],
+                    12: [1.60192, 1.60427],
+                    13: [1.60685, 1.60887],
+                    14: [1.61167, 1.61402],
+                    15: [1.61834, 1.62053],
+                    16: [1.62237, 1.62467],
+                    17: [1.62977, 1.65157],
+                    18: [1.65437, 1.65616],
+                    19: [1.65759, 1.66225],
+                    20: [1.60779, 1.67744],
+                    21: [1.68312, 1.68496],
+                    22: [1.68913, 1.6915],
+                    23: [1.69441, 1.69665],
+                    24: [1.69982, 1.70207],
+                    25: [1.70663, 1.70887],
+                    26: [1.71132, 1.71349],
+                    27: [1.72017, 1.72215],
+                    28: [1.72367, 1.73965],
+                    29: [1.74176, 1.74605],
+                    30: [1.74942, 1.75365],
+                    31: [1.76384, 1.77082],
+                    32: [1.78014, 1.78195],
+                    33: [1.78703, 1.78936],
+                    34: [1.7982, 1.80043],
+                    35: [1.8059, 1.80785],
+                    36: [1.81075, 1.81294],
+                    37: [1.82054, 1.82168],
+                    38: [1.82458, 1.82629],
+                    39: [1.84234, 1.84704],
+                    40: [1.8515, 1.85373],
+                    41: [1.8553, 1.85984],
+                    42: [1.87313, 1.88056],
+                    43: [1.88782, 1.89245],
+                    44: [1.90409, 1.90747],
+                    45: [1.9182, 1.92629],
+                    46: [1.93306, 1.93719],
+                    47: [1.95034, 1.97854],
+                    48: [1.98, 1.981],
+                    49: [1.98274, 1.98514],
+                    50: [1.9883, 1.99348],
+                    51: [1.9994, 2.00447],
+                    52: [2.00618, 2.00783],
+                    53: [2.01817, 2.02044],
+                    54: [2.02631, 2.02893],
+                    55: [2.03304, 2.0348],
+                    56: [2.0398, 2.04237],
+                    57: [2.04903, 2.0508],
+                    58: [2.05491, 2.05755],
+                    59: [2.0718, 2.07444],
+                    60: [2.08533, 2.08707],
+                    61: [2.08951, 2.09204],
+                    62: [2.10123, 2.13916],
+                    63: [2.14931, 2.15943],
+                    64: [2.1628, 2.16447],
+                    65: [2.17038, 2.17207],
+                    66: [2.17541, 2.17713],
+                    67: [2.17845, 2.18133],
+                    68: [2.18639, 2.18809],
+                    69: [2.19471, 2.20045],
+                    70: [2.20407, 2.2066],
+                    71: [2.21167, 2.21366],
+                    72: [2.22336, 2.22608],
+                    73: [2.23019, 2.23521],
+                    74: [2.24529, 2.24702],
+                    75: [2.25039, 2.25296]
                     }
 
         # now do the masking of the wavelength array

@@ -79,18 +79,18 @@ combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals
 obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
 cal_dir = '/disk1/turner/DATA/esther_tester/Calibrations'
-gal_dir = '/disk1/turner/DATA/Gals1/K/comb/Science'
+gal_dir = '/disk1/turner/DATA/SSA_HK_P1_comb_calibrated_4E17/Science'
 sky_cube_gal = gal_dir + '/combine_sci_reconstructed_arm3_sky.fits'
 obj_cube_gal = gal_dir + '/combine_sci_reconstructed_bs008543.fits'
 std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_7656.fits'
 raw_file = '/disk1/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS344_0018_Corrected.fits'
 badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
-object_spectrum = gal_dir + '/combine_sci_reconstructed_b17453_spectrum.fits'
+object_spectrum = gal_dir + '/combine_sci_reconstructed_n_c47_spectrum.fits'
 vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_voronoi_test.txt'
 vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
 
-pipe_methods.multi_apply_voronoi_binning('/disk1/turner/DATA/all_names_calibrated.txt', 1.5)
+pipe_methods.multi_apply_voronoi_binning('/disk1/turner/DATA/all_names_calibrated.txt', 8.0)
 #pipe_methods.combine_by_name(sci_dir, combine_input, 0, 0.8, 2E-17)
 #pipe_methods.voronoi_binning_by_line('oiii', obj_cube_gal, 3.47328838, 2.0, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi')
 #pipe_methods.apply_voronoi_binning(vor_infile, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi', 1.5)
@@ -149,7 +149,7 @@ pipe_methods.multi_apply_voronoi_binning('/disk1/turner/DATA/all_names_calibrate
 #stuff, stuff1, stuff2 = pipe_methods.compareSky(sci_dir='/disk1/turner/DATA/688/H/Science', combNames='co_names.txt')
 
 #pipe_methods.saveSpec('/disk1/turner/PhD/KMOS/KMOS_DATA/Pipeline_Execution/May_20th_tests/corr_with/sci_combined_s152__skytweak.fits')
-#pipe_methods.plotSpecs(gal_dir, object_spectrum, sky_cube_gal, 3)
+#pipe_methods.plotSpecs(gal_dir, object_spectrum, sky_cube_gal, 1)
 
 #pipe_methods.multiExtractSpec(skyCube=hskyCube, frameNames=h_names)
 #Now try the subtraction method 

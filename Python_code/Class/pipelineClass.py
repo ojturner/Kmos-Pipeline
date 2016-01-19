@@ -6536,7 +6536,7 @@ class pipelineOps(object):
         ax2.set_xlabel(r'Wavelength ($\mu m$)', fontsize=24)
         ax2.tick_params(axis='both', which='major', labelsize=15)
         ax2.yaxis.set_major_locator(MaxNLocator(nbins=nbins, prune='upper'))
-        ax2.set_xlim(1.95, 2.35)
+        ax2.set_xlim(1.5, 2.4)
 
         f.subplots_adjust(hspace=0.001)
         f.tight_layout()
@@ -9523,7 +9523,7 @@ class pipelineOps(object):
     #----------------------------------------------------------------------
 
     def voronoi_2d_binning(self, x, y, signal, noise, targetSN, cvt=True,
-                             pixelsize=None, plot=True, quiet=True, wvt=True):
+                             pixelsize=None, plot=False, quiet=True, wvt=True):
         """
         PURPOSE:
               Perform adaptive spatial binning of Integral-Field Spectroscopic
@@ -9608,7 +9608,7 @@ class pipelineOps(object):
                 plt.plot(rad[w], sn[w], 'xb', label='single spaxels')
             plt.axhline(targetSN)
             plt.legend()
-            plt.show()  # allow plot to appear in certain cases
+            # plt.show()  # allow plot to appear in certain cases
 
         return classe, xNode, yNode, xBar, yBar, sn, area, scale
 
@@ -9703,6 +9703,9 @@ class pipelineOps(object):
         # assign the bin_numbers
 
         bin_arr = table['col3']
+
+        # find the filter id of the cube
+        cube_filter = cubeOps(incube).filter
 
         # now have the bin list in array form. Look for unique bin entries
         # and start a dictionary containing a unique bin key and a tuple of
@@ -9806,8 +9809,15 @@ class pipelineOps(object):
             # find the appropriate line index and perform the fit
             line_idx = np.argmin(np.abs(wave_array - central_wl))
 
-            fit_wl = wave_array[line_idx - 8: line_idx + 8]
-            fit_flux = spec[line_idx - 8: line_idx + 8]
+            if cube_filter == 'K':
+
+                fit_wl = wave_array[line_idx - 8: line_idx + 8]
+                fit_flux = spec[line_idx - 8: line_idx + 8]
+
+            elif cube_filter == 'HK':
+
+                fit_wl = wave_array[line_idx - 5: line_idx + 5]
+                fit_flux = spec[line_idx - 5: line_idx + 5]            
 
             best_values = self.vor_gauss_fit(fit_wl,
                                              fit_flux,
@@ -9849,8 +9859,8 @@ class pipelineOps(object):
 
         # and reshape to the 2D format
 
-        cube_data_x = cubeOps(incube).data.shape[1]
-        cube_data_y = cubeOps(incube).data.shape[2]
+        cube_data_x = cubeOps(incube).data[:, 2:-2, 2:-2].shape[1]
+        cube_data_y = cubeOps(incube).data[:, 2:-2, 2:-2].shape[2]
 
         vel_2d = vel_list.reshape((cube_data_x, cube_data_y))
         sig_2d = sig_list.reshape((cube_data_x, cube_data_y))
@@ -10032,13 +10042,13 @@ class pipelineOps(object):
         out = gmod.fit(fit_flux, pars, x=fit_wl)
 
         # print the fit report
-        # print out.fit_report()
+        print out.fit_report()
 
         # plot to make sure things are working
         fig, ax = plt.subplots(figsize=(14, 6))
         ax.plot(fit_wl, fit_flux, color='blue')
         ax.plot(fit_wl, out.best_fit, color='red')
-        # plt.show()
+        plt.show()
         plt.close('all')
 
         return out.best_values
@@ -10224,6 +10234,7 @@ class pipelineOps(object):
 
         signal_1d = np.ravel(signal_2d)
         noise_1d = np.ravel(noise_2d)
+        sn_1d = signal_1d / noise_1d
 
         # make the coordinate arrays
         xbin_shape = signal_2d.shape[0]
@@ -10236,6 +10247,15 @@ class pipelineOps(object):
 
         xbin = np.ravel(xbin)
         ybin = np.ravel(ybin)
+
+        # write out to file to examine
+        np.savetxt(incube[:-5] + '_binning_input_' + line + '.txt',
+                   np.column_stack([xbin,
+                                    ybin,
+                                    signal_1d,
+                                    noise_1d,
+                                    sn_1d]),
+                   fmt=b'%.2f %.2f %.3E %.3E %.3f')
 
         # now have everything required to run the voronoi_binning method
 
@@ -10658,7 +10678,7 @@ class pipelineOps(object):
                 hb_met = self.hb_metallicity(oiii_flux, hb_flux)
 
                 # now plot the required graphs in a 3x3 grid
-                fig, axes = plt.subplots(figsize=(14, 14), nrows=3, ncols=2)
+                fig, axes = plt.subplots(figsize=(10, 12), nrows=3, ncols=2)
 
                 # set the limits for the plotting routine
                 # sometimes this throws a TypeError if hardly any data points
