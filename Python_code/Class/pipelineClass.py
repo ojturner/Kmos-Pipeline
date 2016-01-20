@@ -9811,13 +9811,13 @@ class pipelineOps(object):
 
             if cube_filter == 'K':
 
-                fit_wl = wave_array[line_idx - 8: line_idx + 8]
-                fit_flux = spec[line_idx - 8: line_idx + 8]
+                fit_wl = wave_array[line_idx - 7: line_idx + 7]
+                fit_flux = spec[line_idx - 7: line_idx + 7]
 
             elif cube_filter == 'HK':
 
-                fit_wl = wave_array[line_idx - 5: line_idx + 5]
-                fit_flux = spec[line_idx - 5: line_idx + 5]            
+                fit_wl = wave_array[line_idx - 4: line_idx + 4]
+                fit_flux = spec[line_idx - 4: line_idx + 4]            
 
             best_values = self.vor_gauss_fit(fit_wl,
                                              fit_flux,
@@ -10048,7 +10048,7 @@ class pipelineOps(object):
         fig, ax = plt.subplots(figsize=(14, 6))
         ax.plot(fit_wl, fit_flux, color='blue')
         ax.plot(fit_wl, out.best_fit, color='red')
-        plt.show()
+        # plt.show()
         plt.close('all')
 
         return out.best_values
@@ -10065,7 +10065,7 @@ class pipelineOps(object):
                 oiii_flux - 2d oiii flux distribution
                 hb_flux - 2d hb flux distribution
 
-        Output: 
+        Output:
                 met_2d - 2d metallicity plot
         """
         # take the ratio of the two 2d arrays

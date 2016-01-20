@@ -79,7 +79,7 @@ combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals
 obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
 cal_dir = '/disk1/turner/DATA/esther_tester/Calibrations'
-gal_dir = '/disk1/turner/DATA/SSA_HK_P1_comb_calibrated_4E17/Science'
+gal_dir = '/disk1/turner/DATA/GOODS_K_P1_comb_calibrated_2E17/Science'
 sky_cube_gal = gal_dir + '/combine_sci_reconstructed_arm3_sky.fits'
 obj_cube_gal = gal_dir + '/combine_sci_reconstructed_bs008543.fits'
 std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_7656.fits'
@@ -89,8 +89,9 @@ object_spectrum = gal_dir + '/combine_sci_reconstructed_n_c47_spectrum.fits'
 vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_voronoi_test.txt'
 vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
-
-pipe_methods.multi_apply_voronoi_binning('/disk1/turner/DATA/all_names_calibrated.txt', 8.0)
+cube = cubeOps(obj_cube_gal)
+cube.stott_velocity_field('oiii', 3.47328838, 25, 22, 14, method='median')
+#pipe_methods.multi_apply_voronoi_binning('/disk1/turner/DATA/all_names_calibrated.txt', 10.0)
 #pipe_methods.combine_by_name(sci_dir, combine_input, 0, 0.8, 2E-17)
 #pipe_methods.voronoi_binning_by_line('oiii', obj_cube_gal, 3.47328838, 2.0, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi')
 #pipe_methods.apply_voronoi_binning(vor_infile, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi', 1.5)

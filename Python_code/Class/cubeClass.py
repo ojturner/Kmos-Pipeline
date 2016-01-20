@@ -2549,8 +2549,8 @@ class cubeOps(object):
                              + ' chosen an appropriate emission line')
 
         # open the data
-        data = self.data[:, 2:-2, 2:-2]
-        noise = self.Table[2].data[:, 2:-2, 2:-2]
+        data = self.data
+        noise = self.Table[2].data
 
         # get the wavelength array
         wave_array = self.wave_array
@@ -2587,19 +2587,43 @@ class cubeOps(object):
                 spaxel_noise = noise[:, i, j]
 
                 # account for different spectral resolutions
+
                 if self.filter == 'K':
 
-                    line_counts = np.max(spaxel_spec[line_idx - 5:
-                                                     line_idx + 5])
+                    # first search for the linepeak, which may be different
+                    # to that specified by the systemic redshift
+
+                    t_index = np.argmax(spaxel_spec[line_idx - 4:
+                                                    line_idx + 4])
+
+                    # need this to be an absolute index
+                    t_index = t_index + line_idx - 4
+
+                    # then sum the flux inside the region over which the line
+                    # will be. Width of line is roughly 0.003, which is 10
+                    # spectral elements in K and 6 in HK
+
+                    line_counts = np.nansum(spaxel_spec[t_index - 4:
+                                                        t_index + 4])
 
                 elif self.filter == 'HK':
 
-                    line_counts = np.max(spaxel_spec[line_idx - 3:
-                                                     line_idx + 3])
+                    t_index = np.argmax(spaxel_spec[line_idx - 2:
+                                                    line_idx + 2])
+
+                    t_index = t_index + line_idx - 2
+
+                    line_counts = np.nansum(spaxel_spec[t_index - 3:
+                                                        t_index + 3])
                 else:
 
-                    line_counts = np.max(spaxel_spec[line_idx - 5:
-                                                     line_idx + 5])
+                    t_index = np.argmax(spaxel_spec[line_idx - 4:
+                                                    line_idx + 4])
+
+                    t_index = t_index + line_idx - 4
+
+                    line_counts = np.nansum(spaxel_spec[t_index - 4:
+                                                        t_index + 4])
 
                 if np.isnan(line_counts):
 
@@ -2673,8 +2697,12 @@ class cubeOps(object):
 
         # print noise_array
         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-        ax.imshow(signal_array)
-        # plt.show()
+        im = ax.imshow(signal_array / noise_array,
+                       cmap=plt.get_cmap('jet'),
+                       vmin=0,
+                       vmax=10)
+        plt.colorbar(im)
+        plt.show()
 
         return signal_array, noise_array
 
@@ -2879,3 +2907,517 @@ class cubeOps(object):
                                      mask=wavelength_masked.mask)
 
         return wavelength_masked, flux_masked
+
+    def stott_velocity_field(self,
+                             line,
+                             redshift,
+                             threshold,
+                             centre_x,
+                             centre_y,
+                             method='sum'):
+
+        """
+        Def:
+        Make a 2D grid of the s/n in the datacube, and use this to decide
+        whether or not to fit a gaussian. Only fit a gaussian when the
+        s/n is above a threshold. If below this, expand the area to 3x3 spaxels
+        (but for each spaxel independently) and check to see whether the s/n is
+        increased or decreased. If decreased - reject that spaxel. If increased
+        but still below the threshold try a 5x5 area. If the 5x5 is below the
+        threshold, reject that spaxel and move on. Have to take boundary effects
+        into account. Once the threshold is exceeded, fit a gaussian to the
+        spectral region surrounding the emission line, with central wavelength
+        value contrained by the peak flux in the emission line region.
+
+        Input:
+                line - emission line to fit, must be either oiii, oii, hb
+                redshift - the redshift value of the incube
+                threshold - signal to noise threshold for the fit
+        """
+
+        if not(line != 'oiii' or line != 'oii' or line != 'hb'):
+
+            raise ValueError('Please ensure that you have'
+                             + ' chosen an appropriate emission line')
+
+        # open the data
+        data = self.data
+        noise = self.Table[2].data
+
+        # get the wavelength array
+        wave_array = self.wave_array
+
+        if line == 'oiii':
+
+            central_wl = 0.500824 * (1. + redshift)
+
+        elif line == 'hb':
+
+            central_wl = 0.486268 * (1. + redshift)
+
+        elif line == 'oii':
+
+            central_wl = 0.3729875 * (1. + redshift)
+
+        # find the index of the chosen emission line
+        line_idx = np.argmin(np.abs(wave_array - central_wl))
+
+        # the shape of the data is (spectrum, xpixel, ypixel)
+        # loop through each x and y pixel and get the OIII5007 S/N
+
+        xpixs = data.shape[1]
+
+        ypixs = data.shape[2]
+
+        sn_array = np.empty(shape=(xpixs, ypixs))
+
+        signal_array = np.empty(shape=(xpixs, ypixs))
+
+        noise_array = np.empty(shape=(xpixs, ypixs))
+
+        for i, xpix in enumerate(np.arange(0, xpixs, 1)):
+
+            for j, ypix in enumerate(np.arange(0, ypixs, 1)):
+
+                spaxel_spec = data[:, i, j]
+                spaxel_noise = noise[:, i, j]
+
+                # account for different spectral resolutions
+
+                if self.filter == 'K':
+
+                    # first search for the linepeak, which may be different
+                    # to that specified by the systemic redshift
+                    # set the upper and lower ranges for the t_index search
+
+                    lower_t = 8
+                    upper_t = 9
+
+                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
+                                                    line_idx + upper_t])
+
+                    # need this to be an absolute index
+                    t_index = t_index + line_idx - 8
+
+                    # then sum the flux inside the region over which the line
+                    # will be. Width of line is roughly 0.003, which is 10
+                    # spectral elements in K and 6 in HK
+
+                    # set the limits for the signal estimate
+
+                    lower_limit = t_index - 8
+                    upper_limit = t_index + 9
+
+                    line_counts = np.nansum(spaxel_spec[lower_limit:
+                                                        upper_limit])
+
+                elif self.filter == 'HK':
+
+                    lower_t = 5
+                    upper_t = 6
+
+                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
+                                                    line_idx + upper_t])
+
+                    t_index = t_index + line_idx - 5
+
+                    # set the limits for the signal estimate
+
+                    lower_limit = t_index - 6
+                    upper_limit = t_index + 7
+
+                    line_counts = np.nansum(spaxel_spec[lower_limit:
+                                                        upper_limit])
+
+                # any other band follows the same rules as K right now
+
+                else:
+
+                    lower_t = 8
+                    upper_t = 9
+
+                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
+                                                    line_idx + upper_t])
+
+                    t_index = t_index + line_idx - 8
+
+                    # set the limits for the signal estimate
+
+                    lower_limit = t_index - 8
+                    upper_limit = t_index + 9
+
+                    line_counts = np.nansum(spaxel_spec[lower_limit:
+                                                        upper_limit])
+
+                if np.isnan(line_counts):
+
+                    signal_array[i, j] = 0
+
+                else:
+
+                    signal_array[i, j] = line_counts
+
+                # mask out the skylines to compute the noise
+
+                if self.filter == 'K':
+                    wavelength_masked, \
+                        noise_masked = self.mask_k_sky(wave_array,
+                                                       spaxel_spec)
+
+                elif self.filter == 'HK':
+                    wavelength_masked, \
+                        noise_masked = self.mask_hk_sky(wave_array,
+                                                        spaxel_spec)
+
+                # look only at the unmasked flux values
+
+                noise_data = noise_masked.compressed() / 1E-18
+
+                # construct histogram of the noise values and fit
+
+                mod = GaussianModel()
+                hist, edges = np.histogram(noise_data, bins=10)
+                edges = edges[0: -1]
+                params = mod.guess(hist, x=edges)
+
+                # try the fitting with astropy
+#                g1 = models.Gaussian1D(amplitude=params['amplitude'].value,
+#                                       mean=params['center'].value,
+#                                       stddev=params['sigma'].value)
+#                fit_g = fitting.LevMarLSQFitter()
+#                g_out = fit_g(g1, x=edges, y=hist)
+#                print g_out.stddev.value
+
+                out = mod.fit(hist, params, x=edges)
+
+                fig, ax = plt.subplots(1, 1, figsize=(12, 12))
+
+                ax.plot(edges, hist)
+
+                ax.plot(edges, out.best_fit)
+
+                # plt.show()
+
+                plt.close('all')
+
+#                print out.fit_report()
+
+                if list(np.where(np.isnan(noise_data))[0]):
+
+                    print 'found nan'
+
+                    line_noise = np.nan
+
+                else:
+
+                    line_noise = out.best_values['sigma'] * 1E-18
+
+                # line_noise = g_out.stddev.value
+                # print line_noise, i, j
+
+                noise_array[i, j] = line_noise
+
+                line_sn = line_counts / line_noise
+
+                print '%s' % line_sn
+
+                # searching the computed signal to noise in this section
+
+                if np.isnan(line_sn):
+
+                    print 'getting rid of nan'
+
+                    # we've got a nan entry - get rid of it
+
+                    sn_array[i, j] = np.nan
+
+                elif line_sn > threshold:
+
+                    print 'Threshold exceeded %s %s %s' % (i, j, line_sn)
+
+                    print '%s %s %s' % (t_index, lower_limit, upper_limit)
+
+                    # do stuff - calculate the velocity
+
+                    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                    ax.plot(wave_array[lower_limit: upper_limit],
+                            spaxel_spec[lower_limit: upper_limit])
+
+                    # plt.show()
+
+                    plt.close('all')
+
+                    sn_array[i, j] = line_sn
+
+                # don't bother expanding area if line_sn starts negative
+
+                elif line_sn < 0:
+
+                    print 'Found negative signal %s %s' % (i, j)
+
+                    sn_array[i, j] = np.nan
+
+                # If between 0 and the threshold, search surrounding area
+                # for more signal - do this in the direction of the galaxy
+                # centre (don't know if this introduces a bias to the
+                # measurement or not)
+
+                elif (line_sn > 0 and line_sn < threshold):
+
+                    print 'Attempting to improve signal: %s %s %s' % (line_sn, i, j)
+
+                    # depending on spaxel position, try to boost the signal
+                    # by looking in a particular direction
+                    # many different conditions here
+
+                    if (i < centre_x and j < centre_y):
+
+                        print 'Upper left'
+
+                        # combining the spaxels towards the lower right
+
+                        if method == 'sum':
+
+                            # need to throw in a try-except 
+                            spec = np.nansum([data[:, i, j][lower_limit:
+                                                            upper_limit],
+                                              data[:, i, j + 1][lower_limit:
+                                                                upper_limit],
+                                              data[:, i + 1, j][lower_limit:
+                                                                upper_limit],
+                                              data[:, i + 1, j - 1][lower_limit:
+                                                                    upper_limit],
+                                              data[:, i + 1, j + 1][lower_limit:
+                                                                    upper_limit],
+                                              data[:, i - 1, j + 1][lower_limit:
+                                                                    upper_limit]],
+                                             axis=0)
+
+                        elif method == 'median':
+
+                            spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                               upper_limit],
+                                                 data[:, i, j + 1][lower_limit:
+                                                                   upper_limit],
+                                                 data[:, i + 1, j][lower_limit:
+                                                                   upper_limit],
+                                                 data[:, i + 1, j - 1][lower_limit:
+                                                                       upper_limit],
+                                                 data[:, i + 1, j + 1][lower_limit:
+                                                                       upper_limit],
+                                                 data[:, i - 1, j + 1][lower_limit:
+                                                                       upper_limit]],
+                                                axis=0)
+
+                        elif method == 'mean':
+
+                            spec = np.nanmean([data[:, i, j][lower_limit:
+                                                             upper_limit],
+                                               data[:, i, j + 1][lower_limit:
+                                                                 upper_limit],
+                                               data[:, i + 1, j][lower_limit:
+                                                                 upper_limit],
+                                               data[:, i + 1, j - 1][lower_limit:
+                                                                     upper_limit],
+                                               data[:, i + 1, j + 1][lower_limit:
+                                                                     upper_limit],
+                                               data[:, i - 1, j + 1][lower_limit:
+                                                                     upper_limit]],
+                                              axis=0)
+
+                        # now that spec has been computed, look at whether
+                        # the signal to noise of the stack has improved
+
+                        new_line_counts = np.nansum(spec)
+
+                        new_sn = new_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if new_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The binning raised above threshold!'
+
+                            sn_array[i, j] = line_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+
+                            # plt.show()
+
+                            plt.close('all')
+
+                        elif new_sn < line_sn:
+
+                            # got worse - entry becomes a nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+
+                        elif (new_sn > line_sn and new_sn < threshold):
+
+                            # try the 5x5 approach towards the cube centre
+
+                            if method == 'sum':
+
+                                spec = np.nansum([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i + 2, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i, j + 2][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 2, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 2, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 2, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 2, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 2, j + 2][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+
+                            elif method == 'median':
+
+                                spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                   upper_limit],
+                                                     data[:, i + 2, j][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i, j + 1][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i, j + 2][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j - 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 2, j - 2][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 2, j - 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 2, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 2, j + 2][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 1, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 1, j + 2][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i - 1, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i - 1, j + 2][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 2, j + 2][lower_limit:
+                                                                           upper_limit]],
+                                                    axis=0)
+
+                            elif method == 'mean':
+
+                                spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                 upper_limit],
+                                                   data[:, i + 2, j][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i, j + 1][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i, j + 2][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j - 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 2, j - 2][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 2, j - 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 2, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 2, j + 2][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 1, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 1, j + 2][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i - 1, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i - 1, j + 2][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 2, j + 2][lower_limit:
+                                                                         upper_limit]],
+                                                  axis=0)
+
+                            # now that spec has been computed, look at whether
+                            # the signal to noise of the stack has improved
+
+                            final_line_counts = np.nansum(spec)
+
+                            final_sn = final_line_counts / line_noise
+
+                            print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                            # if the new signal to noise is greater than the
+                            # threshold, save this in the cube and proceed
+
+                            if final_sn > threshold:
+
+                                # add to the signal to noise array
+
+                                print 'The biggest binning raised above threshold!'
+                                
+
+                                sn_array[i, j] = final_sn
+
+                                ax.plot(wave_array[lower_limit: upper_limit],
+                                        spec)
+
+                                # plt.show()
+
+                                plt.close('all')
+
+                            else:
+
+                                # didn't reach target - store as nan
+
+                                print 'no improvement, stop trying to fix'
+
+                                sn_array[i, j] = np.nan
+
+        # loop around noise array to clean up nan entries
+        for i in range(0, len(noise_array)):
+            for j in range(0, len(noise_array[0])):
+                if np.isnan(noise_array[i][j]):
+                    print 'Fixing nan value'
+                    noise_array[i][j] = np.nanmedian(noise_array)
+
+        # print noise_array
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        im = ax.imshow(sn_array,
+                       cmap=plt.get_cmap('jet'),
+                       interpolation='nearest')
+        plt.colorbar(im)
+        plt.show()
+
+        return signal_array, noise_array
