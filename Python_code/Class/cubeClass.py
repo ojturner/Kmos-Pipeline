@@ -3144,7 +3144,7 @@ class cubeOps(object):
                     ax.plot(wave_array[lower_limit: upper_limit],
                             spaxel_spec[lower_limit: upper_limit])
 
-                    # plt.show()
+                    plt.show()
 
                     plt.close('all')
 
@@ -3179,52 +3179,86 @@ class cubeOps(object):
 
                         if method == 'sum':
 
-                            # need to throw in a try-except 
-                            spec = np.nansum([data[:, i, j][lower_limit:
-                                                            upper_limit],
-                                              data[:, i, j + 1][lower_limit:
+                            # need to throw in a try-except for catching 
+                            # close to the bppundary cases
+
+                            try:
+
+                                spec = np.nansum([data[:, i, j][lower_limit:
                                                                 upper_limit],
-                                              data[:, i + 1, j][lower_limit:
-                                                                upper_limit],
-                                              data[:, i + 1, j - 1][lower_limit:
+                                                  data[:, i, j + 1][lower_limit:
                                                                     upper_limit],
-                                              data[:, i + 1, j + 1][lower_limit:
+                                                  data[:, i + 1, j][lower_limit:
                                                                     upper_limit],
-                                              data[:, i - 1, j + 1][lower_limit:
-                                                                    upper_limit]],
-                                             axis=0)
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
 
                         elif method == 'median':
 
-                            spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                               upper_limit],
-                                                 data[:, i, j + 1][lower_limit:
+                            try:
+
+                                spec = np.nanmedian([data[:, i, j][lower_limit:
                                                                    upper_limit],
-                                                 data[:, i + 1, j][lower_limit:
-                                                                   upper_limit],
-                                                 data[:, i + 1, j - 1][lower_limit:
+                                                     data[:, i, j + 1][lower_limit:
                                                                        upper_limit],
-                                                 data[:, i + 1, j + 1][lower_limit:
+                                                     data[:, i + 1, j][lower_limit:
                                                                        upper_limit],
-                                                 data[:, i - 1, j + 1][lower_limit:
-                                                                       upper_limit]],
-                                                axis=0)
+                                                     data[:, i + 1, j - 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 1, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i - 1, j + 1][lower_limit:
+                                                                           upper_limit]],
+                                                    axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+
 
                         elif method == 'mean':
 
-                            spec = np.nanmean([data[:, i, j][lower_limit:
-                                                             upper_limit],
-                                               data[:, i, j + 1][lower_limit:
+                            try:
+
+                                spec = np.nanmean([data[:, i, j][lower_limit:
                                                                  upper_limit],
-                                               data[:, i + 1, j][lower_limit:
-                                                                 upper_limit],
-                                               data[:, i + 1, j - 1][lower_limit:
+                                                   data[:, i, j + 1][lower_limit:
                                                                      upper_limit],
-                                               data[:, i + 1, j + 1][lower_limit:
+                                                   data[:, i + 1, j][lower_limit:
                                                                      upper_limit],
-                                               data[:, i - 1, j + 1][lower_limit:
-                                                                     upper_limit]],
-                                              axis=0)
+                                                   data[:, i + 1, j - 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 1, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i - 1, j + 1][lower_limit:
+                                                                         upper_limit]],
+                                                  axis=0)
+
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
 
                         # now that spec has been computed, look at whether
                         # the signal to noise of the stack has improved
@@ -3251,11 +3285,11 @@ class cubeOps(object):
                             ax.plot(wave_array[lower_limit: upper_limit],
                                     spec)
 
-                            # plt.show()
+                            plt.show()
 
                             plt.close('all')
 
-                        elif new_sn < line_sn:
+                        elif new_sn <= line_sn:
 
                             # got worse - entry becomes a nan
 
@@ -3269,105 +3303,129 @@ class cubeOps(object):
 
                             if method == 'sum':
 
-                                spec = np.nansum([data[:, i, j][lower_limit:
-                                                                upper_limit],
-                                                  data[:, i + 2, j][lower_limit:
+                                try:
+
+                                    spec = np.nansum([data[:, i, j][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j][lower_limit:
-                                                                    upper_limit],
-                                                  data[:, i, j + 1][lower_limit:
-                                                                    upper_limit],
-                                                  data[:, i, j + 2][lower_limit:
-                                                                    upper_limit],
-                                                  data[:, i + 1, j - 1][lower_limit:
+                                                      data[:, i + 2, j][lower_limit:
                                                                         upper_limit],
-                                                  data[:, i + 2, j - 2][lower_limit:
+                                                      data[:, i + 1, j][lower_limit:
                                                                         upper_limit],
-                                                  data[:, i + 2, j - 1][lower_limit:
+                                                      data[:, i, j + 1][lower_limit:
                                                                         upper_limit],
-                                                  data[:, i + 2, j + 1][lower_limit:
+                                                      data[:, i, j + 2][lower_limit:
                                                                         upper_limit],
-                                                  data[:, i + 2, j + 2][lower_limit:
-                                                                        upper_limit],
-                                                  data[:, i + 1, j + 1][lower_limit:
-                                                                        upper_limit],
-                                                  data[:, i + 1, j + 2][lower_limit:
-                                                                        upper_limit],
-                                                  data[:, i - 1, j + 1][lower_limit:
-                                                                        upper_limit],
-                                                  data[:, i - 1, j + 2][lower_limit:
-                                                                        upper_limit],
-                                                  data[:, i + 2, j + 2][lower_limit:
-                                                                        upper_limit]],
-                                                 axis=0)
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
 
                             elif method == 'median':
 
-                                spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                   upper_limit],
-                                                     data[:, i + 2, j][lower_limit:
+                                try:
+
+                                    spec = np.nanmedian([data[:, i, j][lower_limit:
                                                                        upper_limit],
-                                                     data[:, i + 1, j][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i, j + 1][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i, j + 2][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j - 1][lower_limit:
+                                                         data[:, i + 2, j][lower_limit:
                                                                            upper_limit],
-                                                     data[:, i + 2, j - 2][lower_limit:
+                                                         data[:, i + 1, j][lower_limit:
                                                                            upper_limit],
-                                                     data[:, i + 2, j - 1][lower_limit:
+                                                         data[:, i, j + 1][lower_limit:
                                                                            upper_limit],
-                                                     data[:, i + 2, j + 1][lower_limit:
+                                                         data[:, i, j + 2][lower_limit:
                                                                            upper_limit],
-                                                     data[:, i + 2, j + 2][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i + 1, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i + 1, j + 2][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i - 1, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i - 1, j + 2][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i + 2, j + 2][lower_limit:
-                                                                           upper_limit]],
-                                                    axis=0)
+                                                         data[:, i + 1, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit]],
+                                                        axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
 
                             elif method == 'mean':
 
-                                spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                 upper_limit],
-                                                   data[:, i + 2, j][lower_limit:
+                                try:
+
+                                    spec = np.nanmean([data[:, i, j][lower_limit:
                                                                      upper_limit],
-                                                   data[:, i + 1, j][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i, j + 1][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i, j + 2][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j - 1][lower_limit:
+                                                       data[:, i + 2, j][lower_limit:
                                                                          upper_limit],
-                                                   data[:, i + 2, j - 2][lower_limit:
+                                                       data[:, i + 1, j][lower_limit:
                                                                          upper_limit],
-                                                   data[:, i + 2, j - 1][lower_limit:
+                                                       data[:, i, j + 1][lower_limit:
                                                                          upper_limit],
-                                                   data[:, i + 2, j + 1][lower_limit:
+                                                       data[:, i, j + 2][lower_limit:
                                                                          upper_limit],
-                                                   data[:, i + 2, j + 2][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i + 1, j + 2][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i - 1, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i - 1, j + 2][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i + 2, j + 2][lower_limit:
-                                                                         upper_limit]],
-                                                  axis=0)
+                                                       data[:, i + 1, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit]],
+                                                      axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
 
                             # now that spec has been computed, look at whether
                             # the signal to noise of the stack has improved
@@ -3390,10 +3448,12 @@ class cubeOps(object):
 
                                 sn_array[i, j] = final_sn
 
+                                fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
                                 ax.plot(wave_array[lower_limit: upper_limit],
                                         spec)
 
-                                # plt.show()
+                                plt.show()
 
                                 plt.close('all')
 
@@ -3405,6 +3465,2358 @@ class cubeOps(object):
 
                                 sn_array[i, j] = np.nan
 
+                    elif (i < centre_x and j > centre_y):
+
+                        print 'Upper right'
+
+                        # combining the spaxels towards the lower right
+
+                        if method == 'sum':
+
+                            # need to throw in a try-except for catching 
+                            # close to the bppundary cases
+
+                            try:
+
+                                spec = np.nansum([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        elif method == 'median':
+
+                            try:
+
+                                spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+
+
+                        elif method == 'mean':
+
+                            try:
+
+                                spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        # now that spec has been computed, look at whether
+                        # the signal to noise of the stack has improved
+
+                        new_line_counts = np.nansum(spec)
+
+                        new_sn = new_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if new_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The binning raised above threshold!'
+
+                            sn_array[i, j] = line_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+
+                            plt.show()
+
+                            plt.close('all')
+
+                        elif new_sn <= line_sn:
+
+                            # got worse - entry becomes a nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+
+                        elif (new_sn > line_sn and new_sn < threshold):
+
+                            # try the 5x5 approach towards the cube centre
+
+                            if method == 'sum':
+
+                                try:
+
+                                    spec = np.nansum([data[:, i, j][lower_limit:
+                                                                    upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'median':
+
+                                try:
+
+                                    spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                    upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'mean':
+
+                                try:
+
+                                    spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                    upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            # now that spec has been computed, look at whether
+                            # the signal to noise of the stack has improved
+
+                            final_line_counts = np.nansum(spec)
+
+                            final_sn = final_line_counts / line_noise
+
+                            print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                            # if the new signal to noise is greater than the
+                            # threshold, save this in the cube and proceed
+
+                            if final_sn > threshold:
+
+                                # add to the signal to noise array
+
+                                print 'The biggest binning raised above threshold!'
+                                
+
+                                sn_array[i, j] = final_sn
+
+                                fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+                                
+                                ax.plot(wave_array[lower_limit: upper_limit],
+                                        spec)
+
+                                plt.show()
+
+                                plt.close('all')
+
+                            else:
+
+                                # didn't reach target - store as nan
+
+                                print 'no improvement, stop trying to fix'
+
+                                sn_array[i, j] = np.nan
+
+                    elif (i > centre_x and j < centre_y):
+
+                        print 'Lower left'
+
+                        # combining the spaxels towards the lower right
+
+                        if method == 'sum':
+
+                            # need to throw in a try-except for catching 
+                            # close to the bppundary cases
+
+                            try:
+
+                                spec = np.nansum([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        elif method == 'median':
+
+                            try:
+
+                                spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                   upper_limit],
+                                                     data[:, i, j + 1][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j - 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 1, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i - 1, j + 1][lower_limit:
+                                                                           upper_limit]],
+                                                    axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+
+
+                        elif method == 'mean':
+
+                            try:
+
+                                spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                 upper_limit],
+                                                   data[:, i, j + 1][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j - 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 1, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i - 1, j + 1][lower_limit:
+                                                                         upper_limit]],
+                                                  axis=0)
+
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        # now that spec has been computed, look at whether
+                        # the signal to noise of the stack has improved
+
+                        new_line_counts = np.nansum(spec)
+
+                        new_sn = new_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if new_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The binning raised above threshold!'
+
+                            sn_array[i, j] = line_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+
+                            plt.show()
+
+                            plt.close('all')
+
+                        elif new_sn <= line_sn:
+
+                            # got worse - entry becomes a nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+
+                        elif (new_sn > line_sn and new_sn < threshold):
+
+                            # try the 5x5 approach towards the cube centre
+
+                            if method == 'sum':
+
+                                try:
+
+                                    spec = np.nansum([data[:, i, j][lower_limit:
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'median':
+
+                                try:
+
+                                    spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                       upper_limit],
+                                                         data[:, i + 2, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 2][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit]],
+                                                        axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'mean':
+
+                                try:
+
+                                    spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                     upper_limit],
+                                                       data[:, i + 2, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 2][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit]],
+                                                      axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            # now that spec has been computed, look at whether
+                            # the signal to noise of the stack has improved
+
+                            final_line_counts = np.nansum(spec)
+
+                            final_sn = final_line_counts / line_noise
+
+                            print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                            # if the new signal to noise is greater than the
+                            # threshold, save this in the cube and proceed
+
+                            if final_sn > threshold:
+
+                                # add to the signal to noise array
+
+                                print 'The biggest binning raised above threshold!'
+                                
+
+                                sn_array[i, j] = final_sn
+
+                                fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+                                
+                                ax.plot(wave_array[lower_limit: upper_limit],
+                                        spec)
+
+                                plt.show()
+
+                                plt.close('all')
+
+                            else:
+
+                                # didn't reach target - store as nan
+
+                                print 'no improvement, stop trying to fix'
+
+                                sn_array[i, j] = np.nan
+
+                    if (i < centre_x and j < centre_y):
+
+                        print 'Upper left'
+
+                        # combining the spaxels towards the lower right
+
+                        if method == 'sum':
+
+                            # need to throw in a try-except for catching 
+                            # close to the bppundary cases
+
+                            try:
+
+                                spec = np.nansum([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        elif method == 'median':
+
+                            try:
+
+                                spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                   upper_limit],
+                                                     data[:, i, j + 1][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j - 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 1, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i - 1, j + 1][lower_limit:
+                                                                           upper_limit]],
+                                                    axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+
+
+                        elif method == 'mean':
+
+                            try:
+
+                                spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                 upper_limit],
+                                                   data[:, i, j + 1][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j - 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 1, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i - 1, j + 1][lower_limit:
+                                                                         upper_limit]],
+                                                  axis=0)
+
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        # now that spec has been computed, look at whether
+                        # the signal to noise of the stack has improved
+
+                        new_line_counts = np.nansum(spec)
+
+                        new_sn = new_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if new_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The binning raised above threshold!'
+
+                            sn_array[i, j] = line_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+
+                            plt.show()
+
+                            plt.close('all')
+
+                        elif new_sn <= line_sn:
+
+                            # got worse - entry becomes a nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+
+                        elif (new_sn > line_sn and new_sn < threshold):
+
+                            # try the 5x5 approach towards the cube centre
+
+                            if method == 'sum':
+
+                                try:
+
+                                    spec = np.nansum([data[:, i, j][lower_limit:
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'median':
+
+                                try:
+
+                                    spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                       upper_limit],
+                                                         data[:, i + 2, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 2][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit]],
+                                                        axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'mean':
+
+                                try:
+
+                                    spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                     upper_limit],
+                                                       data[:, i + 2, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 2][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit]],
+                                                      axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            # now that spec has been computed, look at whether
+                            # the signal to noise of the stack has improved
+
+                            final_line_counts = np.nansum(spec)
+
+                            final_sn = final_line_counts / line_noise
+
+                            print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                            # if the new signal to noise is greater than the
+                            # threshold, save this in the cube and proceed
+
+                            if final_sn > threshold:
+
+                                # add to the signal to noise array
+
+                                print 'The biggest binning raised above threshold!'
+                                
+
+                                sn_array[i, j] = final_sn
+
+                                fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+                                
+                                ax.plot(wave_array[lower_limit: upper_limit],
+                                        spec)
+
+                                plt.show()
+
+                                plt.close('all')
+
+                            else:
+
+                                # didn't reach target - store as nan
+
+                                print 'no improvement, stop trying to fix'
+
+                                sn_array[i, j] = np.nan
+
+                    if (i < centre_x and j < centre_y):
+
+                        print 'Upper left'
+
+                        # combining the spaxels towards the lower right
+
+                        if method == 'sum':
+
+                            # need to throw in a try-except for catching 
+                            # close to the bppundary cases
+
+                            try:
+
+                                spec = np.nansum([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        elif method == 'median':
+
+                            try:
+
+                                spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                   upper_limit],
+                                                     data[:, i, j + 1][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j - 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 1, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i - 1, j + 1][lower_limit:
+                                                                           upper_limit]],
+                                                    axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+
+
+                        elif method == 'mean':
+
+                            try:
+
+                                spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                 upper_limit],
+                                                   data[:, i, j + 1][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j - 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 1, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i - 1, j + 1][lower_limit:
+                                                                         upper_limit]],
+                                                  axis=0)
+
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        # now that spec has been computed, look at whether
+                        # the signal to noise of the stack has improved
+
+                        new_line_counts = np.nansum(spec)
+
+                        new_sn = new_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if new_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The binning raised above threshold!'
+
+                            sn_array[i, j] = line_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+
+                            plt.show()
+
+                            plt.close('all')
+
+                        elif new_sn <= line_sn:
+
+                            # got worse - entry becomes a nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+
+                        elif (new_sn > line_sn and new_sn < threshold):
+
+                            # try the 5x5 approach towards the cube centre
+
+                            if method == 'sum':
+
+                                try:
+
+                                    spec = np.nansum([data[:, i, j][lower_limit:
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'median':
+
+                                try:
+
+                                    spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                       upper_limit],
+                                                         data[:, i + 2, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 2][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit]],
+                                                        axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'mean':
+
+                                try:
+
+                                    spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                     upper_limit],
+                                                       data[:, i + 2, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 2][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit]],
+                                                      axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            # now that spec has been computed, look at whether
+                            # the signal to noise of the stack has improved
+
+                            final_line_counts = np.nansum(spec)
+
+                            final_sn = final_line_counts / line_noise
+
+                            print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                            # if the new signal to noise is greater than the
+                            # threshold, save this in the cube and proceed
+
+                            if final_sn > threshold:
+
+                                # add to the signal to noise array
+
+                                print 'The biggest binning raised above threshold!'
+                                
+
+                                sn_array[i, j] = final_sn
+
+                                fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+                                
+                                ax.plot(wave_array[lower_limit: upper_limit],
+                                        spec)
+
+                                plt.show()
+
+                                plt.close('all')
+
+                            else:
+
+                                # didn't reach target - store as nan
+
+                                print 'no improvement, stop trying to fix'
+
+                                sn_array[i, j] = np.nan
+
+                    if (i < centre_x and j < centre_y):
+
+                        print 'Upper left'
+
+                        # combining the spaxels towards the lower right
+
+                        if method == 'sum':
+
+                            # need to throw in a try-except for catching 
+                            # close to the bppundary cases
+
+                            try:
+
+                                spec = np.nansum([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        elif method == 'median':
+
+                            try:
+
+                                spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                   upper_limit],
+                                                     data[:, i, j + 1][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j - 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 1, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i - 1, j + 1][lower_limit:
+                                                                           upper_limit]],
+                                                    axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+
+
+                        elif method == 'mean':
+
+                            try:
+
+                                spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                 upper_limit],
+                                                   data[:, i, j + 1][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j - 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 1, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i - 1, j + 1][lower_limit:
+                                                                         upper_limit]],
+                                                  axis=0)
+
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        # now that spec has been computed, look at whether
+                        # the signal to noise of the stack has improved
+
+                        new_line_counts = np.nansum(spec)
+
+                        new_sn = new_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if new_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The binning raised above threshold!'
+
+                            sn_array[i, j] = line_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+
+                            plt.show()
+
+                            plt.close('all')
+
+                        elif new_sn <= line_sn:
+
+                            # got worse - entry becomes a nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+
+                        elif (new_sn > line_sn and new_sn < threshold):
+
+                            # try the 5x5 approach towards the cube centre
+
+                            if method == 'sum':
+
+                                try:
+
+                                    spec = np.nansum([data[:, i, j][lower_limit:
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'median':
+
+                                try:
+
+                                    spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                       upper_limit],
+                                                         data[:, i + 2, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 2][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit]],
+                                                        axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'mean':
+
+                                try:
+
+                                    spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                     upper_limit],
+                                                       data[:, i + 2, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 2][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit]],
+                                                      axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            # now that spec has been computed, look at whether
+                            # the signal to noise of the stack has improved
+
+                            final_line_counts = np.nansum(spec)
+
+                            final_sn = final_line_counts / line_noise
+
+                            print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                            # if the new signal to noise is greater than the
+                            # threshold, save this in the cube and proceed
+
+                            if final_sn > threshold:
+
+                                # add to the signal to noise array
+
+                                print 'The biggest binning raised above threshold!'
+                                
+
+                                sn_array[i, j] = final_sn
+
+                                fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+                                
+                                ax.plot(wave_array[lower_limit: upper_limit],
+                                        spec)
+
+                                plt.show()
+
+                                plt.close('all')
+
+                            else:
+
+                                # didn't reach target - store as nan
+
+                                print 'no improvement, stop trying to fix'
+
+                                sn_array[i, j] = np.nan
+
+                    if (i < centre_x and j < centre_y):
+
+                        print 'Upper left'
+
+                        # combining the spaxels towards the lower right
+
+                        if method == 'sum':
+
+                            # need to throw in a try-except for catching 
+                            # close to the bppundary cases
+
+                            try:
+
+                                spec = np.nansum([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        elif method == 'median':
+
+                            try:
+
+                                spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                   upper_limit],
+                                                     data[:, i, j + 1][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j - 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 1, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i - 1, j + 1][lower_limit:
+                                                                           upper_limit]],
+                                                    axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+
+
+                        elif method == 'mean':
+
+                            try:
+
+                                spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                 upper_limit],
+                                                   data[:, i, j + 1][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j - 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 1, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i - 1, j + 1][lower_limit:
+                                                                         upper_limit]],
+                                                  axis=0)
+
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        # now that spec has been computed, look at whether
+                        # the signal to noise of the stack has improved
+
+                        new_line_counts = np.nansum(spec)
+
+                        new_sn = new_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if new_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The binning raised above threshold!'
+
+                            sn_array[i, j] = line_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+
+                            plt.show()
+
+                            plt.close('all')
+
+                        elif new_sn <= line_sn:
+
+                            # got worse - entry becomes a nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+
+                        elif (new_sn > line_sn and new_sn < threshold):
+
+                            # try the 5x5 approach towards the cube centre
+
+                            if method == 'sum':
+
+                                try:
+
+                                    spec = np.nansum([data[:, i, j][lower_limit:
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'median':
+
+                                try:
+
+                                    spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                       upper_limit],
+                                                         data[:, i + 2, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 2][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit]],
+                                                        axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'mean':
+
+                                try:
+
+                                    spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                     upper_limit],
+                                                       data[:, i + 2, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 2][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit]],
+                                                      axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            # now that spec has been computed, look at whether
+                            # the signal to noise of the stack has improved
+
+                            final_line_counts = np.nansum(spec)
+
+                            final_sn = final_line_counts / line_noise
+
+                            print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                            # if the new signal to noise is greater than the
+                            # threshold, save this in the cube and proceed
+
+                            if final_sn > threshold:
+
+                                # add to the signal to noise array
+
+                                print 'The biggest binning raised above threshold!'
+                                
+
+                                sn_array[i, j] = final_sn
+
+                                fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+                                
+                                ax.plot(wave_array[lower_limit: upper_limit],
+                                        spec)
+
+                                plt.show()
+
+                                plt.close('all')
+
+                            else:
+
+                                # didn't reach target - store as nan
+
+                                print 'no improvement, stop trying to fix'
+
+                                sn_array[i, j] = np.nan
+
+                    if (i < centre_x and j < centre_y):
+
+                        print 'Upper left'
+
+                        # combining the spaxels towards the lower right
+
+                        if method == 'sum':
+
+                            # need to throw in a try-except for catching 
+                            # close to the bppundary cases
+
+                            try:
+
+                                spec = np.nansum([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        elif method == 'median':
+
+                            try:
+
+                                spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                   upper_limit],
+                                                     data[:, i, j + 1][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j - 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 1, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i - 1, j + 1][lower_limit:
+                                                                           upper_limit]],
+                                                    axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+
+
+                        elif method == 'mean':
+
+                            try:
+
+                                spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                 upper_limit],
+                                                   data[:, i, j + 1][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j - 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 1, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i - 1, j + 1][lower_limit:
+                                                                         upper_limit]],
+                                                  axis=0)
+
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        # now that spec has been computed, look at whether
+                        # the signal to noise of the stack has improved
+
+                        new_line_counts = np.nansum(spec)
+
+                        new_sn = new_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if new_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The binning raised above threshold!'
+
+                            sn_array[i, j] = line_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+
+                            plt.show()
+
+                            plt.close('all')
+
+                        elif new_sn <= line_sn:
+
+                            # got worse - entry becomes a nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+
+                        elif (new_sn > line_sn and new_sn < threshold):
+
+                            # try the 5x5 approach towards the cube centre
+
+                            if method == 'sum':
+
+                                try:
+
+                                    spec = np.nansum([data[:, i, j][lower_limit:
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'median':
+
+                                try:
+
+                                    spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                       upper_limit],
+                                                         data[:, i + 2, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 2][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit]],
+                                                        axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'mean':
+
+                                try:
+
+                                    spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                     upper_limit],
+                                                       data[:, i + 2, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 2][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit]],
+                                                      axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            # now that spec has been computed, look at whether
+                            # the signal to noise of the stack has improved
+
+                            final_line_counts = np.nansum(spec)
+
+                            final_sn = final_line_counts / line_noise
+
+                            print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                            # if the new signal to noise is greater than the
+                            # threshold, save this in the cube and proceed
+
+                            if final_sn > threshold:
+
+                                # add to the signal to noise array
+
+                                print 'The biggest binning raised above threshold!'
+                                
+
+                                sn_array[i, j] = final_sn
+
+                                fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+                                
+                                ax.plot(wave_array[lower_limit: upper_limit],
+                                        spec)
+
+                                plt.show()
+
+                                plt.close('all')
+
+                            else:
+
+                                # didn't reach target - store as nan
+
+                                print 'no improvement, stop trying to fix'
+
+                                sn_array[i, j] = np.nan
+
+                    if (i < centre_x and j < centre_y):
+
+                        print 'Upper left'
+
+                        # combining the spaxels towards the lower right
+
+                        if method == 'sum':
+
+                            # need to throw in a try-except for catching 
+                            # close to the bppundary cases
+
+                            try:
+
+                                spec = np.nansum([data[:, i, j][lower_limit:
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        elif method == 'median':
+
+                            try:
+
+                                spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                   upper_limit],
+                                                     data[:, i, j + 1][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j][lower_limit:
+                                                                       upper_limit],
+                                                     data[:, i + 1, j - 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i + 1, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                     data[:, i - 1, j + 1][lower_limit:
+                                                                           upper_limit]],
+                                                    axis=0)
+                            
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+
+
+                        elif method == 'mean':
+
+                            try:
+
+                                spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                 upper_limit],
+                                                   data[:, i, j + 1][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j][lower_limit:
+                                                                     upper_limit],
+                                                   data[:, i + 1, j - 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i + 1, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                   data[:, i - 1, j + 1][lower_limit:
+                                                                         upper_limit]],
+                                                  axis=0)
+
+                            except IndexError:
+
+                                # close to the edge of the cube
+
+                                print 'encountered the cube boundary'
+
+                                spec = spaxel_spec[lower_limit: upper_limit]
+
+                        # now that spec has been computed, look at whether
+                        # the signal to noise of the stack has improved
+
+                        new_line_counts = np.nansum(spec)
+
+                        new_sn = new_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if new_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The binning raised above threshold!'
+
+                            sn_array[i, j] = line_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+
+                            plt.show()
+
+                            plt.close('all')
+
+                        elif new_sn <= line_sn:
+
+                            # got worse - entry becomes a nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+
+                        elif (new_sn > line_sn and new_sn < threshold):
+
+                            # try the 5x5 approach towards the cube centre
+
+                            if method == 'sum':
+
+                                try:
+
+                                    spec = np.nansum([data[:, i, j][lower_limit:
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'median':
+
+                                try:
+
+                                    spec = np.nanmedian([data[:, i, j][lower_limit:
+                                                                       upper_limit],
+                                                         data[:, i + 2, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 1][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i, j + 2][lower_limit:
+                                                                           upper_limit],
+                                                         data[:, i + 1, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j - 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 1][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i - 1, j + 2][lower_limit:
+                                                                               upper_limit],
+                                                         data[:, i + 2, j + 2][lower_limit:
+                                                                               upper_limit]],
+                                                        axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            elif method == 'mean':
+
+                                try:
+
+                                    spec = np.nanmean([data[:, i, j][lower_limit:
+                                                                     upper_limit],
+                                                       data[:, i + 2, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 1][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i, j + 2][lower_limit:
+                                                                         upper_limit],
+                                                       data[:, i + 1, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j - 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 1][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i - 1, j + 2][lower_limit:
+                                                                             upper_limit],
+                                                       data[:, i + 2, j + 2][lower_limit:
+                                                                             upper_limit]],
+                                                      axis=0)
+
+                                except IndexError:
+
+                                    # close to the edge of the cube
+
+                                    print 'encountered the cube boundary'
+
+                            # now that spec has been computed, look at whether
+                            # the signal to noise of the stack has improved
+
+                            final_line_counts = np.nansum(spec)
+
+                            final_sn = final_line_counts / line_noise
+
+                            print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                            # if the new signal to noise is greater than the
+                            # threshold, save this in the cube and proceed
+
+                            if final_sn > threshold:
+
+                                # add to the signal to noise array
+
+                                print 'The biggest binning raised above threshold!'
+                                
+
+                                sn_array[i, j] = final_sn
+
+                                fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+                                
+                                ax.plot(wave_array[lower_limit: upper_limit],
+                                        spec)
+
+                                plt.show()
+
+                                plt.close('all')
+
+                            else:
+
+                                # didn't reach target - store as nan
+
+                                print 'no improvement, stop trying to fix'
+
+                                sn_array[i, j] = np.nan
+                                                                                                
         # loop around noise array to clean up nan entries
         for i in range(0, len(noise_array)):
             for j in range(0, len(noise_array[0])):

@@ -90,7 +90,7 @@ vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_
 vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
 cube = cubeOps(obj_cube_gal)
-cube.stott_velocity_field('oiii', 3.47328838, 25, 22, 14, method='median')
+cube.stott_velocity_field('oiii', 3.47328838, 30, 22, 14, method='median')
 #pipe_methods.multi_apply_voronoi_binning('/disk1/turner/DATA/all_names_calibrated.txt', 10.0)
 #pipe_methods.combine_by_name(sci_dir, combine_input, 0, 0.8, 2E-17)
 #pipe_methods.voronoi_binning_by_line('oiii', obj_cube_gal, 3.47328838, 2.0, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi')
