@@ -3774,15 +3774,15 @@ class cubeOps(object):
 
                                 spec = np.nansum([data[:, i, j][lower_limit:
                                                                 upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                    upper_limit],
                                                   data[:, i, j + 1][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j][lower_limit:
-                                                                    upper_limit],
-                                                  data[:, i + 1, j - 1][lower_limit:
+                                                  data[:, i - 1, j + 1][lower_limit:
                                                                         upper_limit],
                                                   data[:, i + 1, j + 1][lower_limit:
                                                                         upper_limit],
-                                                  data[:, i - 1, j + 1][lower_limit:
+                                                  data[:, i - 1, j - 1][lower_limit:
                                                                         upper_limit]],
                                                  axis=0)
                             
@@ -3799,18 +3799,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                   upper_limit],
-                                                     data[:, i, j + 1][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j - 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i + 1, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i - 1, j + 1][lower_limit:
-                                                                           upper_limit]],
-                                                    axis=0)
+                                                                upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
                             
                             except IndexError:
 
@@ -3827,18 +3827,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                 upper_limit],
-                                                   data[:, i, j + 1][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j - 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i - 1, j + 1][lower_limit:
-                                                                         upper_limit]],
-                                                  axis=0)
+                                                                upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
 
                             except IndexError:
 
@@ -3895,31 +3895,31 @@ class cubeOps(object):
 
                                     spec = np.nansum([data[:, i, j][lower_limit:
                                                                     upper_limit],
-                                                      data[:, i + 2, j][lower_limit:
+                                                      data[:, i - 2, j][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i + 1, j][lower_limit:
+                                                      data[:, i - 1, j][lower_limit:
                                                                         upper_limit],
                                                       data[:, i, j + 1][lower_limit:
                                                                         upper_limit],
                                                       data[:, i, j + 2][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i + 1, j - 1][lower_limit:
+                                                      data[:, i - 1, j + 1][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j - 2][lower_limit:
+                                                      data[:, i - 2, j + 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j - 1][lower_limit:
+                                                      data[:, i - 2, j + 1][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j + 1][lower_limit:
+                                                      data[:, i - 1, j + 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j + 2][lower_limit:
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 1, j + 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 1, j + 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i - 1, j + 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i - 1, j + 2][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j + 2][lower_limit:
                                                                             upper_limit]],
@@ -3936,36 +3936,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                       upper_limit],
-                                                         data[:, i + 2, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 2][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit]],
-                                                        axis=0)
+                                                                    upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -3978,36 +3978,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                     upper_limit],
-                                                       data[:, i + 2, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 2][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit]],
-                                                      axis=0)
+                                                                    upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -4053,9 +4053,9 @@ class cubeOps(object):
 
                                 sn_array[i, j] = np.nan
 
-                    if (i < centre_x and j < centre_y):
+                    elif (i > centre_x and j > centre_y):
 
-                        print 'Upper left'
+                        print 'Lower Right'
 
                         # combining the spaxels towards the lower right
 
@@ -4068,13 +4068,13 @@ class cubeOps(object):
 
                                 spec = np.nansum([data[:, i, j][lower_limit:
                                                                 upper_limit],
-                                                  data[:, i, j + 1][lower_limit:
+                                                  data[:, i, j - 1][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j][lower_limit:
+                                                  data[:, i - 1, j][lower_limit:
                                                                     upper_limit],
                                                   data[:, i + 1, j - 1][lower_limit:
                                                                         upper_limit],
-                                                  data[:, i + 1, j + 1][lower_limit:
+                                                  data[:, i - 1, j - 1][lower_limit:
                                                                         upper_limit],
                                                   data[:, i - 1, j + 1][lower_limit:
                                                                         upper_limit]],
@@ -4093,18 +4093,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                   upper_limit],
-                                                     data[:, i, j + 1][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j - 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i + 1, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i - 1, j + 1][lower_limit:
-                                                                           upper_limit]],
-                                                    axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
                             
                             except IndexError:
 
@@ -4121,18 +4121,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                 upper_limit],
-                                                   data[:, i, j + 1][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j - 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i - 1, j + 1][lower_limit:
-                                                                         upper_limit]],
-                                                  axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
 
                             except IndexError:
 
@@ -4189,33 +4189,33 @@ class cubeOps(object):
 
                                     spec = np.nansum([data[:, i, j][lower_limit:
                                                                     upper_limit],
-                                                      data[:, i + 2, j][lower_limit:
+                                                      data[:, i - 2, j][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i + 1, j][lower_limit:
+                                                      data[:, i - 1, j][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i, j + 1][lower_limit:
+                                                      data[:, i, j - 1][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i, j + 2][lower_limit:
+                                                      data[:, i, j - 2][lower_limit:
                                                                         upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit],
                                                       data[:, i + 1, j - 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j - 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j - 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j + 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j + 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 1, j + 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 1, j + 2][lower_limit:
+                                                      data[:, i + 1, j - 2][lower_limit:
                                                                             upper_limit],
                                                       data[:, i - 1, j + 1][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i - 1, j + 2][lower_limit:
+                                                      data[:, i - 2, j + 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j + 2][lower_limit:
+                                                      data[:, i - 2, j + 1][lower_limit:
                                                                             upper_limit]],
                                                      axis=0)
 
@@ -4230,36 +4230,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                       upper_limit],
-                                                         data[:, i + 2, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 2][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit]],
-                                                        axis=0)
+                                                                    upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -4272,36 +4272,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                     upper_limit],
-                                                       data[:, i + 2, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 2][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit]],
-                                                      axis=0)
+                                                                    upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -4347,9 +4347,9 @@ class cubeOps(object):
 
                                 sn_array[i, j] = np.nan
 
-                    if (i < centre_x and j < centre_y):
+                    elif (i < centre_x and j == centre_y):
 
-                        print 'Upper left'
+                        print 'Upper Middle'
 
                         # combining the spaxels towards the lower right
 
@@ -4364,13 +4364,13 @@ class cubeOps(object):
                                                                 upper_limit],
                                                   data[:, i, j + 1][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j][lower_limit:
+                                                  data[:, i, j - 1][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j - 1][lower_limit:
+                                                  data[:, i + 1, j][lower_limit:
                                                                         upper_limit],
                                                   data[:, i + 1, j + 1][lower_limit:
                                                                         upper_limit],
-                                                  data[:, i - 1, j + 1][lower_limit:
+                                                  data[:, i + 1, j - 1][lower_limit:
                                                                         upper_limit]],
                                                  axis=0)
                             
@@ -4387,18 +4387,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                   upper_limit],
-                                                     data[:, i, j + 1][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j - 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i + 1, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i - 1, j + 1][lower_limit:
-                                                                           upper_limit]],
-                                                    axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
                             
                             except IndexError:
 
@@ -4415,18 +4415,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                 upper_limit],
-                                                   data[:, i, j + 1][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j - 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i - 1, j + 1][lower_limit:
-                                                                         upper_limit]],
-                                                  axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
 
                             except IndexError:
 
@@ -4491,25 +4491,25 @@ class cubeOps(object):
                                                                         upper_limit],
                                                       data[:, i, j + 2][lower_limit:
                                                                         upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
                                                       data[:, i + 1, j - 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j - 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j - 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j + 1][lower_limit:
+                                                      data[:, i + 1, j + 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 1, j + 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 1, j + 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i - 1, j + 1][lower_limit:
+                                                      data[:, i + 2, j + 1][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i - 1, j + 2][lower_limit:
+                                                      data[:, i + 1, j - 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j + 2][lower_limit:
+                                                      data[:, i + 2, j - 1][lower_limit:
                                                                             upper_limit]],
                                                      axis=0)
 
@@ -4524,36 +4524,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                       upper_limit],
-                                                         data[:, i + 2, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 2][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit]],
-                                                        axis=0)
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -4566,36 +4566,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                     upper_limit],
-                                                       data[:, i + 2, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 2][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit]],
-                                                      axis=0)
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -4641,9 +4641,9 @@ class cubeOps(object):
 
                                 sn_array[i, j] = np.nan
 
-                    if (i < centre_x and j < centre_y):
+                    elif (i == centre_x and j < centre_y):
 
-                        print 'Upper left'
+                        print 'Left Middle'
 
                         # combining the spaxels towards the lower right
 
@@ -4658,9 +4658,9 @@ class cubeOps(object):
                                                                 upper_limit],
                                                   data[:, i, j + 1][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j][lower_limit:
+                                                  data[:, i - 1, j][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j - 1][lower_limit:
+                                                  data[:, i + 1, j][lower_limit:
                                                                         upper_limit],
                                                   data[:, i + 1, j + 1][lower_limit:
                                                                         upper_limit],
@@ -4681,18 +4681,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                   upper_limit],
-                                                     data[:, i, j + 1][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j - 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i + 1, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i - 1, j + 1][lower_limit:
-                                                                           upper_limit]],
-                                                    axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
                             
                             except IndexError:
 
@@ -4709,18 +4709,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                 upper_limit],
-                                                   data[:, i, j + 1][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j - 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i - 1, j + 1][lower_limit:
-                                                                         upper_limit]],
-                                                  axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
 
                             except IndexError:
 
@@ -4781,29 +4781,29 @@ class cubeOps(object):
                                                                         upper_limit],
                                                       data[:, i + 1, j][lower_limit:
                                                                         upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
                                                       data[:, i, j + 1][lower_limit:
                                                                         upper_limit],
                                                       data[:, i, j + 2][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i + 1, j - 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j - 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j - 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j + 1][lower_limit:
+                                                      data[:, i + 1, j + 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 1, j + 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 1, j + 2][lower_limit:
                                                                             upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
                                                       data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
                                                                             upper_limit],
                                                       data[:, i - 1, j + 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j + 2][lower_limit:
+                                                      data[:, i - 2, j + 1][lower_limit:
                                                                             upper_limit]],
                                                      axis=0)
 
@@ -4818,36 +4818,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                       upper_limit],
-                                                         data[:, i + 2, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 2][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit]],
-                                                        axis=0)
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -4860,36 +4860,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                     upper_limit],
-                                                       data[:, i + 2, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 2][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit]],
-                                                      axis=0)
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -4935,9 +4935,9 @@ class cubeOps(object):
 
                                 sn_array[i, j] = np.nan
 
-                    if (i < centre_x and j < centre_y):
+                    elif (i > centre_x and j == centre_y):
 
-                        print 'Upper left'
+                        print 'Lower Middle'
 
                         # combining the spaxels towards the lower right
 
@@ -4952,13 +4952,13 @@ class cubeOps(object):
                                                                 upper_limit],
                                                   data[:, i, j + 1][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j][lower_limit:
+                                                  data[:, i, j - 1][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j - 1][lower_limit:
-                                                                        upper_limit],
-                                                  data[:, i + 1, j + 1][lower_limit:
+                                                  data[:, i - 1, j][lower_limit:
                                                                         upper_limit],
                                                   data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j - 1][lower_limit:
                                                                         upper_limit]],
                                                  axis=0)
                             
@@ -4975,18 +4975,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                   upper_limit],
-                                                     data[:, i, j + 1][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j - 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i + 1, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i - 1, j + 1][lower_limit:
-                                                                           upper_limit]],
-                                                    axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
                             
                             except IndexError:
 
@@ -5003,18 +5003,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                 upper_limit],
-                                                   data[:, i, j + 1][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j - 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i - 1, j + 1][lower_limit:
-                                                                         upper_limit]],
-                                                  axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
 
                             except IndexError:
 
@@ -5071,33 +5071,33 @@ class cubeOps(object):
 
                                     spec = np.nansum([data[:, i, j][lower_limit:
                                                                     upper_limit],
-                                                      data[:, i + 2, j][lower_limit:
+                                                      data[:, i - 2, j][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i + 1, j][lower_limit:
+                                                      data[:, i - 1, j][lower_limit:
                                                                         upper_limit],
                                                       data[:, i, j + 1][lower_limit:
                                                                         upper_limit],
                                                       data[:, i, j + 2][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i + 1, j - 1][lower_limit:
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j - 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j - 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j + 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j + 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 1, j + 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 1, j + 2][lower_limit:
+                                                      data[:, i - 2, j - 2][lower_limit:
                                                                             upper_limit],
                                                       data[:, i - 1, j + 1][lower_limit:
                                                                             upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
                                                       data[:, i - 1, j + 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j + 2][lower_limit:
+                                                      data[:, i - 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
                                                                             upper_limit]],
                                                      axis=0)
 
@@ -5112,36 +5112,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                       upper_limit],
-                                                         data[:, i + 2, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 2][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit]],
-                                                        axis=0)
+                                                                    upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -5154,36 +5154,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                     upper_limit],
-                                                       data[:, i + 2, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 2][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit]],
-                                                      axis=0)
+                                                                    upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -5229,9 +5229,9 @@ class cubeOps(object):
 
                                 sn_array[i, j] = np.nan
 
-                    if (i < centre_x and j < centre_y):
+                    elif (i == centre_x and j > centre_y):
 
-                        print 'Upper left'
+                        print 'Right Middle'
 
                         # combining the spaxels towards the lower right
 
@@ -5244,11 +5244,11 @@ class cubeOps(object):
 
                                 spec = np.nansum([data[:, i, j][lower_limit:
                                                                 upper_limit],
-                                                  data[:, i, j + 1][lower_limit:
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
                                                                     upper_limit],
                                                   data[:, i + 1, j][lower_limit:
-                                                                    upper_limit],
-                                                  data[:, i + 1, j - 1][lower_limit:
                                                                         upper_limit],
                                                   data[:, i + 1, j + 1][lower_limit:
                                                                         upper_limit],
@@ -5269,18 +5269,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                   upper_limit],
-                                                     data[:, i, j + 1][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j - 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i + 1, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i - 1, j + 1][lower_limit:
-                                                                           upper_limit]],
-                                                    axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
                             
                             except IndexError:
 
@@ -5297,18 +5297,18 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                 upper_limit],
-                                                   data[:, i, j + 1][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j - 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i - 1, j + 1][lower_limit:
-                                                                         upper_limit]],
-                                                  axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
 
                             except IndexError:
 
@@ -5369,29 +5369,29 @@ class cubeOps(object):
                                                                         upper_limit],
                                                       data[:, i + 1, j][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i, j + 1][lower_limit:
+                                                      data[:, i - 1, j][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i, j + 2][lower_limit:
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
                                                                         upper_limit],
                                                       data[:, i + 1, j - 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j - 2][lower_limit:
                                                                             upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
                                                       data[:, i + 2, j - 1][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j + 1][lower_limit:
+                                                      data[:, i - 1, j - 1][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 2, j + 2][lower_limit:
+                                                      data[:, i - 2, j - 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 1, j + 1][lower_limit:
+                                                      data[:, i - 1, j - 2][lower_limit:
                                                                             upper_limit],
-                                                      data[:, i + 1, j + 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i - 1, j + 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i - 1, j + 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j + 2][lower_limit:
+                                                      data[:, i - 2, j - 1][lower_limit:
                                                                             upper_limit]],
                                                      axis=0)
 
@@ -5406,36 +5406,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                       upper_limit],
-                                                         data[:, i + 2, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 2][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit]],
-                                                        axis=0)
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -5448,36 +5448,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                     upper_limit],
-                                                       data[:, i + 2, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 2][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit]],
-                                                      axis=0)
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -5523,9 +5523,9 @@ class cubeOps(object):
 
                                 sn_array[i, j] = np.nan
 
-                    if (i < centre_x and j < centre_y):
+                    elif (i == centre_x and j == centre_y):
 
-                        print 'Upper left'
+                        print 'Middle'
 
                         # combining the spaxels towards the lower right
 
@@ -5540,12 +5540,18 @@ class cubeOps(object):
                                                                 upper_limit],
                                                   data[:, i, j + 1][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j][lower_limit:
+                                                  data[:, i, j - 1][lower_limit:
                                                                     upper_limit],
-                                                  data[:, i + 1, j - 1][lower_limit:
+                                                  data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
                                                                         upper_limit],
                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                        upper_limit],
+                                                                        upper_limit]
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit]
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit]
                                                   data[:, i - 1, j + 1][lower_limit:
                                                                         upper_limit]],
                                                  axis=0)
@@ -5563,18 +5569,24 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                   upper_limit],
-                                                     data[:, i, j + 1][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j][lower_limit:
-                                                                       upper_limit],
-                                                     data[:, i + 1, j - 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i + 1, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                     data[:, i - 1, j + 1][lower_limit:
-                                                                           upper_limit]],
-                                                    axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit]
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit]
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit]
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
                             
                             except IndexError:
 
@@ -5591,18 +5603,24 @@ class cubeOps(object):
                             try:
 
                                 spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                 upper_limit],
-                                                   data[:, i, j + 1][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j][lower_limit:
-                                                                     upper_limit],
-                                                   data[:, i + 1, j - 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                   data[:, i - 1, j + 1][lower_limit:
-                                                                         upper_limit]],
-                                                  axis=0)
+                                                                upper_limit],
+                                                  data[:, i, j + 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i, j - 1][lower_limit:
+                                                                    upper_limit],
+                                                  data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                  data[:, i + 1, j + 1][lower_limit:
+                                                                        upper_limit]
+                                                  data[:, i - 1, j - 1][lower_limit:
+                                                                        upper_limit]
+                                                  data[:, i + 1, j - 1][lower_limit:
+                                                                        upper_limit]
+                                                  data[:, i - 1, j + 1][lower_limit:
+                                                                        upper_limit]],
+                                                 axis=0)
 
                             except IndexError:
 
@@ -5667,25 +5685,45 @@ class cubeOps(object):
                                                                         upper_limit],
                                                       data[:, i, j + 2][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i + 1, j - 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j - 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j - 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j + 1][lower_limit:
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 1, j + 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 1, j + 2][lower_limit:
                                                                             upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit]
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit]
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit]
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit]
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit]
                                                       data[:, i - 1, j + 1][lower_limit:
-                                                                            upper_limit],
+                                                                            upper_limit]
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit]
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit]
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit]
                                                       data[:, i - 1, j + 2][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit]
+                                                      data[:, i - 2, j + 1][lower_limit:
                                                                             upper_limit]],
                                                      axis=0)
 
@@ -5700,36 +5738,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmedian([data[:, i, j][lower_limit:
-                                                                       upper_limit],
-                                                         data[:, i + 2, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 1][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i, j + 2][lower_limit:
-                                                                           upper_limit],
-                                                         data[:, i + 1, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j - 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 1][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i - 1, j + 2][lower_limit:
-                                                                               upper_limit],
-                                                         data[:, i + 2, j + 2][lower_limit:
-                                                                               upper_limit]],
-                                                        axis=0)
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
@@ -5742,36 +5780,36 @@ class cubeOps(object):
                                 try:
 
                                     spec = np.nanmean([data[:, i, j][lower_limit:
-                                                                     upper_limit],
-                                                       data[:, i + 2, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 1][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i, j + 2][lower_limit:
-                                                                         upper_limit],
-                                                       data[:, i + 1, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j - 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 1][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i - 1, j + 2][lower_limit:
-                                                                             upper_limit],
-                                                       data[:, i + 2, j + 2][lower_limit:
-                                                                             upper_limit]],
-                                                      axis=0)
+                                                                    upper_limit],
+                                                      data[:, i + 2, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j + 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 1][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i, j - 2][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit]],
+                                                     axis=0)
 
                                 except IndexError:
 
