@@ -10817,3 +10817,86 @@ class pipelineOps(object):
 
                 fig.savefig('%s_all_maps.pdf' % obj_name[:-5])
                 plt.close('all')
+
+    def stott_postage_stamps(self,
+                             infile,
+                             line,
+                             threshold,
+                             **kwargs):
+
+        """
+        Def: Use the stott_velocity_field method from the cube_class
+        to create postage stamp images of the flux, velocity and dispersion
+        including marks on the velocity image to show the flux centre.
+
+        Input:
+                infile - file containing the object name and the centre
+                            coordinates
+                line - emission line to fit
+                threshold - s/n threshold to exceed
+                **kwargs
+                tol - (default of 40)
+                method - either sum, median or mean. This determines how the
+                            spaxels are combined if stacking is necessary
+
+        """
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            cube = cubeOps(obj_name)
+
+            redshift = entry[1]
+
+            centre_x = entry[3]
+
+            centre_y = entry[2]
+
+            std_cube = entry[4]
+
+            sky_cube = entry[5]
+
+            # define the science directory for each cube
+            sci_dir = obj_name[:len(obj_name) - obj_name[::-1].find("/") - 1]
+
+            print "\nDoing %s (redshift = %.3f) ..." % (obj_name, redshift)
+
+            try:
+
+                if kwargs['tol']:
+
+                    tolerance = kwargs['tol']
+
+                else:
+
+                    tolerance = 40
+
+            except KeyError:
+
+                tolerance = 40
+
+            try:
+
+                if kwargs['method']:
+
+                    stack_method = kwargs['method']
+
+                else:
+
+                    stack_method = 'median'
+
+            except KeyError:
+
+                stack_method = 'median'
+
+            cube.stott_velocity_field(line,
+                                      redshift,
+                                      threshold,
+                                      centre_x,
+                                      centre_y,
+                                      tol=tolerance,
+                                      method=stack_method)

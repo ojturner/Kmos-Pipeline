@@ -2914,7 +2914,8 @@ class cubeOps(object):
                              threshold,
                              centre_x,
                              centre_y,
-                             method='sum'):
+                             tol=40,
+                             method='median'):
 
         """
         Def:
@@ -2975,6 +2976,13 @@ class cubeOps(object):
 
         noise_array = np.empty(shape=(xpixs, ypixs))
 
+        vel_array = np.empty(shape=(xpixs, ypixs))
+
+        disp_array = np.empty(shape=(xpixs, ypixs))
+
+        flux_array = np.empty(shape=(xpixs, ypixs))
+
+
         for i, xpix in enumerate(np.arange(0, xpixs, 1)):
 
             for j, ypix in enumerate(np.arange(0, ypixs, 1)):
@@ -3005,8 +3013,8 @@ class cubeOps(object):
 
                     # set the limits for the signal estimate
 
-                    lower_limit = t_index - 8
-                    upper_limit = t_index + 9
+                    lower_limit = t_index - 10
+                    upper_limit = t_index + 11
 
                     line_counts = np.nansum(spaxel_spec[lower_limit:
                                                         upper_limit])
@@ -3023,8 +3031,8 @@ class cubeOps(object):
 
                     # set the limits for the signal estimate
 
-                    lower_limit = t_index - 6
-                    upper_limit = t_index + 7
+                    lower_limit = t_index - 5
+                    upper_limit = t_index + 6
 
                     line_counts = np.nansum(spaxel_spec[lower_limit:
                                                         upper_limit])
@@ -3043,8 +3051,8 @@ class cubeOps(object):
 
                     # set the limits for the signal estimate
 
-                    lower_limit = t_index - 8
-                    upper_limit = t_index + 9
+                    lower_limit = t_index - 10
+                    upper_limit = t_index + 11
 
                     line_counts = np.nansum(spaxel_spec[lower_limit:
                                                         upper_limit])
@@ -3130,6 +3138,9 @@ class cubeOps(object):
                     # we've got a nan entry - get rid of it
 
                     sn_array[i, j] = np.nan
+                    vel_array[i, j] = np.nan
+                    disp_array[i, j] = np.nan
+                    flux_array[i, j] = np.nan
 
                 elif line_sn > threshold:
 
@@ -3144,11 +3155,46 @@ class cubeOps(object):
                     ax.plot(wave_array[lower_limit: upper_limit],
                             spaxel_spec[lower_limit: upper_limit])
 
-                    plt.show()
-
                     plt.close('all')
 
-                    sn_array[i, j] = line_sn
+                    gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                         spaxel_spec[lower_limit: upper_limit])
+
+                    # if the gaussian does not fit correctly this can throw 
+                    # a nonetype error, since covar is empty
+                    try:
+
+                        if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                           or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                           or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                            print 'Gaussian errors too large - reject fit'
+
+                            sn_array[i, j] = line_sn
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
+
+                        else:
+
+                            c = 2.99792458E5
+
+                            vel = c * ((gauss_values['center']
+                                        - central_wl) / central_wl)
+
+                            sig = c * ((gauss_values['sigma']) / central_wl)
+
+                            sn_array[i, j] = line_sn
+                            vel_array[i, j] = vel
+                            disp_array[i, j] = sig
+                            flux_array[i, j] = gauss_values['amplitude']
+
+                    except TypeError:
+
+                        sn_array[i, j] = line_sn
+                        vel_array[i, j] = np.nan
+                        disp_array[i, j] = np.nan
+                        flux_array[i, j] = np.nan                        
 
                 # don't bother expanding area if line_sn starts negative
 
@@ -3157,6 +3203,9 @@ class cubeOps(object):
                     print 'Found negative signal %s %s' % (i, j)
 
                     sn_array[i, j] = np.nan
+                    vel_array[i, j] = np.nan
+                    disp_array[i, j] = np.nan
+                    flux_array[i, j] = np.nan
 
                 # If between 0 and the threshold, search surrounding area
                 # for more signal - do this in the direction of the galaxy
@@ -3179,7 +3228,7 @@ class cubeOps(object):
 
                         if method == 'sum':
 
-                            # need to throw in a try-except for catching 
+                            # need to throw in a try-except for catching
                             # close to the bppundary cases
 
                             try:
@@ -3285,9 +3334,44 @@ class cubeOps(object):
                             ax.plot(wave_array[lower_limit: upper_limit],
                                     spec)
 
-                            plt.show()
-
                             plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                          spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                         elif new_sn <= line_sn:
 
@@ -3296,6 +3380,9 @@ class cubeOps(object):
                             print 'no improvement, stop trying to fix'
 
                             sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
 
                         elif (new_sn > line_sn and new_sn < threshold):
 
@@ -3452,10 +3539,45 @@ class cubeOps(object):
 
                                 ax.plot(wave_array[lower_limit: upper_limit],
                                         spec)
-
-                                plt.show()
-
+                                
                                 plt.close('all')
+
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                                     spec)
+
+                                try:
+
+                                    if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                       or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                       or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                        print 'Gaussian errors too large - reject fit'
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = np.nan
+                                        disp_array[i, j] = np.nan
+                                        flux_array[i, j] = np.nan
+
+                                    else:
+
+                                        c = 2.99792458E5
+
+                                        vel = c * ((gauss_values['center']
+                                                    - central_wl) / central_wl)
+
+                                        sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = vel
+                                        disp_array[i, j] = sig
+                                        flux_array[i, j] = gauss_values['amplitude']
+
+                                except TypeError:
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
 
                             else:
 
@@ -3464,6 +3586,9 @@ class cubeOps(object):
                                 print 'no improvement, stop trying to fix'
 
                                 sn_array[i, j] = np.nan
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                     elif (i < centre_x and j > centre_y):
 
@@ -3473,7 +3598,7 @@ class cubeOps(object):
 
                         if method == 'sum':
 
-                            # need to throw in a try-except for catching 
+                            # need to throw in a try-except for catching
                             # close to the bppundary cases
 
                             try:
@@ -3578,10 +3703,45 @@ class cubeOps(object):
 
                             ax.plot(wave_array[lower_limit: upper_limit],
                                     spec)
-
-                            plt.show()
-
+                                
                             plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                          spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                         elif new_sn <= line_sn:
 
@@ -3590,6 +3750,9 @@ class cubeOps(object):
                             print 'no improvement, stop trying to fix'
 
                             sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
 
                         elif (new_sn > line_sn and new_sn < threshold):
 
@@ -3746,10 +3909,45 @@ class cubeOps(object):
                                 
                                 ax.plot(wave_array[lower_limit: upper_limit],
                                         spec)
-
-                                plt.show()
-
+                                
                                 plt.close('all')
+
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                              spec)
+
+                                try:
+
+                                    if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                       or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                       or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                        print 'Gaussian errors too large - reject fit'
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = np.nan
+                                        disp_array[i, j] = np.nan
+                                        flux_array[i, j] = np.nan
+
+                                    else:
+
+                                        c = 2.99792458E5
+
+                                        vel = c * ((gauss_values['center']
+                                                    - central_wl) / central_wl)
+
+                                        sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = vel
+                                        disp_array[i, j] = sig
+                                        flux_array[i, j] = gauss_values['amplitude']
+
+                                except TypeError:
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
 
                             else:
 
@@ -3758,6 +3956,9 @@ class cubeOps(object):
                                 print 'no improvement, stop trying to fix'
 
                                 sn_array[i, j] = np.nan
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                     elif (i > centre_x and j < centre_y):
 
@@ -3872,10 +4073,45 @@ class cubeOps(object):
 
                             ax.plot(wave_array[lower_limit: upper_limit],
                                     spec)
-
-                            plt.show()
-
+                                
                             plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                          spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                         elif new_sn <= line_sn:
 
@@ -3884,6 +4120,9 @@ class cubeOps(object):
                             print 'no improvement, stop trying to fix'
 
                             sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
 
                         elif (new_sn > line_sn and new_sn < threshold):
 
@@ -4040,10 +4279,45 @@ class cubeOps(object):
                                 
                                 ax.plot(wave_array[lower_limit: upper_limit],
                                         spec)
-
-                                plt.show()
-
+                                
                                 plt.close('all')
+
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                              spec)
+
+                                try:
+
+                                    if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                       or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                       or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                        print 'Gaussian errors too large - reject fit'
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = np.nan
+                                        disp_array[i, j] = np.nan
+                                        flux_array[i, j] = np.nan
+
+                                    else:
+
+                                        c = 2.99792458E5
+
+                                        vel = c * ((gauss_values['center']
+                                                    - central_wl) / central_wl)
+
+                                        sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = vel
+                                        disp_array[i, j] = sig
+                                        flux_array[i, j] = gauss_values['amplitude']
+
+                                except TypeError:
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
 
                             else:
 
@@ -4052,6 +4326,9 @@ class cubeOps(object):
                                 print 'no improvement, stop trying to fix'
 
                                 sn_array[i, j] = np.nan
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                     elif (i > centre_x and j > centre_y):
 
@@ -4166,10 +4443,45 @@ class cubeOps(object):
 
                             ax.plot(wave_array[lower_limit: upper_limit],
                                     spec)
-
-                            plt.show()
-
+                                
                             plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                          spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                         elif new_sn <= line_sn:
 
@@ -4178,6 +4490,9 @@ class cubeOps(object):
                             print 'no improvement, stop trying to fix'
 
                             sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
 
                         elif (new_sn > line_sn and new_sn < threshold):
 
@@ -4334,10 +4649,45 @@ class cubeOps(object):
                                 
                                 ax.plot(wave_array[lower_limit: upper_limit],
                                         spec)
-
-                                plt.show()
-
+                                
                                 plt.close('all')
+
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                              spec)
+
+                                try:
+
+                                    if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                       or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                       or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                        print 'Gaussian errors too large - reject fit'
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = np.nan
+                                        disp_array[i, j] = np.nan
+                                        flux_array[i, j] = np.nan
+
+                                    else:
+
+                                        c = 2.99792458E5
+
+                                        vel = c * ((gauss_values['center']
+                                                    - central_wl) / central_wl)
+
+                                        sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = vel
+                                        disp_array[i, j] = sig
+                                        flux_array[i, j] = gauss_values['amplitude']
+
+                                except TypeError:
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
 
                             else:
 
@@ -4346,6 +4696,9 @@ class cubeOps(object):
                                 print 'no improvement, stop trying to fix'
 
                                 sn_array[i, j] = np.nan
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                     elif (i < centre_x and j == centre_y):
 
@@ -4460,10 +4813,45 @@ class cubeOps(object):
 
                             ax.plot(wave_array[lower_limit: upper_limit],
                                     spec)
-
-                            plt.show()
-
+                                
                             plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                          spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                         elif new_sn <= line_sn:
 
@@ -4472,6 +4860,9 @@ class cubeOps(object):
                             print 'no improvement, stop trying to fix'
 
                             sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
 
                         elif (new_sn > line_sn and new_sn < threshold):
 
@@ -4628,10 +5019,45 @@ class cubeOps(object):
                                 
                                 ax.plot(wave_array[lower_limit: upper_limit],
                                         spec)
-
-                                plt.show()
-
+                                
                                 plt.close('all')
+
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                              spec)
+
+                                try:
+
+                                    if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                       or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                       or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                        print 'Gaussian errors too large - reject fit'
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = np.nan
+                                        disp_array[i, j] = np.nan
+                                        flux_array[i, j] = np.nan
+
+                                    else:
+
+                                        c = 2.99792458E5
+
+                                        vel = c * ((gauss_values['center']
+                                                    - central_wl) / central_wl)
+
+                                        sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = vel
+                                        disp_array[i, j] = sig
+                                        flux_array[i, j] = gauss_values['amplitude']
+
+                                except TypeError:
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
 
                             else:
 
@@ -4640,6 +5066,9 @@ class cubeOps(object):
                                 print 'no improvement, stop trying to fix'
 
                                 sn_array[i, j] = np.nan
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                     elif (i == centre_x and j < centre_y):
 
@@ -4754,10 +5183,45 @@ class cubeOps(object):
 
                             ax.plot(wave_array[lower_limit: upper_limit],
                                     spec)
-
-                            plt.show()
-
+                                
                             plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                          spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                         elif new_sn <= line_sn:
 
@@ -4766,6 +5230,9 @@ class cubeOps(object):
                             print 'no improvement, stop trying to fix'
 
                             sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
 
                         elif (new_sn > line_sn and new_sn < threshold):
 
@@ -4922,10 +5389,45 @@ class cubeOps(object):
                                 
                                 ax.plot(wave_array[lower_limit: upper_limit],
                                         spec)
-
-                                plt.show()
-
+                                
                                 plt.close('all')
+
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                              spec)
+
+                                try:
+
+                                    if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                       or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                       or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                        print 'Gaussian errors too large - reject fit'
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = np.nan
+                                        disp_array[i, j] = np.nan
+                                        flux_array[i, j] = np.nan
+
+                                    else:
+
+                                        c = 2.99792458E5
+
+                                        vel = c * ((gauss_values['center']
+                                                    - central_wl) / central_wl)
+
+                                        sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = vel
+                                        disp_array[i, j] = sig
+                                        flux_array[i, j] = gauss_values['amplitude']
+
+                                except TypeError:
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
 
                             else:
 
@@ -4934,6 +5436,9 @@ class cubeOps(object):
                                 print 'no improvement, stop trying to fix'
 
                                 sn_array[i, j] = np.nan
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                     elif (i > centre_x and j == centre_y):
 
@@ -5048,10 +5553,45 @@ class cubeOps(object):
 
                             ax.plot(wave_array[lower_limit: upper_limit],
                                     spec)
-
-                            plt.show()
-
+                                
                             plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                          spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                         elif new_sn <= line_sn:
 
@@ -5060,6 +5600,9 @@ class cubeOps(object):
                             print 'no improvement, stop trying to fix'
 
                             sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
 
                         elif (new_sn > line_sn and new_sn < threshold):
 
@@ -5216,10 +5759,45 @@ class cubeOps(object):
                                 
                                 ax.plot(wave_array[lower_limit: upper_limit],
                                         spec)
-
-                                plt.show()
-
+                                
                                 plt.close('all')
+
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                              spec)
+
+                                try:
+
+                                    if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                       or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                       or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                        print 'Gaussian errors too large - reject fit'
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = np.nan
+                                        disp_array[i, j] = np.nan
+                                        flux_array[i, j] = np.nan
+
+                                    else:
+
+                                        c = 2.99792458E5
+
+                                        vel = c * ((gauss_values['center']
+                                                    - central_wl) / central_wl)
+
+                                        sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = vel
+                                        disp_array[i, j] = sig
+                                        flux_array[i, j] = gauss_values['amplitude']
+
+                                except TypeError:
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
 
                             else:
 
@@ -5228,6 +5806,9 @@ class cubeOps(object):
                                 print 'no improvement, stop trying to fix'
 
                                 sn_array[i, j] = np.nan
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                     elif (i == centre_x and j > centre_y):
 
@@ -5342,10 +5923,45 @@ class cubeOps(object):
 
                             ax.plot(wave_array[lower_limit: upper_limit],
                                     spec)
-
-                            plt.show()
-
+                                
                             plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                          spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                         elif new_sn <= line_sn:
 
@@ -5354,6 +5970,9 @@ class cubeOps(object):
                             print 'no improvement, stop trying to fix'
 
                             sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
 
                         elif (new_sn > line_sn and new_sn < threshold):
 
@@ -5510,10 +6129,45 @@ class cubeOps(object):
                                 
                                 ax.plot(wave_array[lower_limit: upper_limit],
                                         spec)
-
-                                plt.show()
-
+                                
                                 plt.close('all')
+
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                              spec)
+
+                                try:
+
+                                    if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                       or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                       or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                        print 'Gaussian errors too large - reject fit'
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = np.nan
+                                        disp_array[i, j] = np.nan
+                                        flux_array[i, j] = np.nan
+
+                                    else:
+
+                                        c = 2.99792458E5
+
+                                        vel = c * ((gauss_values['center']
+                                                    - central_wl) / central_wl)
+
+                                        sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = vel
+                                        disp_array[i, j] = sig
+                                        flux_array[i, j] = gauss_values['amplitude']
+
+                                except TypeError:
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
 
                             else:
 
@@ -5522,6 +6176,9 @@ class cubeOps(object):
                                 print 'no improvement, stop trying to fix'
 
                                 sn_array[i, j] = np.nan
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                     elif (i == centre_x and j == centre_y):
 
@@ -5547,11 +6204,11 @@ class cubeOps(object):
                                                   data[:, i - 1, j][lower_limit:
                                                                         upper_limit],
                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                        upper_limit]
+                                                                        upper_limit],
                                                   data[:, i - 1, j - 1][lower_limit:
-                                                                        upper_limit]
+                                                                        upper_limit],
                                                   data[:, i + 1, j - 1][lower_limit:
-                                                                        upper_limit]
+                                                                        upper_limit],
                                                   data[:, i - 1, j + 1][lower_limit:
                                                                         upper_limit]],
                                                  axis=0)
@@ -5579,11 +6236,11 @@ class cubeOps(object):
                                                   data[:, i - 1, j][lower_limit:
                                                                         upper_limit],
                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                        upper_limit]
+                                                                        upper_limit],
                                                   data[:, i - 1, j - 1][lower_limit:
-                                                                        upper_limit]
+                                                                        upper_limit],
                                                   data[:, i + 1, j - 1][lower_limit:
-                                                                        upper_limit]
+                                                                        upper_limit],
                                                   data[:, i - 1, j + 1][lower_limit:
                                                                         upper_limit]],
                                                  axis=0)
@@ -5613,11 +6270,11 @@ class cubeOps(object):
                                                   data[:, i - 1, j][lower_limit:
                                                                         upper_limit],
                                                   data[:, i + 1, j + 1][lower_limit:
-                                                                        upper_limit]
+                                                                        upper_limit],
                                                   data[:, i - 1, j - 1][lower_limit:
-                                                                        upper_limit]
+                                                                        upper_limit],
                                                   data[:, i + 1, j - 1][lower_limit:
-                                                                        upper_limit]
+                                                                        upper_limit],
                                                   data[:, i - 1, j + 1][lower_limit:
                                                                         upper_limit]],
                                                  axis=0)
@@ -5654,10 +6311,45 @@ class cubeOps(object):
 
                             ax.plot(wave_array[lower_limit: upper_limit],
                                     spec)
-
-                            plt.show()
-
+                                
                             plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                          spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
 
                         elif new_sn <= line_sn:
 
@@ -5666,6 +6358,9 @@ class cubeOps(object):
                             print 'no improvement, stop trying to fix'
 
                             sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
 
                         elif (new_sn > line_sn and new_sn < threshold):
 
@@ -5704,25 +6399,25 @@ class cubeOps(object):
                                                       data[:, i + 1, j - 2][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j - 1][lower_limit:
-                                                                            upper_limit]
+                                                                            upper_limit],
                                                       data[:, i + 1, j - 1][lower_limit:
-                                                                            upper_limit]
+                                                                            upper_limit],
                                                       data[:, i + 2, j - 2][lower_limit:
-                                                                            upper_limit]
+                                                                            upper_limit],
                                                       data[:, i - 1, j - 1][lower_limit:
-                                                                            upper_limit]
+                                                                            upper_limit],
                                                       data[:, i - 2, j - 2][lower_limit:
-                                                                            upper_limit]
+                                                                            upper_limit],
                                                       data[:, i - 1, j + 1][lower_limit:
-                                                                            upper_limit]
+                                                                            upper_limit],
                                                       data[:, i - 2, j + 2][lower_limit:
-                                                                            upper_limit]
+                                                                            upper_limit],
                                                       data[:, i - 1, j - 2][lower_limit:
-                                                                            upper_limit]
+                                                                            upper_limit],
                                                       data[:, i - 2, j - 1][lower_limit:
-                                                                            upper_limit]
+                                                                            upper_limit],
                                                       data[:, i - 1, j + 2][lower_limit:
-                                                                            upper_limit]
+                                                                            upper_limit],
                                                       data[:, i - 2, j + 1][lower_limit:
                                                                             upper_limit]],
                                                      axis=0)
@@ -5751,10 +6446,10 @@ class cubeOps(object):
                                                                         upper_limit],
                                                       data[:, i, j - 2][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i + 1, j - 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j - 2][lower_limit:
-                                                                            upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
                                                       data[:, i + 1, j + 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j + 2][lower_limit:
@@ -5766,6 +6461,26 @@ class cubeOps(object):
                                                       data[:, i + 1, j - 2][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 1][lower_limit:
                                                                             upper_limit]],
                                                      axis=0)
 
@@ -5793,10 +6508,10 @@ class cubeOps(object):
                                                                         upper_limit],
                                                       data[:, i, j - 2][lower_limit:
                                                                         upper_limit],
-                                                      data[:, i + 1, j - 1][lower_limit:
-                                                                            upper_limit],
-                                                      data[:, i + 2, j - 2][lower_limit:
-                                                                            upper_limit],
+                                                      data[:, i - 1, j][lower_limit:
+                                                                        upper_limit],
+                                                      data[:, i - 2, j][lower_limit:
+                                                                        upper_limit],
                                                       data[:, i + 1, j + 1][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j + 2][lower_limit:
@@ -5808,6 +6523,26 @@ class cubeOps(object):
                                                       data[:, i + 1, j - 2][lower_limit:
                                                                             upper_limit],
                                                       data[:, i + 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i + 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j - 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j - 1][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 1, j + 2][lower_limit:
+                                                                            upper_limit],
+                                                      data[:, i - 2, j + 1][lower_limit:
                                                                             upper_limit]],
                                                      axis=0)
 
@@ -5842,10 +6577,45 @@ class cubeOps(object):
                                 
                                 ax.plot(wave_array[lower_limit: upper_limit],
                                         spec)
-
-                                plt.show()
-
+                                
                                 plt.close('all')
+
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                              spec)
+
+                                try:
+
+                                    if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                       or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                       or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                        print 'Gaussian errors too large - reject fit'
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = np.nan
+                                        disp_array[i, j] = np.nan
+                                        flux_array[i, j] = np.nan
+
+                                    else:
+
+                                        c = 2.99792458E5
+
+                                        vel = c * ((gauss_values['center']
+                                                    - central_wl) / central_wl)
+
+                                        sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                        sn_array[i, j] = line_sn
+                                        vel_array[i, j] = vel
+                                        disp_array[i, j] = sig
+                                        flux_array[i, j] = gauss_values['amplitude']
+
+                                except TypeError:
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
 
                             else:
 
@@ -5854,7 +6624,10 @@ class cubeOps(object):
                                 print 'no improvement, stop trying to fix'
 
                                 sn_array[i, j] = np.nan
-                                                                                                
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
+
         # loop around noise array to clean up nan entries
         for i in range(0, len(noise_array)):
             for j in range(0, len(noise_array[0])):
@@ -5862,12 +6635,237 @@ class cubeOps(object):
                     print 'Fixing nan value'
                     noise_array[i][j] = np.nanmedian(noise_array)
 
-        # print noise_array
-        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-        im = ax.imshow(sn_array,
-                       cmap=plt.get_cmap('jet'),
-                       interpolation='nearest')
-        plt.colorbar(im)
-        plt.show()
+        # print sn_array
+        # plot all of the arrays
+
+        try:
+
+            vel_min, vel_max = np.nanpercentile(vel_array, [5.0, 95.0])
+            sig_min, sig_max = np.nanpercentile(disp_array, [5.0, 95.0])
+            flux_min, flux_max = np.nanpercentile(flux_array, [5.0, 95.0])
+
+        except TypeError:
+
+            # origin of the error is lack of good S/N data
+            # can set the max and min at whatever
+            vel_min, vel_max = [-100, 100]
+            sig_min, sig_max = [0, 150]
+            flux_min, flux_max = [0, 5E-3]
+
+        plt.close('all')
+
+        # create 1x3 postage stamps of the different properties
+
+        fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+
+        im = ax[0].imshow(flux_array,
+                          cmap=plt.get_cmap('jet'),
+                          vmin=flux_min,
+                          vmax=flux_max,
+                          interpolation='nearest')
+
+        ax[0].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[0])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[0].set_title('[OIII] Flux')
+
+        im = ax[1].imshow(vel_array,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        ax[1].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[1])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[1].set_title('[OIII] Velocity')
+
+        im = ax[2].imshow(disp_array,
+                          vmin=sig_min,
+                          vmax=sig_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[2])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[2].set_title('[OIII] Dispersion')
+
+        # plt.show()
+
+        fig.savefig('%s_stamps_gauss%s_t%s.pdf' % (self.fileName[:-5], 
+                                                   str(tol),
+                                                   str(threshold)))
+
+        plt.close('all')
 
         return signal_array, noise_array
+
+    def gauss_fit(self, fit_wl, fit_flux):
+
+        """
+        Def:
+        Performs simple gaussian fit, guessing initial parameters from the data
+        and given input wavelength and input flux values
+
+        Input:
+                fit_wl - wavelength of spectrum to fit
+                fit_flux - flux of spectrum to fitsWavelength
+
+        Output:
+                fit_params - dictionary containing the best fit parameters
+                            for each of the spectra
+        """
+
+        # construct gaussian model using lmfit
+
+        gmod = GaussianModel()
+
+        # set the initial parameter values
+
+        pars = gmod.guess(fit_flux, x=fit_wl)
+
+        # perform the fit
+        out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+        # print the fit report
+        print out.fit_report()
+
+        # plot to make sure things are working
+        fig, ax = plt.subplots(figsize=(14, 6))
+        ax.plot(fit_wl, fit_flux, color='blue')
+        ax.plot(fit_wl, out.best_fit, color='red')
+        plt.show()
+        plt.close('all')
+
+        return out.best_values, out.covar
+
+    def binning_three(self, data, i, j, lower_lim, upper_lim, method):
+
+        """
+        Def: Helper method to do the 3x3 spatial binning for the stott
+        velocity field function.
+
+        Input:
+                data - datacube from the object
+                i - spaxel under consideration in the stott loop
+                j - same as above
+                lower_lim - lower limit to truncate the spectrum
+                upper_lim - upper, for the signal of the line computation
+                method - method to use to stack the spectra together after
+
+        Output:
+                spec - stacked spectrum for spaxel i, j of length lower_lim
+                        + upper_lim (i.e. truncated between these limits)
+        """
+
+        # first construct loop over the i - 1 - i +1 and same for jet
+        # need except statement incase the cube_boundary is reached
+
+        stack_array = []
+
+        try:
+
+            for a in range(i - 1: i + 2):
+
+                for b in range(j - 1: j + 2):
+
+                    stack_array.append(data[:, a, b])
+
+            if method == 'median':
+
+                spec = np.nanmedian(stack_array, axis=0)[lower_lim:upper_lim]
+
+            elif method == 'sum':
+
+                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim]
+
+            elif method == 'mean':
+
+                spec = np.nanmean(stack_array, axis=0)[lower_lim:upper_lim]
+
+            else:
+
+                raise ValueError('Please choose a valid stacking method')
+
+        except IndexError:
+
+            print 'encountered the cube boundary'
+
+            spec = data[:, i, j][lower_lim: upper_lim]
+
+        return spec
+
+    def binning_five(self, data, i, j, lower_lim, upper_lim, method):
+
+        """
+        Def: Helper method to do the 5x5 spatial binning for the stott
+        velocity field function.
+
+        Input:
+                data - datacube from the object
+                i - spaxel under consideration in the stott loop
+                j - same as above
+                lower_lim - lower limit to truncate the spectrum
+                upper_lim - upper, for the signal of the line computation
+                method - method to use to stack the spectra together after
+
+        Output:
+                spec - stacked spectrum for spaxel i, j of length lower_lim
+                        + upper_lim (i.e. truncated between these limits)
+        """
+
+        # first construct loop over the i - 1 - i +1 and same for jet
+        # need except statement incase the cube_boundary is reached
+
+        stack_array = []
+
+        try:
+
+            for a in range(i - 2: i + 3):
+
+                for b in range(j - 2: j + 3):
+
+                    stack_array.append(data[:, a, b])
+
+            if method == 'median':
+
+                spec = np.nanmedian(stack_array, axis=0)[lower_lim:upper_lim]
+
+            elif method == 'sum':
+
+                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim]
+
+            elif method == 'mean':
+
+                spec = np.nanmean(stack_array, axis=0)[lower_lim:upper_lim]
+
+            else:
+
+                raise ValueError('Please choose a valid stacking method')
+
+        except IndexError:
+
+            print 'encountered the cube boundary'
+
+            spec = data[:, i, j][lower_lim: upper_lim]
+
+        return spec
+
+
+
