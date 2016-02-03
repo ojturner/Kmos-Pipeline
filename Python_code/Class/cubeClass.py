@@ -761,9 +761,9 @@ class cubeOps(object):
 
         height = np.nanmax(data)
 
-        data[np.isnan(data)] = 0
+        # data[np.isnan(data)] = 0
 
-        data[data < 0] = 0
+        # data[data < 0] = 0
 
         total = np.nansum(data)
 
@@ -792,7 +792,7 @@ class cubeOps(object):
         # this is to help the gaussian fitting for the flux 
         # calibrated data. also clip the edges for a better fit.
 
-        data = data[3:-3, 3:-3] / np.nansum(data)
+        data = data[3:-3, 3:-3] / np.nanmax(data)
 
         pars = self.moments(data)
 
@@ -853,7 +853,39 @@ class cubeOps(object):
         # Find the FWHM and the masking profile of a given datacube
 
         # Step 1 - perform least squares minimisation to find the parameters
-        mod_fit, a, b = self.fitgaussian(self.imData)
+
+        # instead of using the full self.imData, only use the chunk in the
+        # middle of the wavelength range
+
+        if self.filter == 'K':
+
+            lower = 268
+
+            upper = 1336
+
+        elif self.filter == 'H':
+
+            lower = 349
+
+            upper = 1739
+
+        elif self.filter == 'HK':
+
+            lower = 87
+
+            upper = 734
+
+        else:
+
+            lower = 200
+
+            upper = 1800
+
+        # range from which to get the image data now defined
+        star_data = np.nanmedian(self.data[lower:upper], axis=0)
+
+        # from the star data fit the gaussian model
+        mod_fit, a, b = self.fitgaussian(star_data)
 
         # flattening the indices of data.shape
         x1 = np.ndarray.flatten(indices(self.imData.shape)[0])
