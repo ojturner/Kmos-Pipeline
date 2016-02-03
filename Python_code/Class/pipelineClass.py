@@ -4712,15 +4712,21 @@ class pipelineOps(object):
                 fwhm_one, psfProfile_one, offList_one, params_one, \
                     shift_list_one = self.gaussFit('tracked_one.txt')
 
+                offList_one = offList_one + 1
+
                 fwhmValVec_one.append(fwhm_one)
 
                 fwhm_two, psfProfile_two, offList_two, params_two, \
                     shift_list_two = self.gaussFit('tracked_two.txt')
 
+                offList_two = offList_two + 1
+
                 fwhmValVec_two.append(fwhm_two)
 
                 fwhm_three, psfProfile_three, offList_three, params_three, \
                     shift_list_three = self.gaussFit('tracked_three.txt')
+
+                offList_three = offList_three + 1
 
                 fwhmValVec_three.append(fwhm_three)
 
@@ -4757,6 +4763,8 @@ class pipelineOps(object):
 
                 third = np.arange(17, 25, 1)
 
+                print 'HELLO %s %s %s' % (len(first), len(second), len(third))
+
                 # loop round the offList and reduce the size of
                 # first second and third if they contain IFU numbers
                 # which are in the offList
@@ -4773,6 +4781,7 @@ class pipelineOps(object):
                     if item in third:
                         third = third[1:]
 
+                print 'HELLO %s %s %s %s' % (len(first), len(second), len(third), offList_one)
                 # now that the arrays are of the correct size
                 # create the overall arrays for each parameter
 
@@ -5268,6 +5277,7 @@ class pipelineOps(object):
         ax.set_title('Average fwhm vs. Frame ID')
         ax.set_xlabel('Frame ID')
         ax.set_xlim(0, len(ID))
+        ax.set_ylim(0, 1.5)
         ax.set_xticks((np.arange(min(ID), max(ID) + 1, 1.0)))
         ax.grid(b=True, which='both', linestyle='--')
 
@@ -5300,6 +5310,7 @@ class pipelineOps(object):
         ax.plot(ID, fwhmValVec2, color='red')
         ax.scatter(ID, fwhmValVec2, color='red')
         ax.set_xlim(0, len(ID))
+        ax.set_ylim(0, 1.5)
         ax.set_title('Average fwhm vs. Frame ID')
         ax.set_xlabel('Frame ID')
         ax.set_xticks((np.arange(min(ID), max(ID) + 1, 1.0)))
@@ -6672,7 +6683,81 @@ class pipelineOps(object):
 
         # original file has now been updated and closed
 
+    def telluric_correct_flat(self,
+                              grating,
+                              cal_dir):
 
+        """
+        Def: Currently the standard pipeline telluric correction isn't
+        working properly - it doesn't do a good job for the absorption
+        features. This method fits a polynomial to the three telluric
+        spectra stored in IFUs 3, 12 and 18 and replaces the more detailed
+        telluric correction with this fit.
+
+        Input:
+                grating - the grating ID in the fits header
+
+        Output:
+                telluric_XXX - where X is the grating value
+        """
+
+        # start by checking the value of the grating
+        if grating == 'K':
+
+            table = fits.open(cal_dir + '/telluric_KKK.fits', mode='update')
+
+        elif grating == 'HK':
+
+            table = fits.open(cal_dir + '/telluric_HKHKHK.fits', mode='update')
+
+        elif grating == 'H':
+
+            table = fits.open(cal_dir + '/telluric_HHH.fits', mode='update')
+
+        elif grating == 'YJ':
+
+            table = fits.open(cal_dir + '/telluric_YJYJYJ.fits', mode='update')
+
+        elif grating == 'IZ':
+
+            table = fits.open(cal_dir + '/telluric_IZIZIZ.fits', mode='update')
+
+        else:
+
+            raise ValueError('The supplied grating ID'
+                             + ' is not recognised')
+
+        # construct the wavelength array
+
+        header = table[5].header
+
+        start_l = header['CRVAL1']
+
+        delta = header['CDELT1']
+
+        wave_array = start_l + np.arange(0, 2048 * delta, delta)
+
+        # assign the data for IFUs 3, 12, 18
+
+        data_1 = np.repeat(1.0, len(wave_array))
+
+        data_2 = np.repeat(1.0, len(wave_array))
+
+        data_3 = np.repeat(1.0, len(wave_array))
+
+        # and replace the computed telluric spectra
+
+        table[5].data = data_1
+
+        table[23].data = data_2
+
+        table[35].data = data_3
+
+        table.flush()
+
+        table.close()
+
+        # original file has now been updated and closed
 
     def arrayCompare(self,
                      profile,
@@ -10900,3 +10985,572 @@ class pipelineOps(object):
                                       centre_y,
                                       tol=tolerance,
                                       method=stack_method)
+
+    def vel_field_sigma(self,
+                        incube,
+                        line,
+                        combine_file,
+                        redshift,
+                        threshold,
+                        centre_x,
+                        centre_y,
+                        tol=40,
+                        method='median'):
+
+        """
+        Def:
+        Yes another method for computing the velocity field.
+        This time using an optimised signal to noise computation.
+        The noise will be computed by examining the flux distribution
+        of all consitutent frames going into a datacube stack.
+        From this the individual frame sigma can be computed and then scaled
+        down to give the sigma for the stack (by square root N). The 
+        thinking behind this is that the random spaxels which apparently
+        reach above the threshold signal to noise should be eliminated, as the
+        flux distribution for these should be much broader than in the case of
+        actual flux.
+
+        Input:
+                line - emission line to fit, must be either oiii, oii, hb
+                combine_file - file containing names of frames going into the
+                    cube stack
+                redshift - the redshift value of the incube
+                threshold - signal to noise threshold for the fit
+                redshift - redshift of emission line
+                threshold - s/n threshold for inclusion in velocity field
+                centre_x - centre of galaxy in x direction
+                centre_y - centre of galaxy in y direction
+                tol - error tolerance for gaussian fit (default of 40)
+                method - stacking method when binning pixels
+        Output: 
+                signal array, noise array - for the given datacube
+        """
+
+        # check that the emission line choice is valid
+
+        if not(line != 'oiii' or line != 'oii' or line != 'hb'):
+
+            raise ValueError('Please ensure that you have'
+                             + ' chosen an appropriate emission line')
+
+        # open the data
+        data = cubeOps(incube).data
+        noise = cubeOps(incube).Table[2].data
+
+        # get the wavelength array
+        wave_array = cubeOps(incube).wave_array
+
+        if line == 'oiii':
+
+            central_wl = 0.500824 * (1. + redshift)
+
+        elif line == 'hb':
+
+            central_wl = 0.486268 * (1. + redshift)
+
+        elif line == 'oii':
+
+            central_wl = 0.3729875 * (1. + redshift)
+
+        # find the index of the chosen emission line
+        line_idx = np.argmin(np.abs(wave_array - central_wl))
+
+        # the shape of the data is (spectrum, xpixel, ypixel)
+        # loop through each x and y pixel and get the OIII5007 S/N
+
+        xpixs = data.shape[1]
+
+        ypixs = data.shape[2]
+
+        sn_array = np.empty(shape=(xpixs, ypixs))
+
+        signal_array = np.empty(shape=(xpixs, ypixs))
+
+        noise_array = np.empty(shape=(xpixs, ypixs))
+
+        vel_array = np.empty(shape=(xpixs, ypixs))
+
+        disp_array = np.empty(shape=(xpixs, ypixs))
+
+        flux_array = np.empty(shape=(xpixs, ypixs))
+
+
+        for i, xpix in enumerate(np.arange(0, xpixs, 1)):
+
+            for j, ypix in enumerate(np.arange(0, ypixs, 1)):
+
+                spaxel_spec = data[:, i, j]
+                spaxel_noise = noise[:, i, j]
+
+                # account for different spectral resolutions
+
+                if self.filter == 'K':
+
+                    # first search for the linepeak, which may be different
+                    # to that specified by the systemic redshift
+                    # set the upper and lower ranges for the t_index search
+
+                    lower_t = 8
+                    upper_t = 9
+
+                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
+                                                    line_idx + upper_t])
+
+                    # need this to be an absolute index
+                    t_index = t_index + line_idx - 8
+
+                    # then sum the flux inside the region over which the line
+                    # will be. Width of line is roughly 0.003, which is 10
+                    # spectral elements in K and 6 in HK
+
+                    # set the limits for the signal estimate
+
+                    lower_limit = t_index - 10
+                    upper_limit = t_index + 11
+
+                    line_counts = np.nansum(spaxel_spec[lower_limit:
+                                                        upper_limit])
+
+                elif self.filter == 'HK':
+
+                    lower_t = 5
+                    upper_t = 6
+
+                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
+                                                    line_idx + upper_t])
+
+                    t_index = t_index + line_idx - 5
+
+                    # set the limits for the signal estimate
+
+                    lower_limit = t_index - 5
+                    upper_limit = t_index + 6
+
+                    line_counts = np.nansum(spaxel_spec[lower_limit:
+                                                        upper_limit])
+
+                # any other band follows the same rules as K right now
+
+                else:
+
+                    lower_t = 8
+                    upper_t = 9
+
+                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
+                                                    line_idx + upper_t])
+
+                    t_index = t_index + line_idx - 8
+
+                    # set the limits for the signal estimate
+
+                    lower_limit = t_index - 10
+                    upper_limit = t_index + 11
+
+                    line_counts = np.nansum(spaxel_spec[lower_limit:
+                                                        upper_limit])
+
+                if np.isnan(line_counts):
+
+                    signal_array[i, j] = 0
+
+                else:
+
+                    signal_array[i, j] = line_counts
+
+                # noise computation. Here is the big difference over the
+                # stott velocity field method. Going to open individually
+                # all of the cubes which went into the final stack, save the
+                # flux computed in each of these and compute the standard
+                # deviation of the flux values - from this get an estimate
+                # of the noise for that spaxel. Ross reckons this is the best
+                # way to empirically look at the noise
+
+                combine_table = np.loadtxt(combine_file, dtype='str')
+
+                # for each entry in combine_table want to extract the line
+                # flux and append to a list
+
+                flux_list = []
+
+                # loop around the frames used in the stack, append signal
+
+                for entry in combine_table:
+
+                    # define cube object from frame
+
+                    temp_cube = cubeOps(entry)
+
+                    # append the flux from this cube
+
+                    flux_list.append(temp_cube.line_flux_extract(lower_limit,
+                                                                 upper_limit,
+                                                                 i,
+                                                                 j))
+
+                # plot the distribution of fluxes to see that this works
+
+
+
+                if list(np.where(np.isnan(noise_data))[0]):
+
+                    print 'found nan'
+
+                    line_noise = np.nan
+
+                else:
+
+                    line_noise = out.best_values['sigma'] * 1E-18
+
+                # line_noise = g_out.stddev.value
+                # print line_noise, i, j
+
+                noise_array[i, j] = line_noise
+
+                line_sn = line_counts / line_noise
+
+                print '%s' % line_sn
+
+                # searching the computed signal to noise in this section
+
+                if np.isnan(line_sn):
+
+                    print 'getting rid of nan'
+
+                    # we've got a nan entry - get rid of it
+
+                    sn_array[i, j] = np.nan
+                    vel_array[i, j] = np.nan
+                    disp_array[i, j] = np.nan
+                    flux_array[i, j] = np.nan
+
+                elif line_sn > threshold:
+
+                    print 'Threshold exceeded %s %s %s' % (i, j, line_sn)
+
+                    print '%s %s %s' % (t_index, lower_limit, upper_limit)
+
+                    # do stuff - calculate the velocity
+
+                    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                    ax.plot(wave_array[lower_limit: upper_limit],
+                            spaxel_spec[lower_limit: upper_limit])
+
+                    plt.close('all')
+
+                    gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                         spaxel_spec[lower_limit: upper_limit])
+
+                    # if the gaussian does not fit correctly this can throw 
+                    # a nonetype error, since covar is empty
+                    try:
+
+                        if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                           or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                           or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                            print 'Gaussian errors too large - reject fit'
+
+                            sn_array[i, j] = line_sn
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
+
+                        else:
+
+                            c = 2.99792458E5
+
+                            vel = c * ((gauss_values['center']
+                                        - central_wl) / central_wl)
+
+                            sig = c * ((gauss_values['sigma']) / central_wl)
+
+                            sn_array[i, j] = line_sn
+                            vel_array[i, j] = vel
+                            disp_array[i, j] = sig
+                            flux_array[i, j] = gauss_values['amplitude']
+
+                    except TypeError:
+
+                        sn_array[i, j] = line_sn
+                        vel_array[i, j] = np.nan
+                        disp_array[i, j] = np.nan
+                        flux_array[i, j] = np.nan
+
+                # don't bother expanding area if line_sn starts negative
+
+                elif line_sn < 0:
+
+                    print 'Found negative signal %s %s' % (i, j)
+
+                    sn_array[i, j] = np.nan
+                    vel_array[i, j] = np.nan
+                    disp_array[i, j] = np.nan
+                    flux_array[i, j] = np.nan
+
+                # If between 0 and the threshold, search surrounding area
+                # for more signal - do this in the direction of the galaxy
+                # centre (don't know if this introduces a bias to the
+                # measurement or not)
+
+                elif (line_sn > 0 and line_sn < threshold):
+
+                    print 'Attempting to improve signal: %s %s %s' % (line_sn, i, j)
+
+                    # compute the stacked 3x3 spectrum using helper method
+
+                    spec = self.binning_three(data,
+                                              i,
+                                              j,
+                                              lower_limit,
+                                              upper_limit,
+                                              method)
+
+                    # now that spec has been computed, look at whether
+                    # the signal to noise of the stack has improved
+
+                    new_line_counts = np.nansum(spec)
+
+                    new_sn = new_line_counts / line_noise
+
+                    print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                    # if the new signal to noise is greater than the
+                    # threshold, save this in the cube and proceed
+
+                    if new_sn > threshold:
+
+                        # add to the signal to noise array
+
+                        print 'The binning raised above threshold!'
+
+                        sn_array[i, j] = line_sn
+
+                        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                        ax.plot(wave_array[lower_limit: upper_limit],
+                                spec)
+
+                        plt.close('all')
+
+                        gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                             spec)
+
+                        try:
+
+                            if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                               or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                               or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                print 'Gaussian errors too large - reject fit'
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
+
+                            else:
+
+                                c = 2.99792458E5
+
+                                vel = c * ((gauss_values['center']
+                                            - central_wl) / central_wl)
+
+                                sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = vel
+                                disp_array[i, j] = sig
+                                flux_array[i, j] = gauss_values['amplitude']
+
+                        except TypeError:
+
+                            sn_array[i, j] = line_sn
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
+
+                    elif new_sn <= line_sn:
+
+                        # got worse - entry becomes a nan
+
+                        print 'no improvement, stop trying to fix'
+
+                        sn_array[i, j] = np.nan
+                        vel_array[i, j] = np.nan
+                        disp_array[i, j] = np.nan
+                        flux_array[i, j] = np.nan
+
+                    elif (new_sn > line_sn and new_sn < threshold):
+
+                        # try the 5x5 approach towards the cube centre
+
+                        spec = self.binning_five(data,
+                                                 i,
+                                                 j,
+                                                 lower_limit,
+                                                 upper_limit,
+                                                 method)
+
+                    # now that spec has been computed, look at whether
+                    # the signal to noise of the stack has improved
+
+                        final_line_counts = np.nansum(spec)
+
+                        final_sn = final_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if final_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The biggest binning raised above threshold!'
+                            
+
+                            sn_array[i, j] = final_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+                            
+                            plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                                 spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
+
+                        else:
+
+                            # didn't reach target - store as nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
+
+        # loop around noise array to clean up nan entries
+        for i in range(0, len(noise_array)):
+            for j in range(0, len(noise_array[0])):
+                if np.isnan(noise_array[i][j]):
+                    print 'Fixing nan value'
+                    noise_array[i][j] = np.nanmedian(noise_array)
+
+        # print sn_array
+        # plot all of the arrays
+
+        try:
+
+            vel_min, vel_max = np.nanpercentile(vel_array, [5.0, 95.0])
+            sig_min, sig_max = np.nanpercentile(disp_array, [5.0, 95.0])
+            flux_min, flux_max = np.nanpercentile(flux_array, [5.0, 95.0])
+
+        except TypeError:
+
+            # origin of the error is lack of good S/N data
+            # can set the max and min at whatever
+            vel_min, vel_max = [-100, 100]
+            sig_min, sig_max = [0, 150]
+            flux_min, flux_max = [0, 5E-3]
+
+        plt.close('all')
+
+        # create 1x3 postage stamps of the different properties
+
+        fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+
+        im = ax[0].imshow(flux_array,
+                          cmap=plt.get_cmap('jet'),
+                          vmin=flux_min,
+                          vmax=flux_max,
+                          interpolation='nearest')
+
+        ax[0].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+        ax[0].contour(flux_array, colors='k')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[0])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[0].set_title('[OIII] Flux')
+
+        im = ax[1].imshow(vel_array,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        ax[1].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[1])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[1].set_title('[OIII] Velocity')
+
+        im = ax[2].imshow(disp_array,
+                          vmin=sig_min,
+                          vmax=sig_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[2])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[2].set_title('[OIII] Dispersion')
+
+        plt.show()
+
+        fig.savefig('%s_stamps_gauss%s_t%s.pdf' % (self.fileName[:-5],
+                                                   str(tol),
+                                                   str(threshold)))
+
+        plt.close('all')        
