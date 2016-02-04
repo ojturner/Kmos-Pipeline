@@ -10989,7 +10989,6 @@ class pipelineOps(object):
     def vel_field_sigma(self,
                         incube,
                         line,
-                        combine_file,
                         redshift,
                         threshold,
                         centre_x,
@@ -11002,7 +11001,7 @@ class pipelineOps(object):
         Yes another method for computing the velocity field.
         This time using an optimised signal to noise computation.
         The noise will be computed by examining the flux distribution
-        of all consitutent frames going into a datacube stack.
+        of all constituent frames going into a datacube stack.
         From this the individual frame sigma can be computed and then scaled
         down to give the sigma for the stack (by square root N). The 
         thinking behind this is that the random spaxels which apparently
@@ -11016,10 +11015,6 @@ class pipelineOps(object):
                     cube stack
                 redshift - the redshift value of the incube
                 threshold - signal to noise threshold for the fit
-                redshift - redshift of emission line
-                threshold - s/n threshold for inclusion in velocity field
-                centre_x - centre of galaxy in x direction
-                centre_y - centre of galaxy in y direction
                 tol - error tolerance for gaussian fit (default of 40)
                 method - stacking method when binning pixels
         Output: 
@@ -11034,8 +11029,9 @@ class pipelineOps(object):
                              + ' chosen an appropriate emission line')
 
         # open the data
-        data = cubeOps(incube).data
-        noise = cubeOps(incube).Table[2].data
+        cube = cubeOps(incube)
+        data = cube.data
+        noise = cube.Table[2].data
 
         # get the wavelength array
         wave_array = cubeOps(incube).wave_array
@@ -11084,7 +11080,7 @@ class pipelineOps(object):
 
                 # account for different spectral resolutions
 
-                if self.filter == 'K':
+                if cube.filter == 'K':
 
                     # first search for the linepeak, which may be different
                     # to that specified by the systemic redshift
@@ -11111,7 +11107,13 @@ class pipelineOps(object):
                     line_counts = np.nansum(spaxel_spec[lower_limit:
                                                         upper_limit])
 
-                elif self.filter == 'HK':
+                    sigma_array = spaxel_noise[lower_limit:upper_limit]
+
+                    sigma_squared = sigma_array * sigma_array
+
+                    line_noise = np.sqrt(np.nansum(sigma_squared))
+
+                elif cube.filter == 'HK':
 
                     lower_t = 5
                     upper_t = 6
@@ -11129,6 +11131,11 @@ class pipelineOps(object):
                     line_counts = np.nansum(spaxel_spec[lower_limit:
                                                         upper_limit])
 
+                    sigma_array = spaxel_noise[lower_limit:upper_limit]
+
+                    sigma_squared = sigma_array * sigma_array
+                    
+                    line_noise = np.sqrt(np.nansum(sigma_squared))
                 # any other band follows the same rules as K right now
 
                 else:
@@ -11149,6 +11156,12 @@ class pipelineOps(object):
                     line_counts = np.nansum(spaxel_spec[lower_limit:
                                                         upper_limit])
 
+                    sigma_array = spaxel_noise[lower_limit:upper_limit]
+
+                    sigma_squared = sigma_array * sigma_array
+                    
+                    line_noise = np.sqrt(np.nansum(sigma_squared))
+
                 if np.isnan(line_counts):
 
                     signal_array[i, j] = 0
@@ -11156,53 +11169,6 @@ class pipelineOps(object):
                 else:
 
                     signal_array[i, j] = line_counts
-
-                # noise computation. Here is the big difference over the
-                # stott velocity field method. Going to open individually
-                # all of the cubes which went into the final stack, save the
-                # flux computed in each of these and compute the standard
-                # deviation of the flux values - from this get an estimate
-                # of the noise for that spaxel. Ross reckons this is the best
-                # way to empirically look at the noise
-
-                combine_table = np.loadtxt(combine_file, dtype='str')
-
-                # for each entry in combine_table want to extract the line
-                # flux and append to a list
-
-                flux_list = []
-
-                # loop around the frames used in the stack, append signal
-
-                for entry in combine_table:
-
-                    # define cube object from frame
-
-                    temp_cube = cubeOps(entry)
-
-                    # append the flux from this cube
-
-                    flux_list.append(temp_cube.line_flux_extract(lower_limit,
-                                                                 upper_limit,
-                                                                 i,
-                                                                 j))
-
-                # plot the distribution of fluxes to see that this works
-
-
-
-                if list(np.where(np.isnan(noise_data))[0]):
-
-                    print 'found nan'
-
-                    line_noise = np.nan
-
-                else:
-
-                    line_noise = out.best_values['sigma'] * 1E-18
-
-                # line_noise = g_out.stddev.value
-                # print line_noise, i, j
 
                 noise_array[i, j] = line_noise
 
@@ -11212,7 +11178,7 @@ class pipelineOps(object):
 
                 # searching the computed signal to noise in this section
 
-                if np.isnan(line_sn):
+                if np.isnan(line_sn) or np.isinf(line_sn):
 
                     print 'getting rid of nan'
 
@@ -11241,8 +11207,9 @@ class pipelineOps(object):
                     gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
                                                          spaxel_spec[lower_limit: upper_limit])
 
-                    # if the gaussian does not fit correctly this can throw 
+                    # if the gaussian does not fit correctly this can throw
                     # a nonetype error, since covar is empty
+
                     try:
 
                         if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
@@ -11505,7 +11472,7 @@ class pipelineOps(object):
                           interpolation='nearest')
 
         ax[0].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
-        ax[0].contour(flux_array, colors='k')
+        # ax[0].contour(flux_array, colors='k')
 
         # add colourbar to each plot
         divider = make_axes_locatable(ax[0])
@@ -11547,10 +11514,245 @@ class pipelineOps(object):
         # set the title
         ax[2].set_title('[OIII] Dispersion')
 
-        plt.show()
+        # plt.show()
 
-        fig.savefig('%s_stamps_gauss%s_t%s.pdf' % (self.fileName[:-5],
+        fig.savefig('%s_stamps_gauss%s_t%s.pdf' % (incube[:-5],
                                                    str(tol),
                                                    str(threshold)))
 
-        plt.close('all')        
+        plt.close('all')
+
+    def binning_three(self, data, i, j, lower_lim, upper_lim, method):
+
+        """
+        Def: Helper method to do the 3x3 spatial binning for the stott
+        velocity field function.
+
+        Input:
+                data - datacube from the object
+                i - spaxel under consideration in the stott loop
+                j - same as above
+                lower_lim - lower limit to truncate the spectrum
+                upper_lim - upper, for the signal of the line computation
+                method - method to use to stack the spectra together after
+
+        Output:
+                spec - stacked spectrum for spaxel i, j of length lower_lim
+                        + upper_lim (i.e. truncated between these limits)
+        """
+
+        # first construct loop over the i - 1 - i +1 and same for jet
+        # need except statement incase the cube_boundary is reached
+
+        stack_array = []
+
+        try:
+
+            for a in range(i - 1, i + 2):
+
+                for b in range(j - 1, j + 2):
+
+                    stack_array.append(data[:, a, b])
+
+            if method == 'median':
+
+                spec = np.nanmedian(stack_array, axis=0)[lower_lim:upper_lim]
+
+            elif method == 'sum':
+
+                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim]
+
+            elif method == 'mean':
+
+                spec = np.nanmean(stack_array, axis=0)[lower_lim:upper_lim]
+
+            else:
+
+                raise ValueError('Please choose a valid stacking method')
+
+        except IndexError:
+
+            print 'encountered the cube boundary'
+
+            spec = data[:, i, j][lower_lim: upper_lim]
+
+        return spec
+
+    def binning_five(self, data, i, j, lower_lim, upper_lim, method):
+
+        """
+        Def: Helper method to do the 5x5 spatial binning for the stott
+        velocity field function.
+
+        Input:
+                data - datacube from the object
+                i - spaxel under consideration in the stott loop
+                j - same as above
+                lower_lim - lower limit to truncate the spectrum
+                upper_lim - upper, for the signal of the line computation
+                method - method to use to stack the spectra together after
+
+        Output:
+                spec - stacked spectrum for spaxel i, j of length lower_lim
+                        + upper_lim (i.e. truncated between these limits)
+        """
+
+        # first construct loop over the i - 1 - i +1 and same for jet
+        # need except statement incase the cube_boundary is reached
+
+        stack_array = []
+
+        try:
+
+            for a in range(i - 2, i + 3):
+
+                for b in range(j - 2, j + 3):
+
+                    stack_array.append(data[:, a, b])
+
+            if method == 'median':
+
+                spec = np.nanmedian(stack_array, axis=0)[lower_lim:upper_lim]
+
+            elif method == 'sum':
+
+                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim]
+
+            elif method == 'mean':
+
+                spec = np.nanmean(stack_array, axis=0)[lower_lim:upper_lim]
+
+            else:
+
+                raise ValueError('Please choose a valid stacking method')
+
+        except IndexError:
+
+            print 'encountered the cube boundary'
+
+            spec = data[:, i, j][lower_lim: upper_lim]
+
+        return spec
+
+    def gauss_fit(self, fit_wl, fit_flux):
+
+        """
+        Def:
+        Performs simple gaussian fit, guessing initial parameters from the data
+        and given input wavelength and input flux values
+
+        Input:
+                fit_wl - wavelength of spectrum to fit
+                fit_flux - flux of spectrum to fitsWavelength
+
+        Output:
+                fit_params - dictionary containing the best fit parameters
+                            for each of the spectra
+        """
+
+        # construct gaussian model using lmfit
+
+        gmod = GaussianModel()
+
+        # set the initial parameter values
+
+        pars = gmod.guess(fit_flux, x=fit_wl)
+
+        # perform the fit
+        out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+        # print the fit report
+        print out.fit_report()
+
+        # plot to make sure things are working
+        fig, ax = plt.subplots(figsize=(14, 6))
+        ax.plot(fit_wl, fit_flux, color='blue')
+        ax.plot(fit_wl, out.best_fit, color='red')
+        # plt.show()
+        plt.close('all')
+
+        return out.best_values, out.covar
+
+    def multi_vel_field_sigma(self,
+                              infile,
+                              line,
+                              threshold,
+                              **kwargs):
+
+        """
+        Def: Use the stott_velocity_field method from the cube_class
+        to create postage stamp images of the flux, velocity and dispersion
+        including marks on the velocity image to show the flux centre.
+
+        Input:
+                infile - file containing the object name and the centre
+                            coordinates
+                line - emission line to fit
+                threshold - s/n threshold to exceed
+                **kwargs
+                tol - (default of 40)
+                method - either sum, median or mean. This determines how the
+                            spaxels are combined if stacking is necessary
+
+        """
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            cube = cubeOps(obj_name)
+
+            redshift = entry[1]
+
+            centre_x = entry[3]
+
+            centre_y = entry[2]
+
+            std_cube = entry[4]
+
+            sky_cube = entry[5]
+
+            # define the science directory for each cube
+            sci_dir = obj_name[:len(obj_name) - obj_name[::-1].find("/") - 1]
+
+            print "\nDoing %s (redshift = %.3f) ..." % (obj_name, redshift)
+
+            try:
+
+                if kwargs['tol']:
+
+                    tolerance = kwargs['tol']
+
+                else:
+
+                    tolerance = 40
+
+            except KeyError:
+
+                tolerance = 40
+
+            try:
+
+                if kwargs['method']:
+
+                    stack_method = kwargs['method']
+
+                else:
+
+                    stack_method = 'median'
+
+            except KeyError:
+
+                stack_method = 'median'
+
+            self.vel_field_sigma(obj_name,
+                                 line,
+                                 redshift,
+                                 threshold,
+                                 centre_x,
+                                 centre_y,
+                                 tol=tolerance,
+                                 method=stack_method)
