@@ -6027,9 +6027,9 @@ class pipelineOps(object):
 
                 os.system('esorex --output-dir=%s' % sci_dir
                           + ' kmos_combine --name=%s' % name
-                          + ' --cmethod=median'
-                          + ' --cpos_rej=2.0'
-                          + ' --cneg_rej=2.0'
+                          + ' --cmethod=ksigma'
+                          + ' --cpos_rej=3.0'
+                          + ' --cneg_rej=3.0'
                           + ' --method="user"'
                           + ' --filename=%s' % shiftFile
                           + ' --edge_nan=TRUE %s' % combine_name)
@@ -11514,7 +11514,7 @@ class pipelineOps(object):
         # set the title
         ax[2].set_title('[OIII] Dispersion')
 
-        # plt.show()
+        plt.show()
 
         fig.savefig('%s_stamps_gauss%s_t%s.pdf' % (incube[:-5],
                                                    str(tol),
@@ -11756,3 +11756,1190 @@ class pipelineOps(object):
                                  centre_y,
                                  tol=tolerance,
                                  method=stack_method)
+
+    def vel_field_mask_noise(self,
+                             incube,
+                             line,
+                             redshift,
+                             threshold,
+                             centre_x,
+                             centre_y,
+                             mask_x_low,
+                             mask_x_high,
+                             mask_y_low,
+                             mask_y_high,
+                             tol=40,
+                             method='median'):
+
+        """
+        Def:
+        Yes another method for computing the velocity field.
+        This time using an optimised signal to noise computation.
+        The noise will be computed by examining stacked cube pixels that
+        don't contain the object.
+
+        Input:
+                line - emission line to fit, must be either oiii, oii, hb
+                combine_file - file containing names of frames going into the
+                    cube stack
+                redshift - the redshift value of the incube
+                threshold - signal to noise threshold for the fit
+                tol - error tolerance for gaussian fit (default of 40)
+                method - stacking method when binning pixels
+        Output: 
+                signal array, noise array - for the given datacube
+        """
+
+        # check that the emission line choice is valid
+
+        if not(line != 'oiii' or line != 'oii' or line != 'hb'):
+
+            raise ValueError('Please ensure that you have'
+                             + ' chosen an appropriate emission line')
+
+        # open the data
+        cube = cubeOps(incube)
+        data = cube.data
+        noise = cube.Table[2].data
+
+        # get the wavelength array
+        wave_array = cubeOps(incube).wave_array
+
+        if line == 'oiii':
+
+            central_wl = 0.500824 * (1. + redshift)
+
+        elif line == 'hb':
+
+            central_wl = 0.486268 * (1. + redshift)
+
+        elif line == 'oii':
+
+            central_wl = 0.3729875 * (1. + redshift)
+
+        # find the index of the chosen emission line
+        line_idx = np.argmin(np.abs(wave_array - central_wl))
+
+        # the shape of the data is (spectrum, xpixel, ypixel)
+        # loop through each x and y pixel and get the OIII5007 S/N
+
+        xpixs = data.shape[1]
+
+        ypixs = data.shape[2]
+
+        sn_array = np.empty(shape=(xpixs, ypixs))
+
+        signal_array = np.empty(shape=(xpixs, ypixs))
+
+        noise_array = np.empty(shape=(xpixs, ypixs))
+
+        vel_array = np.empty(shape=(xpixs, ypixs))
+
+        disp_array = np.empty(shape=(xpixs, ypixs))
+
+        flux_array = np.empty(shape=(xpixs, ypixs))
+
+
+        for i, xpix in enumerate(np.arange(0, xpixs, 1)):
+
+            for j, ypix in enumerate(np.arange(0, ypixs, 1)):
+
+                spaxel_spec = data[:, i, j]
+                spaxel_noise = noise[:, i, j]
+
+                # account for different spectral resolutions
+
+                if cube.filter == 'K':
+
+                    # first search for the linepeak, which may be different
+                    # to that specified by the systemic redshift
+                    # set the upper and lower ranges for the t_index search
+
+                    lower_t = 8
+                    upper_t = 9
+
+                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
+                                                    line_idx + upper_t])
+
+                    # need this to be an absolute index
+                    t_index = t_index + line_idx - 8
+
+                    # then sum the flux inside the region over which the line
+                    # will be. Width of line is roughly 0.003, which is 10
+                    # spectral elements in K and 6 in HK
+
+                    # set the limits for the signal estimate
+
+                    lower_limit = t_index - 10
+                    upper_limit = t_index + 11
+
+                    line_counts = np.nansum(spaxel_spec[lower_limit:
+                                                        upper_limit])
+
+                    line_noise = self.noise_from_mask(data,
+                                                      lower_limit,
+                                                      upper_limit,
+                                                      mask_x_low,
+                                                      mask_x_high,
+                                                      mask_y_low,
+                                                      mask_y_high)
+
+                    print 'THIS IS THE SIGNAL %s' % line_counts
+                    print 'THIS IS THE NOISE %s' % line_noise
+
+                elif cube.filter == 'HK':
+
+                    lower_t = 5
+                    upper_t = 6
+
+                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
+                                                    line_idx + upper_t])
+
+                    t_index = t_index + line_idx - 5
+
+                    # set the limits for the signal estimate
+
+                    lower_limit = t_index - 5
+                    upper_limit = t_index + 6
+
+                    line_counts = np.nansum(spaxel_spec[lower_limit:
+                                                        upper_limit])
+
+                    line_noise = self.noise_from_mask(data,
+                                                      lower_limit,
+                                                      upper_limit,
+                                                      mask_x_low,
+                                                      mask_x_high,
+                                                      mask_y_low,
+                                                      mask_y_high)
+
+                # any other band follows the same rules as K right now
+
+                else:
+
+                    lower_t = 8
+                    upper_t = 9
+
+                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
+                                                    line_idx + upper_t])
+
+                    t_index = t_index + line_idx - 8
+
+                    # set the limits for the signal estimate
+
+                    lower_limit = t_index - 10
+                    upper_limit = t_index + 11
+
+                    line_counts = np.nansum(spaxel_spec[lower_limit:
+                                                        upper_limit])
+
+                    line_noise = self.noise_from_mask(data,
+                                                      lower_limit,
+                                                      upper_limit,
+                                                      mask_x_low,
+                                                      mask_x_high,
+                                                      mask_y_low,
+                                                      mask_y_high)
+
+                if np.isnan(line_counts):
+
+                    signal_array[i, j] = 0
+
+                else:
+
+                    signal_array[i, j] = line_counts
+
+                noise_array[i, j] = line_noise
+
+                line_sn = line_counts / line_noise
+
+                print 'THIS IS THE SIGNAL TO NOISE %s' % line_sn
+
+                # searching the computed signal to noise in this section
+
+                if np.isnan(line_sn) or np.isinf(line_sn) or np.isclose(line_sn, 0, atol=1E-5):
+
+                    print 'getting rid of nan'
+
+                    # we've got a nan entry - get rid of it
+
+                    sn_array[i, j] = np.nan
+                    vel_array[i, j] = np.nan
+                    disp_array[i, j] = np.nan
+                    flux_array[i, j] = np.nan
+
+                elif line_sn > threshold:
+
+                    print 'Threshold exceeded %s %s %s' % (i, j, line_sn)
+
+                    print '%s %s %s' % (t_index, lower_limit, upper_limit)
+
+                    # do stuff - calculate the velocity
+
+                    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                    ax.plot(wave_array[lower_limit: upper_limit],
+                            spaxel_spec[lower_limit: upper_limit])
+
+                    plt.close('all')
+
+                    gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                         spaxel_spec[lower_limit: upper_limit])
+
+                    # if the gaussian does not fit correctly this can throw
+                    # a nonetype error, since covar is empty
+
+                    try:
+
+                        if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                           or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                           or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                            print 'Gaussian errors too large - reject fit'
+
+                            sn_array[i, j] = line_sn
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
+
+                        else:
+
+                            c = 2.99792458E5
+
+                            vel = c * ((gauss_values['center']
+                                        - central_wl) / central_wl)
+
+                            sig = c * ((gauss_values['sigma']) / central_wl)
+
+                            sn_array[i, j] = line_sn
+                            vel_array[i, j] = vel
+                            disp_array[i, j] = sig
+                            flux_array[i, j] = gauss_values['amplitude']
+
+                    except TypeError:
+
+                        sn_array[i, j] = line_sn
+                        vel_array[i, j] = np.nan
+                        disp_array[i, j] = np.nan
+                        flux_array[i, j] = np.nan
+
+                # don't bother expanding area if line_sn starts negative
+
+                elif line_sn < 0:
+
+                    print 'Found negative signal %s %s' % (i, j)
+
+                    sn_array[i, j] = np.nan
+                    vel_array[i, j] = np.nan
+                    disp_array[i, j] = np.nan
+                    flux_array[i, j] = np.nan
+
+                # If between 0 and the threshold, search surrounding area
+                # for more signal - do this in the direction of the galaxy
+                # centre (don't know if this introduces a bias to the
+                # measurement or not)
+
+                elif (line_sn > 0 and line_sn < threshold):
+
+                    print 'Attempting to improve signal: %s %s %s' % (line_sn, i, j)
+
+                    # compute the stacked 3x3 spectrum using helper method
+
+                    spec = self.binning_three(data,
+                                              i,
+                                              j,
+                                              lower_limit,
+                                              upper_limit,
+                                              method)
+
+                    # now that spec has been computed, look at whether
+                    # the signal to noise of the stack has improved
+
+                    new_line_counts = np.nansum(spec)
+
+                    new_sn = new_line_counts / line_noise
+
+                    print 'did things improve: %s %s' % (new_sn, line_sn)
+
+                    # if the new signal to noise is greater than the
+                    # threshold, save this in the cube and proceed
+
+                    if new_sn > threshold:
+
+                        # add to the signal to noise array
+
+                        print 'The binning raised above threshold!'
+
+                        sn_array[i, j] = line_sn
+
+                        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                        ax.plot(wave_array[lower_limit: upper_limit],
+                                spec)
+
+                        plt.close('all')
+
+                        gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                             spec)
+
+                        try:
+
+                            if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                               or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                               or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                print 'Gaussian errors too large - reject fit'
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
+
+                            else:
+
+                                c = 2.99792458E5
+
+                                vel = c * ((gauss_values['center']
+                                            - central_wl) / central_wl)
+
+                                sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = vel
+                                disp_array[i, j] = sig
+                                flux_array[i, j] = gauss_values['amplitude']
+
+                        except TypeError:
+
+                            sn_array[i, j] = line_sn
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
+
+                    elif new_sn <= line_sn:
+
+                        # got worse - entry becomes a nan
+
+                        print 'no improvement, stop trying to fix'
+
+                        sn_array[i, j] = np.nan
+                        vel_array[i, j] = np.nan
+                        disp_array[i, j] = np.nan
+                        flux_array[i, j] = np.nan
+
+                    elif (new_sn > line_sn and new_sn < threshold):
+
+                        # try the 5x5 approach towards the cube centre
+
+                        spec = self.binning_five(data,
+                                                 i,
+                                                 j,
+                                                 lower_limit,
+                                                 upper_limit,
+                                                 method)
+
+                    # now that spec has been computed, look at whether
+                    # the signal to noise of the stack has improved
+
+                        final_line_counts = np.nansum(spec)
+
+                        final_sn = final_line_counts / line_noise
+
+                        print 'did things improve: %s %s' % (final_sn, new_sn)
+
+                        # if the new signal to noise is greater than the
+                        # threshold, save this in the cube and proceed
+
+                        if final_sn > threshold:
+
+                            # add to the signal to noise array
+
+                            print 'The biggest binning raised above threshold!'
+                            
+
+                            sn_array[i, j] = final_sn
+
+                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+                            ax.plot(wave_array[lower_limit: upper_limit],
+                                    spec)
+                            
+                            plt.close('all')
+
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                                 spec)
+
+                            try:
+
+                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
+                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
+                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+
+                                    print 'Gaussian errors too large - reject fit'
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = np.nan
+                                    disp_array[i, j] = np.nan
+                                    flux_array[i, j] = np.nan
+
+                                else:
+
+                                    c = 2.99792458E5
+
+                                    vel = c * ((gauss_values['center']
+                                                - central_wl) / central_wl)
+
+                                    sig = c * ((gauss_values['sigma']) / central_wl)
+
+                                    sn_array[i, j] = line_sn
+                                    vel_array[i, j] = vel
+                                    disp_array[i, j] = sig
+                                    flux_array[i, j] = gauss_values['amplitude']
+
+                            except TypeError:
+
+                                sn_array[i, j] = line_sn
+                                vel_array[i, j] = np.nan
+                                disp_array[i, j] = np.nan
+                                flux_array[i, j] = np.nan
+
+                        else:
+
+                            # didn't reach target - store as nan
+
+                            print 'no improvement, stop trying to fix'
+
+                            sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
+
+        # loop around noise array to clean up nan entries
+        for i in range(0, len(noise_array)):
+            for j in range(0, len(noise_array[0])):
+                if np.isnan(noise_array[i][j]):
+                    print 'Fixing nan value'
+                    noise_array[i][j] = np.nanmedian(noise_array)
+
+        # print sn_array
+        # plot all of the arrays
+
+        try:
+
+            vel_min, vel_max = np.nanpercentile(vel_array[mask_x_low:mask_x_high,
+                                                          mask_y_low:mask_y_high],
+                                                [5.0, 95.0])
+            sig_min, sig_max = np.nanpercentile(disp_array[mask_x_low:mask_x_high,
+                                                           mask_y_low:mask_y_high],
+                                                [5.0, 95.0])
+            flux_min, flux_max = np.nanpercentile(flux_array[mask_x_low:mask_x_high,
+                                                             mask_y_low:mask_y_high],
+                                                  [5.0, 95.0])
+
+        except TypeError:
+
+            # origin of the error is lack of good S/N data
+            # can set the max and min at whatever
+            vel_min, vel_max = [-100, 100]
+            sig_min, sig_max = [0, 150]
+            flux_min, flux_max = [0, 5E-3]
+
+        plt.close('all')
+
+        # create 1x3 postage stamps of the different properties
+
+        fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+
+        im = ax[0].imshow(flux_array[mask_x_low:mask_x_high,
+                                     mask_y_low:mask_y_high],
+                          cmap=plt.get_cmap('jet'),
+                          vmin=flux_min,
+                          vmax=flux_max,
+                          interpolation='nearest')
+
+        # ax[0].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+        # ax[0].contour(flux_array, colors='k')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[0])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[0].set_title('[OIII] Flux')
+
+        im = ax[1].imshow(vel_array[mask_x_low:mask_x_high,
+                                    mask_y_low:mask_y_high],
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        # ax[1].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[1])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[1].set_title('[OIII] Velocity')
+
+        im = ax[2].imshow(disp_array[mask_x_low:mask_x_high,
+                                     mask_y_low:mask_y_high],
+                          vmin=sig_min,
+                          vmax=sig_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        # ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[2])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[2].set_title('[OIII] Dispersion')
+
+        plt.show()
+
+        fig.savefig('%s_stamps_gauss%s_t%s.pdf' % (incube[:-5],
+                                                   str(tol),
+                                                   str(threshold)))
+
+        plt.close('all')
+
+        return noise_array[mask_x_low:mask_x_high, mask_y_low:mask_y_high], signal_array[mask_x_low:mask_x_high, mask_y_low:mask_y_high]
+
+
+    def noise_from_mask(self,
+                        data,
+                        lower_l,
+                        upper_l,
+                        mask_x_low,
+                        mask_x_high,
+                        mask_y_low,
+                        mask_y_high):
+
+        """
+        Def:
+        *Helper function for the vel_field_mask_noise method*
+        Compute the noise level in a datacube by examining the pixels which
+        are not contaminated by the object - using exactly the same wavelength
+        pixels which were used to look at the [OIII] flux.
+
+        Input:
+                data - full datacube from stacked object
+                lower_l - lower wavelength limit
+                upper_l - upper wavelength limit
+                mask_x_low - lower spatial dimension in x-direction
+                mask_x_high - upper spatial dimension in x-direction
+                mask_y_low - lower spatial dimension in y-direction
+                mask_y_high - upper spatial dimension in y direction
+
+        Output:
+                noise - single value, which is the noise for the spaxel
+                        in consideration in the vel_field_mask_noise method
+
+        """
+        # create list to house the data from the unmasked pixels
+
+        noise_list = []
+        noise_values = []
+
+        # loop round and append to this list
+        # four different mask segments to append
+
+        for i in range(5, mask_x_low + 1):
+
+            for j in range(5, data.shape[2] - 5):
+
+                noise_list.append(data[:, i, j])
+
+        for i in range(mask_x_high, data.shape[1] - 5):
+
+            for j in range(5, data.shape[2] - 5):
+
+                noise_list.append(data[:, i, j])
+
+        for i in range(mask_x_low, mask_x_high + 1):
+
+            for j in range(5, mask_y_low + 1):
+
+                noise_list.append(data[:, i, j])
+
+        for i in range(mask_x_low, mask_x_high + 1):
+
+            for j in range(mask_y_high, data.shape[2] - 5):
+
+                noise_list.append(data[:, i, j])
+
+        # now for every entry in the noise list compute the noise
+        # and append to the noise_values list
+
+        for entry in noise_list:
+
+            noise_values.append(np.nansum(entry[lower_l:upper_l]))
+
+        noise_values = np.array(noise_values)
+
+        # what to do with these independent noise estimates? 
+        # will take the median for now but could also take the dispersion
+
+        final_noise = np.nanstd(noise_values)
+
+        return final_noise
+
+    def voronoi_binning_from_map(self,
+                                 incube,
+                                 line,
+                                 signal_2d,
+                                 noise_2d,
+                                 target_sn,
+                                 out_dir):
+
+        """
+        Def:
+        Take the output of one of the various signal to noise methods
+        e.g. in the velocity field and do a voronoi tesselation to increase
+        towards the target in lower signal regions. It is intended that the
+        2d arrays passed to this method will be truncated to the regions
+        supplied to mask the object
+
+        Input:      
+                line - the emission line to bin
+                signal_2d - input 2d array with the signal
+                noise_2d - input 2d array with the noise
+                target_sn -
+                out_dir - location to offload the created file to
+        Output:
+                voronoi_2d_binning_output.txt - file containing binning info
+        """
+
+        # ravel to make into 1d vectors
+
+        signal_1d = np.ravel(signal_2d)
+        noise_1d = np.ravel(noise_2d)
+        sn_1d = signal_1d / noise_1d
+
+        # make the coordinate arrays
+        xbin_shape = signal_2d.shape[0]
+        ybin_shape = signal_2d.shape[1]
+
+        xbin = np.arange(0, xbin_shape, 1)
+        ybin = np.arange(0, ybin_shape, 1)
+
+        ybin, xbin = np.meshgrid(ybin, xbin)
+
+        xbin = np.ravel(xbin)
+        ybin = np.ravel(ybin)
+
+        # write out to file to examine
+        np.savetxt(incube[:-5] + '_binning_input_' + line + '.txt',
+                   np.column_stack([xbin,
+                                    ybin,
+                                    signal_1d,
+                                    noise_1d,
+                                    sn_1d]),
+                   fmt=b'%.2f %.2f %.3E %.3E %.3f')
+
+        # now have everything required to run the voronoi_binning method
+
+        # Perform the actual computation. The vectors
+        # (binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale)
+        # are all generated in *output*
+        #
+        binNum, xNode, yNode, \
+            xBar, yBar, sn, nPixels, \
+            scale = self.voronoi_2d_binning(xbin,
+                                            ybin,
+                                            signal_1d,
+                                            noise_1d,
+                                            target_sn,
+                                            plot=1,
+                                            quiet=0)
+
+        # Save to a text file the initial coordinates of each pixel together
+        # with the corresponding bin number computed by this procedure.
+        # binNum uniquely specifies the bins and for this reason it is the only
+        # number required for any subsequent calculation on the bins.
+        #
+        # check for the existence of the output file
+        output_name = out_dir + '/voronoi_2d_binning_output.txt'
+
+        if os.path.isfile(output_name):
+
+            os.system('rm %s' % output_name)
+
+        np.savetxt(out_dir + '/voronoi_2d_binning_output.txt',
+                   np.column_stack([xbin, ybin, binNum]),
+                   fmt=b'%10.6f %10.6f %8i')
+
+        return output_name
+
+    def vor_output_fitting_mask(self,
+                                target_sn,
+                                sci_dir,
+                                vor_output,
+                                incube,
+                                centre_x,
+                                centre_y,
+                                mask_x_lower,
+                                mask_x_upper,
+                                mask_y_lower,
+                                mask_y_upper,
+                                z,
+                                tol,
+                                stack='median',
+                                line='oiii'):
+
+        """
+        Def: Take the output from the above voronoi binning methods
+        which is a txt file containing the pixel coordinates and the
+        allocated bins, extract each pixel from the incube by assigned bin,
+        stack these together using the chosen stack method and then
+        fit a gaussian to the appropriate emission line which should now
+        be stacked to the apppropriate s/n level. Finally return to the output
+        file and add a new column giving the relevant velocity value for each
+        of the bin numbers. Each pixel should have a velocity value associated
+        with it - can then choose later to ignore some of these which clearly
+        don't make any sense. Note the vor_output file shouldn't have any
+        column names so that the bin_values are assigned to 'col3'
+
+        Input:
+                vor_output - txt file produced from the voronoi binning alg.
+                                it contains the pixel coordinates and the
+                                bin allocated to each coordinate.
+                incube - The combined cube to which this analysis applies.
+                z - the redshift of the object in question, used to determine
+                    the position of different emission lines.
+                stack - method used to stack the spaxels together in each bin
+                line - the emission line under scrutiny for this test.
+        Output:
+                output.txt - file containing the same information as the
+                            vor_output txt file but with an additional column
+                            to show the velocity value associated with each
+                            pixel.
+        """
+        # sanity checks
+
+        if not(line != 'oiii' or line != 'oii' or line != 'hb'):
+
+            raise ValueError('Please ensure that you have'
+                             + ' chosen an appropriate emission line')
+
+        if not(stack != 'sum' or stack != 'median' or stack != 'average'):
+
+            raise ValueError('Please ensure that you have'
+                             + ' chosen an appropriate stacking method')
+        # first load the output file
+
+        table = ascii.read(vor_output)
+
+        # assign the bin_numbers
+
+        bin_arr = table['col3']
+
+        # find the filter id of the cube
+        cube_filter = cubeOps(incube).filter
+
+        # now have the bin list in array form. Look for unique bin entries
+        # and start a dictionary containing a unique bin key and a tuple of
+        # spaxel coordinates which correpsond to this.
+
+        bin_dict = dict()
+
+        for entry in table:
+
+            if entry[2] in bin_dict:
+
+                bin_dict[entry[2]].append([entry[0], entry[1]])
+
+            else:
+
+                bin_dict[entry[2]] = [[entry[0], entry[1]]]
+
+        # the bin dictionary is now populated with the pixel coordinates
+        # and has the bin numbers as keys. Time for first external function
+        # vor_pixel_stack which will create stacks of these pixels in each bin
+        # for the chosen cube
+
+        wave_array, stack_dict = self.vor_pixel_stack_mask(incube,
+                                                           bin_dict,
+                                                           stack,
+                                                           mask_x_lower,
+                                                           mask_x_upper,
+                                                           mask_y_lower,
+                                                           mask_y_upper)
+
+        # now need to fit the spectrum around the chosen emission line
+        # get the dictionary of initial gaussian params for chosen line
+
+        if line == 'oiii':
+
+            central_wl = 0.500824 * (1. + z)
+
+        elif line == 'hb':
+
+            central_wl = 0.486268 * (1. + z)
+
+        elif line == 'oii':
+
+            central_wl = 0.3729875 * (1. + z)
+
+        # now loop around the stack dictionary entries and prepare the
+        # fit_wl and fit_flux for input into the vor_gauss_fit method
+        # initialise the velocity dictionary
+
+        vel_dict = dict()
+        sig_dict = dict()
+        flux_dict = dict()
+        line_idx = np.argmin(np.abs(wave_array - central_wl))
+
+        for entry in stack_dict:
+
+            spec = stack_dict[entry]
+
+            if cube_filter == 'K':
+
+                # first search for the linepeak, which may be different
+                # to that specified by the systemic redshift
+                # set the upper and lower ranges for the t_index search
+
+                lower_t = 8
+                upper_t = 9
+
+                t_index = np.argmax(spec[line_idx - lower_t:
+                                         line_idx + upper_t])
+
+                # need this to be an absolute index
+                t_index = t_index + line_idx - 8
+
+                # then sum the flux inside the region over which the line
+                # will be. Width of line is roughly 0.003, which is 10
+                # spectral elements in K and 6 in HK
+
+                # set the limits for the signal estimate
+
+                lower_limit = t_index - 10
+                upper_limit = t_index + 11
+
+                fit_flux = spec[lower_limit:upper_limit]
+
+                fit_wl = wave_array[lower_limit:upper_limit]
+
+            elif cube_filter == 'HK':
+
+                lower_t = 5
+                upper_t = 6
+
+                t_index = np.argmax(spec[line_idx - lower_t:
+                                                line_idx + upper_t])
+
+                t_index = t_index + line_idx - 5
+
+                # set the limits for the signal estimate
+
+                lower_limit = t_index - 5
+                upper_limit = t_index + 6
+
+                fit_flux = spec[lower_limit:upper_limit]
+
+                fit_wl = wave_array[lower_limit:upper_limit]
+
+            # any other band follows the same rules as K right now
+
+            else:
+
+                lower_t = 8
+                upper_t = 9
+
+                t_index = np.argmax(spec[line_idx - lower_t:
+                                                line_idx + upper_t])
+
+                t_index = t_index + line_idx - 8
+
+                # set the limits for the signal estimate
+
+                lower_limit = t_index - 10
+                upper_limit = t_index + 11
+
+                fit_flux = spec[lower_limit:upper_limit]
+
+                fit_wl = wave_array[lower_limit:upper_limit]   
+
+            best_values, covar = self.gauss_fit(fit_wl,
+                                                fit_flux)
+
+            try:
+
+                if (100 * np.sqrt(covar[2][2]) / best_values['amplitude']) > tol \
+                   or (100 * np.sqrt(covar[1][1]) / best_values['center']) > tol \
+                   or (100 * np.sqrt(covar[0][0]) / best_values['sigma']) > tol:
+
+                    print 'Gaussian errors too large - reject fit'
+
+                    vel_dict[entry] = np.nan
+                    flux_dict[entry] = np.nan
+                    sig_dict[entry] = np.nan
+
+                else:
+
+                    c = 2.99792458E5
+
+                    vel = c * ((best_values['center']
+                                - central_wl) / central_wl)
+
+                    sig = c * ((best_values['sigma']) / central_wl)
+
+                    vel_dict[entry] = vel
+                    sig_dict[entry] = sig
+                    flux_dict[entry] = best_values['amplitude']
+
+
+            except TypeError:
+
+                vel_dict[entry] = np.nan
+                flux_dict[entry] = np.nan
+                sig_dict[entry] = np.nan    
+
+            # assuming that the redshift measured in qfits is the
+            # correct one - subtract the fitted centre and convert
+            # to kms-1
+
+        plt.close('all')
+
+        # have the velocity values for each bin now. Need to return and
+        # assign to every pixel the correct velocity value and sigma value
+
+        vel_list = []
+        sig_list = []
+        flux_list = []
+
+        for entry in bin_arr:
+
+            vel_list.append(vel_dict[entry])
+            sig_list.append(sig_dict[entry])
+            flux_list.append(flux_dict[entry])
+
+        vel_list = np.array(vel_list)
+        sig_list = np.array(sig_list)
+        flux_list = np.array(flux_list)
+
+        # and reshape to the 2D format
+
+        cube_data_x = cubeOps(incube).data[:, mask_x_lower:mask_x_upper, mask_y_lower:mask_y_upper].shape[1]
+        cube_data_y = cubeOps(incube).data[:, mask_x_lower:mask_x_upper, mask_y_lower:mask_y_upper].shape[2]
+
+        vel_2d = vel_list.reshape((cube_data_x, cube_data_y))
+        sig_2d = sig_list.reshape((cube_data_x, cube_data_y))
+        flux_2d = flux_list.reshape((cube_data_x, cube_data_y))
+
+        # plot the results
+
+        vel_fig, vel_ax = plt.subplots(figsize=(18, 6), nrows=1, ncols=3)
+
+        vel_ax[0].minorticks_on()
+        vel_ax[1].minorticks_on()
+        vel_ax[2].minorticks_on()
+
+        # sometimes this throws a TypeError if hardly any data points
+        try:
+
+            vel_min, vel_max = np.nanpercentile(vel_2d, [10.0, 90.0])
+            sig_min, sig_max = np.nanpercentile(sig_2d, [10.0, 90.0])
+            flux_min, flux_max = np.nanpercentile(flux_2d, [10.0, 90.0])
+
+        except TypeError:
+
+            # origin of the error is lack of good S/N data
+            # can set the max and min at whatever
+            vel_min, vel_max = [-100, 100]
+            sig_min, sig_max = [0, 100]
+            flux_min, flux_max = [0, 5E-19]
+
+        im_vel = vel_ax[0].imshow(vel_2d, aspect='auto',
+                                  vmin=vel_min,
+                                  vmax=vel_max,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+        vel_ax[0].set_title(line + ' velocity')
+
+        # add colourbar to each plot
+        divider_vel = make_axes_locatable(vel_ax[0])
+        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_vel, cax=cax_vel)
+
+        im_sig = vel_ax[1].imshow(sig_2d, aspect='auto',
+                                  vmin=sig_min,
+                                  vmax=sig_max,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+        vel_ax[1].set_title(line + ' dispersion')
+
+        # add colourbar to each plot
+        divider_sig = make_axes_locatable(vel_ax[1])
+        cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_sig, cax=cax_sig)
+
+        im_vel = vel_ax[2].imshow(flux_2d, aspect='auto',
+                                  vmin=flux_min,
+                                  vmax=flux_max,
+                                  interpolation='nearest',
+                                  cmap=plt.get_cmap('jet'))
+
+        vel_ax[2].set_title(line + ' flux')
+
+        # add colourbar to each plot
+        divider_vel = make_axes_locatable(vel_ax[2])
+        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im_vel, cax=cax_vel)
+        # vel_fig.colorbar(im)
+
+        # plt.tight_layout()
+        plt.show()
+
+        vel_fig.savefig('%s_voronoi%s.pdf' % (incube[:-5],
+                                          str(target_sn)))
+
+        return flux_2d, vel_2d, sig_2d
+
+    def vor_pixel_stack_mask(self,
+                             incube,
+                             bin_dict,
+                             stack,
+                             mask_x_lower,
+                             mask_x_upper,
+                             mask_y_lower,
+                             mask_y_upper):
+
+        """
+        Def: Take the bin_dict - look at each individual key, extract the
+        spectra from the given set of pixel coordinates and combine these
+        with the given stacking method. End product is a dictionary with the
+        same unique keys as before but with one 2048 long spectrum as the
+        value. This is a helper function for vor_output_fitting.
+
+        Input:
+                incube - the cube to which the pixel coordinates apply
+                bin_dict - output from vor_output_fitting
+                stack - stacking method set in vor_output_fitting
+
+        Output:
+                stack_dict - the resultant dictionary with bin numbers as
+                            the keys and stacked spectra as values
+                wave_array - the wavelength array corresponding to the flux
+        """
+        # open the incube
+
+        cube_data = fits.open(incube)[1].data[:, mask_x_lower:mask_x_upper, mask_y_lower:mask_y_upper]
+
+        # grab the wavelength array from the incube
+
+        wave_array = cubeOps(incube).wave_array
+
+        # intialise new stacking dictionary
+
+        stack_dict = dict()
+
+        # loop around the bin_dict entries
+
+        for entry in bin_dict:
+
+            # initialise temporary stacking list
+
+            temp_list = []
+
+            # loop around the sets of coordinates for each entry
+
+            for coords in bin_dict[entry]:
+
+                temp_list.append(cube_data[:, coords[0], coords[1]])
+
+            # stack the spectra with the chosen stacking method
+
+            if stack == 'sum':
+
+                stacked_flux = np.nansum(temp_list, axis=0)
+
+            elif stack == 'average':
+
+                stacked_flux = np.nanmean(temp_list, axis=0)
+
+            elif stack == 'median':
+
+                stacked_flux = np.nanmedian(temp_list, axis=0)
+
+            # add the stacked flux to the stack_dict
+
+            stack_dict[entry] = stacked_flux
+
+        # return the wave_array and the stack_dict
+
+        return wave_array, stack_dict
+
+
+    def masked_voronoi_fitting(self,
+                               target_sn,
+                               out_dir,
+                               incube,
+                               centre_x,
+                               centre_y,
+                               mask_x_lower,
+                               mask_x_upper,
+                               mask_y_lower,
+                               mask_y_upper,
+                               redshift,
+                               threshold,
+                               stack='median',
+                               line='oiii',
+                               tol=20):
+
+        """
+        Def:
+        First find the signal and noise arrays and then do some voronoi
+        binning and fitting to the results of this to get the velocity field
+
+
+        """
+
+        # first get the signal and noise arrays from the vel_field_mask_noise
+        # method. This is changeable.
+
+        noise_2d, signal_2d = self.vel_field_mask_noise(incube,
+                                                        line,
+                                                        redshift,
+                                                        threshold,
+                                                        centre_x,
+                                                        centre_y,
+                                                        mask_x_lower,
+                                                        mask_x_upper,
+                                                        mask_y_lower,
+                                                        mask_y_upper)
+
+        # next feed this into the voronoi_binning_from_mask
+
+        output_name = self.voronoi_binning_from_map(incube,
+                                                    line,
+                                                    signal_2d,
+                                                    noise_2d,
+                                                    target_sn,
+                                                    out_dir)
+
+        # next fit with the vor_output_fitting_mask method
+
+        flux_2d, vel_2d, sig_2d = self.vor_output_fitting_mask(target_sn,
+                                                               out_dir,
+                                                               output_name,
+                                                               incube,
+                                                               centre_x,
+                                                               centre_y,
+                                                               mask_x_lower,
+                                                               mask_x_upper,
+                                                               mask_y_lower,
+                                                               mask_y_upper,
+                                                               redshift,
+                                                               tol)
