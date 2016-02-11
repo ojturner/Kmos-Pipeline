@@ -4672,8 +4672,8 @@ class pipelineOps(object):
 
                 # Now just execute the esorex recipe for this new file
                 os.system('esorex --output-dir=%s kmos_sci_red' % sci_dir
-                          + '  --pix_scale=0.1 --oscan=FALSE --sky_tweak=TRUE'
-                          + ' --edge_nan=TRUE sci_reduc_temp.sof')
+                          + '  --pix_scale=0.2 --oscan=FALSE --sky_tweak=TRUE'
+                          + '  --b_samples=3072 --edge_nan=TRUE sci_reduc_temp.sof')
 
                 # We have all the science products now
                 # execute the above method for each
@@ -10993,7 +10993,7 @@ class pipelineOps(object):
                         threshold,
                         centre_x,
                         centre_y,
-                        tol=40,
+                        tol=30,
                         method='median'):
 
         """
@@ -11768,7 +11768,7 @@ class pipelineOps(object):
                              mask_x_high,
                              mask_y_low,
                              mask_y_high,
-                             tol=40,
+                             tol=30,
                              method='median'):
 
         """
@@ -12302,7 +12302,7 @@ class pipelineOps(object):
         # set the title
         ax[2].set_title('[OIII] Dispersion')
 
-        plt.show()
+        # plt.show()
 
         fig.savefig('%s_stamps_gauss%s_t%s.pdf' % (incube[:-5],
                                                    str(tol),
@@ -12740,9 +12740,9 @@ class pipelineOps(object):
 
         vel_fig, vel_ax = plt.subplots(figsize=(18, 6), nrows=1, ncols=3)
 
-        vel_ax[0].minorticks_on()
-        vel_ax[1].minorticks_on()
-        vel_ax[2].minorticks_on()
+#        vel_ax[0].minorticks_on()
+#        vel_ax[1].minorticks_on()
+#        vel_ax[2].minorticks_on()
 
         # sometimes this throws a TypeError if hardly any data points
         try:
@@ -12759,39 +12759,39 @@ class pipelineOps(object):
             sig_min, sig_max = [0, 100]
             flux_min, flux_max = [0, 5E-19]
 
-        im_vel = vel_ax[0].imshow(vel_2d, aspect='auto',
+        im_vel = vel_ax[1].imshow(vel_2d, aspect='auto',
                                   vmin=vel_min,
                                   vmax=vel_max,
                                   interpolation='nearest',
                                   cmap=plt.get_cmap('jet'))
 
-        vel_ax[0].set_title(line + ' velocity')
+        vel_ax[1].set_title(line + ' velocity')
 
         # add colourbar to each plot
         divider_vel = make_axes_locatable(vel_ax[0])
         cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
         plt.colorbar(im_vel, cax=cax_vel)
 
-        im_sig = vel_ax[1].imshow(sig_2d, aspect='auto',
+        im_sig = vel_ax[2].imshow(sig_2d, aspect='auto',
                                   vmin=sig_min,
                                   vmax=sig_max,
                                   interpolation='nearest',
                                   cmap=plt.get_cmap('jet'))
 
-        vel_ax[1].set_title(line + ' dispersion')
+        vel_ax[2].set_title(line + ' dispersion')
 
         # add colourbar to each plot
         divider_sig = make_axes_locatable(vel_ax[1])
         cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
         plt.colorbar(im_sig, cax=cax_sig)
 
-        im_vel = vel_ax[2].imshow(flux_2d, aspect='auto',
+        im_vel = vel_ax[0].imshow(flux_2d, aspect='auto',
                                   vmin=flux_min,
                                   vmax=flux_max,
                                   interpolation='nearest',
                                   cmap=plt.get_cmap('jet'))
 
-        vel_ax[2].set_title(line + ' flux')
+        vel_ax[0].set_title(line + ' flux')
 
         # add colourbar to each plot
         divider_vel = make_axes_locatable(vel_ax[2])
@@ -12800,7 +12800,7 @@ class pipelineOps(object):
         # vel_fig.colorbar(im)
 
         # plt.tight_layout()
-        plt.show()
+        # plt.show()
 
         vel_fig.savefig('%s_voronoi%s.pdf' % (incube[:-5],
                                           str(target_sn)))
@@ -12909,6 +12909,7 @@ class pipelineOps(object):
         # first get the signal and noise arrays from the vel_field_mask_noise
         # method. This is changeable.
 
+        print 'INCUBE %s' % incube 
         noise_2d, signal_2d = self.vel_field_mask_noise(incube,
                                                         line,
                                                         redshift,
@@ -12918,7 +12919,8 @@ class pipelineOps(object):
                                                         mask_x_lower,
                                                         mask_x_upper,
                                                         mask_y_lower,
-                                                        mask_y_upper)
+                                                        mask_y_upper,
+                                                        tol=tol)
 
         # next feed this into the voronoi_binning_from_mask
 
@@ -12943,3 +12945,174 @@ class pipelineOps(object):
                                                                mask_y_upper,
                                                                redshift,
                                                                tol)
+
+    def multi_apply_masked_voronoi(self,
+                                   target_sn,
+                                   out_dir,
+                                   infile,
+                                   threshold,
+                                   line='oiii',
+                                   **kwargs):
+
+        """
+        Def: Apply the above masked voronoi fitting method to a
+        group of objects defined in the infile
+
+        Input:
+                infile - file containing the object name and the centre
+                            coordinates
+                line - emission line to fit
+                threshold - s/n threshold to exceed
+                **kwargs
+                tol - (default of 40)
+                method - either sum, median or mean. This determines how the
+                            spaxels are combined if stacking is necessary
+
+        """
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            print 'OBJECT NAME %s' % obj_name
+
+            cube = cubeOps(obj_name)
+
+            redshift = entry[1]
+
+            centre_x = entry[3]
+
+            centre_y = entry[2]
+
+            std_cube = entry[4]
+
+            sky_cube = entry[5]
+
+            mask_x_lower = entry[6]
+
+            mask_x_upper = entry[7]
+
+            mask_y_lower = entry[8]
+
+            mask_y_upper = entry[9]
+
+            # define the science directory for each cube
+            sci_dir = obj_name[:len(obj_name) - obj_name[::-1].find("/") - 1]
+
+            print "\nDoing %s (redshift = %.3f) ..." % (obj_name, redshift)
+
+            try:
+
+                if kwargs['tol']:
+
+                    tolerance = kwargs['tol']
+
+                else:
+
+                    tolerance = 20
+
+            except KeyError:
+
+                tolerance = 20
+
+            try:
+
+                if kwargs['stack']:
+
+                    stack_method = kwargs['stack']
+
+                else:
+
+                    stack_method = 'median'
+
+            except KeyError:
+
+                stack_method = 'median'
+
+            self.masked_voronoi_fitting(target_sn,
+                                        out_dir,
+                                        obj_name,
+                                        centre_x,
+                                        centre_y,
+                                        mask_x_lower,
+                                        mask_x_upper,
+                                        mask_y_lower,
+                                        mask_y_upper,
+                                        redshift,
+                                        threshold,
+                                        stack=stack_method,
+                                        line='oiii',
+                                        tol=tolerance)
+
+    def perturb_array(self,
+                      noise_array,
+                      flux_array):
+
+        """
+        Def:
+        Take the flux array and perturb each component of that by the
+        corresponding component in the noise array and return a new array
+        of the same dimensions as the original flux_array. Useful for Monte
+        Carlo and checking whether gaussian fitting is accurate enough
+
+        Input:
+
+                noise_array - equal length array to the flux containing the
+                                sigma values
+                flux_array - array containing the flux values
+
+        Output:
+                new_flux - containing the perturbed values
+
+        """
+
+        # construct the new flux array
+
+        new_flux = []
+
+        # do the perturbation using a gaussian distributed value
+        # with mean of the flux array and sigma of the noise value
+
+        for f, n in zip(flux_array, noise_array):
+
+            new_flux.append(np.random.normal(loc=f, scale=n))
+
+        return np.array(new_flux)
+
+    def perturb_value(self,
+                      noise,
+                      flux_array):
+
+        """
+        Def:
+        Take the flux array and perturb each component of that by the
+        corresponding component in the noise array and return a new array
+        of the same dimensions as the original flux_array. Useful for Monte
+        Carlo and checking whether gaussian fitting is accurate enough
+
+        Input:
+
+                noise - single value for the noise
+                flux_array - array containing the flux values
+
+        Output:
+                new_flux - containing the perturbed values
+
+        """
+
+        # construct the new flux array
+
+        new_flux = []
+
+        # do the perturbation using a gaussian distributed value
+        # with mean of the flux array and sigma of the noise value
+
+        for f in flux_array:
+
+            new_flux.append(np.random.normal(loc=f, scale=noise))
+
+        return np.array(new_flux)
+
