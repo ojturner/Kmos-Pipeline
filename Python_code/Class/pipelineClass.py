@@ -10994,7 +10994,8 @@ class pipelineOps(object):
                         centre_x,
                         centre_y,
                         tol=30,
-                        method='median'):
+                        method='median',
+                        ntimes=1000):
 
         """
         Def:
@@ -11204,17 +11205,58 @@ class pipelineOps(object):
 
                     plt.close('all')
 
-                    gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
-                                                         spaxel_spec[lower_limit: upper_limit])
+                    # attempting Monte Carlo procedure to compute the gaussian
+                    # parameters and the uncertainties
+
+                    mc_sig_array = []
+                    mc_amp_array = []
+                    mc_centre_array = []
+
+                    for loop in range(0, ntimes):
+
+                        print 'fitting %sth gaussian' % loop
+
+                        # get the perturbed array using the helper function
+                        new_flux = self.perturb_array(sigma_array,
+                                                      spaxel_spec[lower_limit: upper_limit])
+
+                        # fit the gaussian to recover the parameters
+                        gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                             new_flux)
+
+                        # append the returned values to the mc arrays
+
+                        mc_sig_array.append(gauss_values['sigma'])
+                        mc_amp_array.append(gauss_values['amplitude'])
+                        mc_centre_array.append(gauss_values['center'])
+
+                    # np array the resultant mc arrays
+
+                    mc_sig_array = np.array(mc_sig_array)
+                    mc_amp_array = np.array(mc_amp_array)
+                    mc_centre_array = np.array(mc_centre_array)
+
+                    line_amp = np.nanmedian(mc_amp_array)
+                    line_amp_error = np.nanstd(mc_amp_array)
+
+                    line_sig = np.nanmedian(mc_sig_array)
+                    line_sig_error = np.nanstd(mc_sig_array)
+
+                    line_centre = np.nanmedian(mc_centre_array)
+                    line_centre_error = np.nanstd(mc_centre_array)
+
+                    print 'LINE CENTRE AND ERROR %s %s' % (line_centre, line_centre_error)
+                    print 'LINE SIG AND ERROR %s %s' % (line_sig, line_sig_error)
+                    print 'LINE AMP AND ERROR %s %s' % (line_amp, line_amp_error)
 
                     # if the gaussian does not fit correctly this can throw
                     # a nonetype error, since covar is empty
 
                     try:
 
-                        if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
-                           or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
-                           or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+                        if (line_centre_error / line_centre ) > tol \
+                            or (line_amp_error / line_amp ) > tol \
+                            or (line_sig_error / line_sig ) > tol:
 
                             print 'Gaussian errors too large - reject fit'
 
@@ -11227,15 +11269,15 @@ class pipelineOps(object):
 
                             c = 2.99792458E5
 
-                            vel = c * ((gauss_values['center']
+                            vel = c * ((line_centre
                                         - central_wl) / central_wl)
 
-                            sig = c * ((gauss_values['sigma']) / central_wl)
+                            sig = c * ((line_sig) / central_wl)
 
                             sn_array[i, j] = line_sn
                             vel_array[i, j] = vel
                             disp_array[i, j] = sig
-                            flux_array[i, j] = gauss_values['amplitude']
+                            flux_array[i, j] = line_amp
 
                     except TypeError:
 
@@ -11300,14 +11342,55 @@ class pipelineOps(object):
 
                         plt.close('all')
 
-                        gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
-                                                             spec)
+                        mc_sig_array = []
+                        mc_amp_array = []
+                        mc_centre_array = []
+
+                        for loop in range(0, ntimes):
+
+                            print 'fitting %sth gaussian' % loop
+
+                            # get the perturbed array using the helper function
+                            new_flux = self.perturb_array(sigma_array,
+                                                          spaxel_spec[lower_limit: upper_limit])
+
+                            # fit the gaussian to recover the parameters
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                                 new_flux)
+
+                            # append the returned values to the mc arrays
+
+                            mc_sig_array.append(gauss_values['sigma'])
+                            mc_amp_array.append(gauss_values['amplitude'])
+                            mc_centre_array.append(gauss_values['center'])
+
+                        # np array the resultant mc arrays
+
+                        mc_sig_array = np.array(mc_sig_array)
+                        mc_amp_array = np.array(mc_amp_array)
+                        mc_centre_array = np.array(mc_centre_array)
+
+                        line_amp = np.nanmedian(mc_amp_array)
+                        line_amp_error = np.nanstd(mc_amp_array)
+
+                        line_sig = np.nanmedian(mc_sig_array)
+                        line_sig_error = np.nanstd(mc_sig_array)
+
+                        line_centre = np.nanmedian(mc_centre_array)
+                        line_centre_error = np.nanstd(mc_centre_array)
+
+                        print 'LINE CENTRE AND ERROR %s %s' % (line_centre, line_centre_error)
+                        print 'LINE SIG AND ERROR %s %s' % (line_sig, line_sig_error)
+                        print 'LINE AMP AND ERROR %s %s' % (line_amp, line_amp_error)
+
+                        # if the gaussian does not fit correctly this can throw
+                        # a nonetype error, since covar is empty
 
                         try:
 
-                            if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
-                               or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
-                               or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+                            if (line_centre_error / line_centre ) > tol \
+                                or (line_amp_error / line_amp ) > tol \
+                                or (line_sig_error / line_sig ) > tol:
 
                                 print 'Gaussian errors too large - reject fit'
 
@@ -11320,15 +11403,15 @@ class pipelineOps(object):
 
                                 c = 2.99792458E5
 
-                                vel = c * ((gauss_values['center']
+                                vel = c * ((line_centre
                                             - central_wl) / central_wl)
 
-                                sig = c * ((gauss_values['sigma']) / central_wl)
+                                sig = c * ((line_sig) / central_wl)
 
                                 sn_array[i, j] = line_sn
                                 vel_array[i, j] = vel
                                 disp_array[i, j] = sig
-                                flux_array[i, j] = gauss_values['amplitude']
+                                flux_array[i, j] = line_amp
 
                         except TypeError:
 
@@ -11387,14 +11470,55 @@ class pipelineOps(object):
                             
                             plt.close('all')
 
-                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
-                                                                 spec)
+                            mc_sig_array = []
+                            mc_amp_array = []
+                            mc_centre_array = []
+
+                            for loop in range(0, ntimes):
+
+                                print 'fitting %sth gaussian' % loop
+
+                                # get the perturbed array using the helper function
+                                new_flux = self.perturb_array(sigma_array,
+                                                              spaxel_spec[lower_limit: upper_limit])
+
+                                # fit the gaussian to recover the parameters
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                                     new_flux)
+
+                                # append the returned values to the mc arrays
+
+                                mc_sig_array.append(gauss_values['sigma'])
+                                mc_amp_array.append(gauss_values['amplitude'])
+                                mc_centre_array.append(gauss_values['center'])
+
+                            # np array the resultant mc arrays
+
+                            mc_sig_array = np.array(mc_sig_array)
+                            mc_amp_array = np.array(mc_amp_array)
+                            mc_centre_array = np.array(mc_centre_array)
+
+                            line_amp = np.nanmedian(mc_amp_array)
+                            line_amp_error = np.nanstd(mc_amp_array)
+
+                            line_sig = np.nanmedian(mc_sig_array)
+                            line_sig_error = np.nanstd(mc_sig_array)
+
+                            line_centre = np.nanmedian(mc_centre_array)
+                            line_centre_error = np.nanstd(mc_centre_array)
+
+                            print 'LINE CENTRE AND ERROR %s %s' % (line_centre, line_centre_error)
+                            print 'LINE SIG AND ERROR %s %s' % (line_sig, line_sig_error)
+                            print 'LINE AMP AND ERROR %s %s' % (line_amp, line_amp_error)
+
+                            # if the gaussian does not fit correctly this can throw
+                            # a nonetype error, since covar is empty
 
                             try:
 
-                                if (100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']) > tol \
-                                   or (100 * np.sqrt(covar[1][1]) / gauss_values['center']) > tol \
-                                   or (100 * np.sqrt(covar[0][0]) / gauss_values['sigma']) > tol:
+                                if (line_centre_error / line_centre ) > tol \
+                                   or (line_amp_error / line_amp ) > tol \
+                                   or (line_sig_error / line_sig ) > tol:
 
                                     print 'Gaussian errors too large - reject fit'
 
@@ -11407,15 +11531,15 @@ class pipelineOps(object):
 
                                     c = 2.99792458E5
 
-                                    vel = c * ((gauss_values['center']
+                                    vel = c * ((line_centre
                                                 - central_wl) / central_wl)
 
-                                    sig = c * ((gauss_values['sigma']) / central_wl)
+                                    sig = c * ((line_sig) / central_wl)
 
                                     sn_array[i, j] = line_sn
                                     vel_array[i, j] = vel
                                     disp_array[i, j] = sig
-                                    flux_array[i, j] = gauss_values['amplitude']
+                                    flux_array[i, j] = line_amp
 
                             except TypeError:
 
@@ -11662,7 +11786,7 @@ class pipelineOps(object):
         out = gmod.fit(fit_flux, pars, x=fit_wl)
 
         # print the fit report
-        print out.fit_report()
+        # print out.fit_report()
 
         # plot to make sure things are working
         fig, ax = plt.subplots(figsize=(14, 6))
@@ -12250,8 +12374,25 @@ class pipelineOps(object):
 
         fig, ax = plt.subplots(1, 3, figsize=(18, 6))
 
-        im = ax[0].imshow(flux_array[mask_x_low:mask_x_high,
-                                     mask_y_low:mask_y_high],
+        flux_cut = flux_array[mask_x_low:mask_x_high,
+                              mask_y_low:mask_y_high]
+
+        masked_flux_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_low and i <= mask_x_high) \
+                   and (j >= mask_y_low and j <= mask_y_high):
+
+                    masked_flux_array[i][j] = flux_cut[i - mask_x_low - 1][j - mask_y_low - 1]
+
+                else:
+
+                    masked_flux_array[i][j] = masked_flux_array[i][j]
+
+        im = ax[0].imshow(masked_flux_array,
                           cmap=plt.get_cmap('jet'),
                           vmin=flux_min,
                           vmax=flux_max,
@@ -12268,8 +12409,25 @@ class pipelineOps(object):
         # set the title
         ax[0].set_title('[OIII] Flux')
 
-        im = ax[1].imshow(vel_array[mask_x_low:mask_x_high,
-                                    mask_y_low:mask_y_high],
+        vel_cut = vel_array[mask_x_low:mask_x_high,
+                            mask_y_low:mask_y_high]
+
+        masked_vel_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_low and i <= mask_x_high) \
+                   and (j >= mask_y_low and j <= mask_y_high):
+
+                    masked_vel_array[i][j] = vel_cut[i - mask_x_low - 1][j - mask_y_low - 1]
+
+                else:
+
+                    masked_vel_array[i][j] = masked_vel_array[i][j]
+
+        im = ax[1].imshow(masked_vel_array,
                           vmin=vel_min,
                           vmax=vel_max,
                           cmap=plt.get_cmap('jet'),
@@ -12285,8 +12443,25 @@ class pipelineOps(object):
         # set the title
         ax[1].set_title('[OIII] Velocity')
 
-        im = ax[2].imshow(disp_array[mask_x_low:mask_x_high,
-                                     mask_y_low:mask_y_high],
+        disp_cut = disp_array[mask_x_low:mask_x_high,
+                              mask_y_low:mask_y_high]
+
+        masked_disp_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_low and i <= mask_x_high) \
+                   and (j >= mask_y_low and j <= mask_y_high):
+
+                    masked_disp_array[i][j] = disp_cut[i - mask_x_low - 1][j - mask_y_low - 1]
+
+                else:
+
+                    masked_disp_array[i][j] = masked_disp_array[i][j]
+
+        im = ax[2].imshow(masked_disp_array,
                           vmin=sig_min,
                           vmax=sig_max,
                           cmap=plt.get_cmap('jet'),
@@ -12480,6 +12655,7 @@ class pipelineOps(object):
 
     def vor_output_fitting_mask(self,
                                 target_sn,
+                                threshold,
                                 sci_dir,
                                 vor_output,
                                 incube,
@@ -12533,16 +12709,25 @@ class pipelineOps(object):
 
             raise ValueError('Please ensure that you have'
                              + ' chosen an appropriate stacking method')
+
+        # initiate an instance of the object
+        cube = cubeOps(incube)
+
         # first load the output file
 
         table = ascii.read(vor_output)
+
+        # assign the x and y dimensions of the data
+        xpixs = cube.data.shape[1]
+
+        ypixs = cube.data.shape[2]
 
         # assign the bin_numbers
 
         bin_arr = table['col3']
 
         # find the filter id of the cube
-        cube_filter = cubeOps(incube).filter
+        cube_filter = cube.filter
 
         # now have the bin list in array form. Look for unique bin entries
         # and start a dictionary containing a unique bin key and a tuple of
@@ -12625,6 +12810,17 @@ class pipelineOps(object):
                 lower_limit = t_index - 10
                 upper_limit = t_index + 11
 
+                line_counts = np.nansum(spec[lower_limit:
+                                             upper_limit])
+
+                line_noise = self.noise_from_mask(cube.data,
+                                                  lower_limit,
+                                                  upper_limit,
+                                                  mask_x_lower,
+                                                  mask_x_upper,
+                                                  mask_y_lower,
+                                                  mask_y_upper)
+
                 fit_flux = spec[lower_limit:upper_limit]
 
                 fit_wl = wave_array[lower_limit:upper_limit]
@@ -12648,6 +12844,17 @@ class pipelineOps(object):
 
                 fit_wl = wave_array[lower_limit:upper_limit]
 
+                line_counts = np.nansum(spec[lower_limit:
+                                             upper_limit])
+
+                line_noise = self.noise_from_mask(cube.data,
+                                                  lower_limit,
+                                                  upper_limit,
+                                                  mask_x_lower,
+                                                  mask_x_upper,
+                                                  mask_y_lower,
+                                                  mask_y_upper)
+
             # any other band follows the same rules as K right now
 
             else:
@@ -12656,7 +12863,7 @@ class pipelineOps(object):
                 upper_t = 9
 
                 t_index = np.argmax(spec[line_idx - lower_t:
-                                                line_idx + upper_t])
+                                         line_idx + upper_t])
 
                 t_index = t_index + line_idx - 8
 
@@ -12667,46 +12874,75 @@ class pipelineOps(object):
 
                 fit_flux = spec[lower_limit:upper_limit]
 
-                fit_wl = wave_array[lower_limit:upper_limit]   
+                fit_wl = wave_array[lower_limit:upper_limit]
 
-            best_values, covar = self.gauss_fit(fit_wl,
-                                                fit_flux)
+                line_counts = np.nansum(spec[lower_limit:
+                                             upper_limit])
 
-            try:
+                line_noise = self.noise_from_mask(cube.data,
+                                                  lower_limit,
+                                                  upper_limit,
+                                                  mask_x_lower,
+                                                  mask_x_upper,
+                                                  mask_y_lower,
+                                                  mask_y_upper)
 
-                if (100 * np.sqrt(covar[2][2]) / best_values['amplitude']) > tol \
-                   or (100 * np.sqrt(covar[1][1]) / best_values['center']) > tol \
-                   or (100 * np.sqrt(covar[0][0]) / best_values['sigma']) > tol:
+            if line_counts / line_noise > threshold:
 
-                    print 'Gaussian errors too large - reject fit'
+                # the voronoi binning has raised above the threshold
+                # and this should be accepted (given that the signal to noise
+                # computation can be trusted)
+
+                best_values, covar = self.gauss_fit(fit_wl,
+                                                    fit_flux)
+
+                # if above gaussian error tolerance chuck away
+
+                try:
+
+                    if (100 * np.sqrt(covar[2][2]) / best_values['amplitude']) > tol \
+                       or (100 * np.sqrt(covar[1][1]) / best_values['center']) > tol \
+                       or (100 * np.sqrt(covar[0][0]) / best_values['sigma']) > tol:
+
+                        print 'Gaussian errors too large - reject fit'
+
+                        vel_dict[entry] = np.nan
+                        flux_dict[entry] = np.nan
+                        sig_dict[entry] = np.nan
+
+                    else:
+
+                        # otherwise do the fitting and return the
+                        # parameters
+
+                        c = 2.99792458E5
+
+                        vel = c * ((best_values['center']
+                                    - central_wl) / central_wl)
+
+                        sig = c * ((best_values['sigma']) / central_wl)
+
+                        vel_dict[entry] = vel
+                        sig_dict[entry] = sig
+                        flux_dict[entry] = best_values['amplitude']
+
+                except TypeError:
 
                     vel_dict[entry] = np.nan
                     flux_dict[entry] = np.nan
                     sig_dict[entry] = np.nan
 
-                else:
+            elif line_counts / line_noise < threshold:
 
-                    c = 2.99792458E5
+                # the voronoi binning did not raise above the threshold
+                # despite claiming to have done.
+                # reject this fit
 
-                    vel = c * ((best_values['center']
-                                - central_wl) / central_wl)
-
-                    sig = c * ((best_values['sigma']) / central_wl)
-
-                    vel_dict[entry] = vel
-                    sig_dict[entry] = sig
-                    flux_dict[entry] = best_values['amplitude']
-
-
-            except TypeError:
+                print 'Voronoi binning did not improve the signal above threshold'
 
                 vel_dict[entry] = np.nan
                 flux_dict[entry] = np.nan
-                sig_dict[entry] = np.nan    
-
-            # assuming that the redshift measured in qfits is the
-            # correct one - subtract the fitted centre and convert
-            # to kms-1
+                sig_dict[entry] = np.nan              
 
         plt.close('all')
 
@@ -12738,7 +12974,7 @@ class pipelineOps(object):
 
         # plot the results
 
-        vel_fig, vel_ax = plt.subplots(figsize=(18, 6), nrows=1, ncols=3)
+        fig, ax = plt.subplots(figsize=(18, 6), nrows=1, ncols=3)
 
 #        vel_ax[0].minorticks_on()
 #        vel_ax[1].minorticks_on()
@@ -12747,9 +12983,9 @@ class pipelineOps(object):
         # sometimes this throws a TypeError if hardly any data points
         try:
 
-            vel_min, vel_max = np.nanpercentile(vel_2d, [10.0, 90.0])
-            sig_min, sig_max = np.nanpercentile(sig_2d, [10.0, 90.0])
-            flux_min, flux_max = np.nanpercentile(flux_2d, [10.0, 90.0])
+            vel_min, vel_max = np.nanpercentile(vel_2d, [5.0, 95.0])
+            sig_min, sig_max = np.nanpercentile(sig_2d, [5.0, 95.0])
+            flux_min, flux_max = np.nanpercentile(flux_2d, [5.0, 95.0])
 
         except TypeError:
 
@@ -12759,50 +12995,110 @@ class pipelineOps(object):
             sig_min, sig_max = [0, 100]
             flux_min, flux_max = [0, 5E-19]
 
-        im_vel = vel_ax[1].imshow(vel_2d, aspect='auto',
-                                  vmin=vel_min,
-                                  vmax=vel_max,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
+        flux_cut = flux_2d
 
-        vel_ax[1].set_title(line + ' velocity')
+        masked_flux_array = np.nan * np.empty(shape=(xpixs, ypixs))
 
-        # add colourbar to each plot
-        divider_vel = make_axes_locatable(vel_ax[0])
-        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
-        plt.colorbar(im_vel, cax=cax_vel)
+        for i in range(xpixs):
 
-        im_sig = vel_ax[2].imshow(sig_2d, aspect='auto',
-                                  vmin=sig_min,
-                                  vmax=sig_max,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
+            for j in range(ypixs):
 
-        vel_ax[2].set_title(line + ' dispersion')
+                if (i >= mask_x_lower and i <= mask_x_upper) \
+                   and (j >= mask_y_lower and j <= mask_y_upper):
 
-        # add colourbar to each plot
-        divider_sig = make_axes_locatable(vel_ax[1])
-        cax_sig = divider_sig.append_axes('right', size='10%', pad=0.05)
-        plt.colorbar(im_sig, cax=cax_sig)
+                    masked_flux_array[i][j] = flux_cut[i - mask_x_lower - 1][j - mask_y_lower - 1]
 
-        im_vel = vel_ax[0].imshow(flux_2d, aspect='auto',
-                                  vmin=flux_min,
-                                  vmax=flux_max,
-                                  interpolation='nearest',
-                                  cmap=plt.get_cmap('jet'))
+                else:
 
-        vel_ax[0].set_title(line + ' flux')
+                    masked_flux_array[i][j] = masked_flux_array[i][j]
+
+        im = ax[0].imshow(masked_flux_array,
+                          cmap=plt.get_cmap('jet'),
+                          vmin=flux_min,
+                          vmax=flux_max,
+                          interpolation='nearest')
+
+        # ax[0].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+        # ax[0].contour(flux_array, colors='k')
 
         # add colourbar to each plot
-        divider_vel = make_axes_locatable(vel_ax[2])
-        cax_vel = divider_vel.append_axes('right', size='10%', pad=0.05)
-        plt.colorbar(im_vel, cax=cax_vel)
-        # vel_fig.colorbar(im)
+        divider = make_axes_locatable(ax[0])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[0].set_title('[OIII] Flux')
+
+        vel_cut = vel_2d
+
+        masked_vel_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_lower and i <= mask_x_upper) \
+                   and (j >= mask_y_lower and j <= mask_y_upper):
+
+                    masked_vel_array[i][j] = vel_cut[i - mask_x_lower - 1][j - mask_y_lower - 1]
+
+                else:
+
+                    masked_vel_array[i][j] = masked_vel_array[i][j]
+
+        im = ax[1].imshow(masked_vel_array,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        # ax[1].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[1])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[1].set_title('[OIII] Velocity')
+
+        disp_cut = sig_2d
+
+        masked_disp_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_lower and i <= mask_x_upper) \
+                   and (j >= mask_y_lower and j <= mask_y_upper):
+
+                    masked_disp_array[i][j] = disp_cut[i - mask_x_lower - 1][j - mask_y_lower - 1]
+
+                else:
+
+                    masked_disp_array[i][j] = masked_disp_array[i][j]
+
+        im = ax[2].imshow(masked_disp_array,
+                          vmin=sig_min,
+                          vmax=sig_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        # ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[2])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[2].set_title('[OIII] Dispersion')
 
         # plt.tight_layout()
         # plt.show()
 
-        vel_fig.savefig('%s_voronoi%s.pdf' % (incube[:-5],
+        fig.savefig('%s_voronoi%s.pdf' % (incube[:-5],
                                           str(target_sn)))
 
         return flux_2d, vel_2d, sig_2d
@@ -12909,7 +13205,7 @@ class pipelineOps(object):
         # first get the signal and noise arrays from the vel_field_mask_noise
         # method. This is changeable.
 
-        print 'INCUBE %s' % incube 
+        print 'INCUBE %s' % incube
         noise_2d, signal_2d = self.vel_field_mask_noise(incube,
                                                         line,
                                                         redshift,
@@ -12934,6 +13230,7 @@ class pipelineOps(object):
         # next fit with the vor_output_fitting_mask method
 
         flux_2d, vel_2d, sig_2d = self.vor_output_fitting_mask(target_sn,
+                                                               threshold,
                                                                out_dir,
                                                                output_name,
                                                                incube,
@@ -12945,6 +13242,7 @@ class pipelineOps(object):
                                                                mask_y_upper,
                                                                redshift,
                                                                tol)
+
 
     def multi_apply_masked_voronoi(self,
                                    target_sn,

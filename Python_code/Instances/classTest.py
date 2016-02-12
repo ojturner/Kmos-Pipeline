@@ -91,15 +91,14 @@ vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_
 vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
 
-f = pipe_methods.perturb_value(0.2, [5, 6.5, 7])
-print f
-#pipe_methods.multi_apply_masked_voronoi(target_sn=10, out_dir=sci_dir, infile=infile, threshold=10, line='oiii', tol=30)
+#pipe_methods.perturb_value(0.2, [5, 6.5, 7])
+#pipe_methods.multi_apply_masked_voronoi(target_sn=5, out_dir=sci_dir, infile=infile, threshold=5, line='oiii', tol=50)
 #pipe_methods.masked_voronoi_fitting(target_sn, out_dir, incube, centre_x, centre_y, mask_x_lower, mask_x_upper, mask_y_lower, mask_y_upper, redshift, threshold)
 #pipe_methods.masked_voronoi_fitting(6, sci_dir, obj_cube_gal, 10, 16, 14, 28, 11, 26, 3.47539936102, 6, tol=20)
 #pipe_methods.vel_field_mask_noise(incube, line, redshift, threshold, centre_x, centre_y, mask_x_low, mask_x_high, mask_y_low, mask_y_high)
 #pipe_methods.vel_field_mask_noise(obj_cube_gal, 'oiii', 3.47328838, 5, 10, 16, 11, 29, 7, 23, tol=30, method='median')
 #pipe_methods.multi_vel_field_sigma('/disk1/turner/DATA/all_names_p1.txt', 'oiii', 6)
-#pipe_methods.vel_field_sigma(obj_cube_gal, 'oiii', 3.06172124601, 5, 22, 19, method='median')
+pipe_methods.vel_field_sigma(obj_cube_gal, 'oiii', 3.47539936102, 5, 22, 19, method='median', ntimes=50)
 #pipe_methods.stott_postage_stamps('/disk1/turner/DATA/all_names.txt', 'oiii', 35)
 #cube = cubeOps(obj_cube_gal)
 #cube.stott_velocity_field('oiii', 3.08705, 25, 19, 22, method='median')
