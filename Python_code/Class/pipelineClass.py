@@ -18,7 +18,7 @@ from scipy import ndimage
 from copy import copy
 from lmfit import Model
 from itertools import cycle as cycle
-from lmfit.models import GaussianModel, PolynomialModel
+from lmfit.models import GaussianModel, PolynomialModel, ConstantModel
 from scipy.optimize import minimize
 from astropy.io import fits, ascii
 from matplotlib.ticker import MaxNLocator
@@ -11646,7 +11646,14 @@ class pipelineOps(object):
 
         plt.close('all')
 
-    def binning_three(self, data, i, j, lower_lim, upper_lim, method):
+    def binning_three(self,
+                      data,
+                      noise_value,
+                      i,
+                      j,
+                      lower_lim,
+                      upper_lim,
+                      method):
 
         """
         Def: Helper method to do the 3x3 spatial binning for the stott
@@ -11684,7 +11691,7 @@ class pipelineOps(object):
 
             elif method == 'sum':
 
-                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim]
+                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim] / 9.0
 
             elif method == 'mean':
 
@@ -11700,9 +11707,16 @@ class pipelineOps(object):
 
             spec = data[:, i, j][lower_lim: upper_lim]
 
-        return spec
+        return spec, noise_value
 
-    def binning_five(self, data, i, j, lower_lim, upper_lim, method):
+    def binning_five(self,
+                     data,
+                     noise_value,
+                     i,
+                     j,
+                     lower_lim,
+                     upper_lim,
+                     method):
 
         """
         Def: Helper method to do the 5x5 spatial binning for the stott
@@ -11710,6 +11724,7 @@ class pipelineOps(object):
 
         Input:
                 data - datacube from the object
+                noise_value - the noise associated with that spaxel
                 i - spaxel under consideration in the stott loop
                 j - same as above
                 lower_lim - lower limit to truncate the spectrum
@@ -11740,7 +11755,7 @@ class pipelineOps(object):
 
             elif method == 'sum':
 
-                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim]
+                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim] / 25.0
 
             elif method == 'mean':
 
@@ -11756,7 +11771,9 @@ class pipelineOps(object):
 
             spec = data[:, i, j][lower_lim: upper_lim]
 
-        return spec
+        # compute the new noise value
+
+        return spec, noise_value
 
     def gauss_fit(self, fit_wl, fit_flux):
 
@@ -11793,7 +11810,57 @@ class pipelineOps(object):
         ax.plot(fit_wl, fit_flux, color='blue')
         ax.plot(fit_wl, out.best_fit, color='red')
         # plt.show()
-        plt.close('all')
+        # plt.close('all')
+
+        return out.best_values, out.covar
+
+    def ped_gauss_fit(self, fit_wl, fit_flux):
+
+        """
+        Def:
+        Performs simple gaussian fit, guessing initial parameters from the data
+        and given input wavelength and input flux values - this time the base
+        of the gaussian is left as a free parameter
+
+        Input:
+                fit_wl - wavelength of spectrum to fit
+                fit_flux - flux of spectrum to fitsWavelength
+
+        Output:
+                fit_params - dictionary containing the best fit parameters
+                            for each of the spectra
+        """
+
+        # construct gaussian model using lmfit
+
+        gmod = GaussianModel()
+
+        # construct constant model using lmfit
+
+        cmod = ConstantModel()
+
+        # set the initial parameter values
+
+        pars = gmod.guess(fit_flux, x=fit_wl)
+
+        # add an initial guess at the constant (0)
+
+        pars += cmod.make_params(c=0)
+
+        mod = cmod + gmod
+
+        # perform the fit
+        out = mod.fit(fit_flux, pars, x=fit_wl)
+
+        # print the fit report
+        # print out.fit_report()
+
+        # plot to make sure things are working
+        fig, ax = plt.subplots(figsize=(14, 6))
+        ax.plot(fit_wl, fit_flux, color='blue')
+        ax.plot(fit_wl, out.best_fit, color='red')
+        # plt.show()
+        # plt.close('all')
 
         return out.best_values, out.covar
 
@@ -11963,6 +12030,10 @@ class pipelineOps(object):
 
         flux_array = np.empty(shape=(xpixs, ypixs))
 
+        # array to check the coincidence of gauss fit flux and 
+        # flux recovered by the sum
+
+        measurement_array = np.empty(shape=(xpixs, ypixs))
 
         for i, xpix in enumerate(np.arange(0, xpixs, 1)):
 
@@ -11979,14 +12050,14 @@ class pipelineOps(object):
                     # to that specified by the systemic redshift
                     # set the upper and lower ranges for the t_index search
 
-                    lower_t = 8
-                    upper_t = 9
+                    lower_t = 5
+                    upper_t = 6
 
                     t_index = np.argmax(spaxel_spec[line_idx - lower_t:
                                                     line_idx + upper_t])
 
                     # need this to be an absolute index
-                    t_index = t_index + line_idx - 8
+                    t_index = t_index + line_idx - lower_t
 
                     # then sum the flux inside the region over which the line
                     # will be. Width of line is roughly 0.003, which is 10
@@ -11994,11 +12065,25 @@ class pipelineOps(object):
 
                     # set the limits for the signal estimate
 
-                    lower_limit = t_index - 10
-                    upper_limit = t_index + 11
+
+                    lower_limit = t_index - 9
+                    upper_limit = t_index + 10
 
                     line_counts = np.nansum(spaxel_spec[lower_limit:
                                                         upper_limit])
+
+                    line_counts = line_counts * cube.dL
+
+                    plt.close('all')
+                    gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                         spaxel_spec[lower_limit: upper_limit])
+
+                    int_ratio = line_counts / gauss_values['amplitude']
+
+                    try:
+                        measurement_array[i][j] = int_ratio
+                    except TypeError:
+                        measurement_array[i][j] = np.nan
 
                     line_noise = self.noise_from_mask(data,
                                                       lower_limit,
@@ -12008,18 +12093,20 @@ class pipelineOps(object):
                                                       mask_y_low,
                                                       mask_y_high)
 
+                    line_noise = line_noise * cube.dL
+
                     print 'THIS IS THE SIGNAL %s' % line_counts
                     print 'THIS IS THE NOISE %s' % line_noise
 
                 elif cube.filter == 'HK':
 
-                    lower_t = 5
-                    upper_t = 6
+                    lower_t = 3
+                    upper_t = 2
 
                     t_index = np.argmax(spaxel_spec[line_idx - lower_t:
                                                     line_idx + upper_t])
 
-                    t_index = t_index + line_idx - 5
+                    t_index = t_index + line_idx - lower_t
 
                     # set the limits for the signal estimate
 
@@ -12029,6 +12116,19 @@ class pipelineOps(object):
                     line_counts = np.nansum(spaxel_spec[lower_limit:
                                                         upper_limit])
 
+                    line_counts = line_counts * cube.dL
+
+                    plt.close('all')
+                    gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                         spaxel_spec[lower_limit: upper_limit])
+
+                    int_ratio = line_counts / gauss_values['amplitude']
+
+                    try:
+                        measurement_array[i][j] = int_ratio
+                    except TypeError:
+                        measurement_array[i][j] = np.nan
+
                     line_noise = self.noise_from_mask(data,
                                                       lower_limit,
                                                       upper_limit,
@@ -12036,26 +12136,41 @@ class pipelineOps(object):
                                                       mask_x_high,
                                                       mask_y_low,
                                                       mask_y_high)
+
+                    line_noise = line_noise * cube.dL
 
                 # any other band follows the same rules as K right now
 
                 else:
 
-                    lower_t = 8
-                    upper_t = 9
+                    lower_t = 5
+                    upper_t = 6
 
                     t_index = np.argmax(spaxel_spec[line_idx - lower_t:
                                                     line_idx + upper_t])
 
-                    t_index = t_index + line_idx - 8
+                    t_index = t_index + line_idx - lower_t
 
                     # set the limits for the signal estimate
 
-                    lower_limit = t_index - 10
-                    upper_limit = t_index + 11
+                    lower_limit = t_index - 9
+                    upper_limit = t_index + 10
 
                     line_counts = np.nansum(spaxel_spec[lower_limit:
                                                         upper_limit])
+
+                    line_counts = line_counts * cube.dL
+
+                    plt.close('all')
+                    gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                         spaxel_spec[lower_limit: upper_limit])
+
+                    int_ratio = line_counts / gauss_values['amplitude']
+
+                    try:
+                        measurement_array[i][j] = int_ratio
+                    except TypeError:
+                        measurement_array[i][j] = np.nan
 
                     line_noise = self.noise_from_mask(data,
                                                       lower_limit,
@@ -12064,6 +12179,8 @@ class pipelineOps(object):
                                                       mask_x_high,
                                                       mask_y_low,
                                                       mask_y_high)
+
+                    line_noise = line_noise * cube.dL
 
                 if np.isnan(line_counts):
 
@@ -12092,23 +12209,18 @@ class pipelineOps(object):
                     disp_array[i, j] = np.nan
                     flux_array[i, j] = np.nan
 
-                elif line_sn > threshold:
+                # initial checks to see if gaussian should be fit
+                # the first conditions are that the difference between
+                # the trapezoidal and gaussian integrals is less than
+                # 25 percent on either side and that the signal to noise
+                # value is greater than 5
 
-                    print 'Threshold exceeded %s %s %s' % (i, j, line_sn)
+                elif (line_sn > threshold) and (int_ratio >= 0.8 and int_ratio <= 1.2):
 
-                    print '%s %s %s' % (t_index, lower_limit, upper_limit)
+                    print 'CRITERIA SATISFIED %s %s %s %s' % (i, j, line_sn, int_ratio)
 
+                    plt.show()
                     # do stuff - calculate the velocity
-
-                    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-
-                    ax.plot(wave_array[lower_limit: upper_limit],
-                            spaxel_spec[lower_limit: upper_limit])
-
-                    plt.close('all')
-
-                    gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
-                                                         spaxel_spec[lower_limit: upper_limit])
 
                     # if the gaussian does not fit correctly this can throw
                     # a nonetype error, since covar is empty
@@ -12147,6 +12259,15 @@ class pipelineOps(object):
                         disp_array[i, j] = np.nan
                         flux_array[i, j] = np.nan
 
+                elif line_sn > threshold and (int_ratio < 0.8 or int_ratio > 1.2):
+
+                    print 'Threshold reached but sum and gauss too disimilar'
+                        
+                    sn_array[i, j] = np.nan
+                    vel_array[i, j] = np.nan
+                    disp_array[i, j] = np.nan
+                    flux_array[i, j] = np.nan
+
                 # don't bother expanding area if line_sn starts negative
 
                 elif line_sn < 0:
@@ -12169,42 +12290,47 @@ class pipelineOps(object):
 
                     # compute the stacked 3x3 spectrum using helper method
 
-                    spec = self.binning_three(data,
-                                              i,
-                                              j,
-                                              lower_limit,
-                                              upper_limit,
-                                              method)
+                    spec, new_noise = self.binning_three(data,
+                                                         line_noise,
+                                                         i,
+                                                         j,
+                                                         lower_limit,
+                                                         upper_limit,
+                                                         method)
 
                     # now that spec has been computed, look at whether
                     # the signal to noise of the stack has improved
 
                     new_line_counts = np.nansum(spec)
 
-                    new_sn = new_line_counts / line_noise
+                    new_line_counts = new_line_counts * cube.dL
+
+                    new_sn = new_line_counts / new_noise
+
+                    # have to fit gaussian at this point as well
+                    # and examine similarity between the gaussian fit
+                    # and the line_counts
+                    plt.close('all')
+
+                    gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                         spec)
+
+                    int_ratio = new_line_counts / gauss_values['amplitude']
 
                     print 'did things improve: %s %s' % (new_sn, line_sn)
 
                     # if the new signal to noise is greater than the
                     # threshold, save this in the cube and proceed
 
-                    if new_sn > threshold:
+                    if new_sn > threshold and (int_ratio >= 0.8 and int_ratio <= 1.2):
+                        # time.sleep(2)
 
+                        print 'CRITERIA SATISFIED AFTER 3x3 binning %s %s %s %s %s %s' % (i, j, new_sn, int_ratio, gauss_values['center'], gauss_values['sigma'])
                         # add to the signal to noise array
 
-                        print 'The binning raised above threshold!'
+                        plt.show()
 
-                        sn_array[i, j] = line_sn
-
-                        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-
-                        ax.plot(wave_array[lower_limit: upper_limit],
-                                spec)
-
-                        plt.close('all')
-
-                        gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
-                                                             spec)
+                        sn_array[i, j] = new_sn
 
                         try:
 
@@ -12214,7 +12340,7 @@ class pipelineOps(object):
 
                                 print 'Gaussian errors too large - reject fit'
 
-                                sn_array[i, j] = line_sn
+                                sn_array[i, j] = new_sn
                                 vel_array[i, j] = np.nan
                                 disp_array[i, j] = np.nan
                                 flux_array[i, j] = np.nan
@@ -12240,6 +12366,15 @@ class pipelineOps(object):
                             disp_array[i, j] = np.nan
                             flux_array[i, j] = np.nan
 
+                    elif new_sn > threshold and (int_ratio < 0.8 or int_ratio > 1.2):
+
+                        print 'Threshold reached but sum and gauss too disimilar'
+
+                        sn_array[i, j] = np.nan
+                        vel_array[i, j] = np.nan
+                        disp_array[i, j] = np.nan
+                        flux_array[i, j] = np.nan
+
                     elif new_sn <= line_sn:
 
                         # got worse - entry becomes a nan
@@ -12255,40 +12390,45 @@ class pipelineOps(object):
 
                         # try the 5x5 approach towards the cube centre
 
-                        spec = self.binning_five(data,
-                                                 i,
-                                                 j,
-                                                 lower_limit,
-                                                 upper_limit,
-                                                 method)
+                        spec, final_noise = self.binning_five(data,
+                                                              line_noise,
+                                                              i,
+                                                              j,
+                                                              lower_limit,
+                                                              upper_limit,
+                                                              method)
 
                     # now that spec has been computed, look at whether
                     # the signal to noise of the stack has improved
 
                         final_line_counts = np.nansum(spec)
 
-                        final_sn = final_line_counts / line_noise
+                        final_line_counts = cube.dL * final_line_counts
+
+                        final_sn = final_line_counts / final_noise
+
+                        plt.close('all')
+                        gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                             spec)
+
+                        int_ratio = final_line_counts / gauss_values['amplitude']
+
 
                         print 'did things improve: %s %s' % (final_sn, new_sn)
 
                         # if the new signal to noise is greater than the
                         # threshold, save this in the cube and proceed
 
-                        if final_sn > threshold:
+                        if final_sn > threshold and (int_ratio >= 0.8 and int_ratio <= 1.2):
+                            # time.sleep(2)
 
                             # add to the signal to noise array
 
-                            print 'The biggest binning raised above threshold!'
+                            print 'CRITERIA SATISFIED AFTER 5x5 binning %s %s %s %s %s %s' % (i, j, final_sn, int_ratio, gauss_values['center'], gauss_values['sigma'])
                             
-
                             sn_array[i, j] = final_sn
-
-                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-
-                            ax.plot(wave_array[lower_limit: upper_limit],
-                                    spec)
                             
-                            plt.close('all')
+                            plt.show()
 
                             gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
                                                                  spec)
@@ -12327,6 +12467,15 @@ class pipelineOps(object):
                                 disp_array[i, j] = np.nan
                                 flux_array[i, j] = np.nan
 
+                        elif final_sn > threshold and (int_ratio < 0.8 or int_ratio > 1.2):
+
+                            print 'Threshold reached but sum and gauss too disimilar'
+                        
+                            sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
+
                         else:
 
                             # didn't reach target - store as nan
@@ -12360,6 +12509,18 @@ class pipelineOps(object):
                                                              mask_y_low:mask_y_high],
                                                   [5.0, 95.0])
 
+            s_min, s_max = np.nanpercentile(signal_array[mask_x_low:mask_x_high,
+                                                         mask_y_low:mask_y_high],
+                                            [5.0, 95.0])
+
+            sn_min, sn_max = np.nanpercentile(sn_array[mask_x_low:mask_x_high,
+                                                         mask_y_low:mask_y_high],
+                                            [5.0, 95.0])
+
+            g_min, g_max = np.nanpercentile(measurement_array[mask_x_low:mask_x_high,
+                                                         mask_y_low:mask_y_high],
+                                            [5.0, 95.0])
+
         except TypeError:
 
             # origin of the error is lack of good S/N data
@@ -12372,7 +12533,7 @@ class pipelineOps(object):
 
         # create 1x3 postage stamps of the different properties
 
-        fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+        fig, ax = plt.subplots(1, 6, figsize=(25, 6))
 
         flux_cut = flux_array[mask_x_low:mask_x_high,
                               mask_y_low:mask_y_high]
@@ -12392,7 +12553,7 @@ class pipelineOps(object):
 
                     masked_flux_array[i][j] = masked_flux_array[i][j]
 
-        im = ax[0].imshow(masked_flux_array,
+        im = ax[0].imshow(flux_array,
                           cmap=plt.get_cmap('jet'),
                           vmin=flux_min,
                           vmax=flux_max,
@@ -12462,8 +12623,8 @@ class pipelineOps(object):
                     masked_disp_array[i][j] = masked_disp_array[i][j]
 
         im = ax[2].imshow(masked_disp_array,
-                          vmin=sig_min,
-                          vmax=sig_max,
+                          vmin=100,
+                          vmax=240,
                           cmap=plt.get_cmap('jet'),
                           interpolation='nearest')
 
@@ -12477,7 +12638,56 @@ class pipelineOps(object):
         # set the title
         ax[2].set_title('[OIII] Dispersion')
 
-        # plt.show()
+        im = ax[3].imshow(signal_array,
+                          vmin=s_min,
+                          vmax=s_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        # ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[3])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+
+        # set the title
+        ax[3].set_title('Signal Array')
+
+        im = ax[4].imshow(sn_array,
+                          vmin=sn_min,
+                          vmax=sn_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        # ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[4])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[4].set_title('sn array')
+
+        im = ax[5].imshow(measurement_array,
+                          vmin=g_min,
+                          vmax=g_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        # ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[5])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[5].set_title('sum over gauss')
+
+        plt.show()
 
         fig.savefig('%s_stamps_gauss%s_t%s.pdf' % (incube[:-5],
                                                    str(tol),
@@ -12559,7 +12769,33 @@ class pipelineOps(object):
 
         noise_values = np.array(noise_values)
 
-        # what to do with these independent noise estimates? 
+        hist, edges = np.histogram(noise_values, bins=20)
+
+        # polynomial fit to the noise spectrum (for continuum subtraction)
+        poly_noise = np.nanmedian(noise_list, axis=0)
+        x = np.arange(0, len(poly_noise), 1)
+
+        poly_mod = PolynomialModel(5)
+        pars = poly_mod.guess(poly_noise[:1900], x=x[:1900])
+        out = poly_mod.fit(poly_noise[:1900], pars, x=x[:1900])
+        poly_best = out.eval(x=x)
+
+        fig, ax = plt.subplots(1, 1, figsize=(18, 10))
+        ax.plot(x[:1900], poly_noise[:1900])
+        ax.plot(x[:1900], poly_best[:1900])
+        plt.show()
+
+        # fig, ax = plt.subplots(1, 1, figsize=(10,10))
+
+        # ax.plot(edges[:-1], hist)
+        # ax.set_title('distribution of noise estimates')
+
+        # print 'distribution of noise estimates %s' % len(noise_values)
+
+        # plt.show()
+        # plt.close('all')
+
+        # what to do with these independent noise estimates?
         # will take the median for now but could also take the dispersion
 
         final_noise = np.nanstd(noise_values)
