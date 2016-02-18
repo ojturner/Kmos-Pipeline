@@ -4672,8 +4672,8 @@ class pipelineOps(object):
 
                 # Now just execute the esorex recipe for this new file
                 os.system('esorex --output-dir=%s kmos_sci_red' % sci_dir
-                          + '  --pix_scale=0.2 --oscan=FALSE --sky_tweak=TRUE'
-                          + '  --b_samples=3072 --edge_nan=TRUE sci_reduc_temp.sof')
+                          + '  --pix_scale=0.1 --oscan=FALSE --sky_tweak=TRUE'
+                          + '  --b_samples=2048 --edge_nan=TRUE sci_reduc_temp.sof')
 
                 # We have all the science products now
                 # execute the above method for each
@@ -10999,8 +10999,7 @@ class pipelineOps(object):
                         mask_y_low,
                         mask_y_high,
                         tol=30,
-                        method='median',
-                        ntimes=1000):
+                        method='median'):
 
         """
         Def:
@@ -11023,7 +11022,7 @@ class pipelineOps(object):
                 threshold - signal to noise threshold for the fit
                 tol - error tolerance for gaussian fit (default of 40)
                 method - stacking method when binning pixels
-        Output: 
+        Output:
                 signal array, noise array - for the given datacube
         """
 
@@ -11035,9 +11034,70 @@ class pipelineOps(object):
                              + ' chosen an appropriate emission line')
 
         # open the data
+
         cube = cubeOps(incube)
+
         data = cube.data
+
         noise = cube.Table[2].data
+
+        xpixs = data.shape[1]
+
+        ypixs = data.shape[2]
+
+        # set the search limits in the different filters
+        # this is to account for differing spectral resolutions
+
+        if cube.filter == 'K':
+
+            # limits for the search for line-peak
+
+            lower_t = 5
+            upper_t = 6
+
+            # limits for the search for signal computation
+            # and gaussian fitting the emission line
+
+            range_lower = 9
+            range_upper = 10
+
+        elif cube.filter == 'HK':
+
+            lower_t = 3
+            upper_t = 4
+
+            range_lower = 5
+            range_upper = 6
+
+        else:
+
+            lower_t = 5
+            upper_t = 6
+
+            range_lower = 9
+            range_upper = 10
+
+        # find the polynomial to subtract from each spaxel (thermal noise)
+
+        poly_best = self.noise_from_mask_poly_subtract(cube.filter,
+                                                       data,
+                                                       mask_x_low,
+                                                       mask_x_high,
+                                                       mask_y_low,
+                                                       mask_y_high)
+
+        # update the data to have this thermal noise subtracted
+        # will go with no polynomial subtraction from the noise
+        # cube to begin with but this can be changed
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                data[:, i, j] = data[:, i, j] - poly_best
+
+        # now thermal noise subtracted and everything can proceed
+        # as before - or alternatively can get rid of this step again
 
         # get the wavelength array
         wave_array = cubeOps(incube).wave_array
@@ -11076,6 +11136,7 @@ class pipelineOps(object):
 
         flux_array = np.empty(shape=(xpixs, ypixs))
 
+        measurement_array = np.empty(shape=(xpixs, ypixs))
 
         for i, xpix in enumerate(np.arange(0, xpixs, 1)):
 
@@ -11084,89 +11145,85 @@ class pipelineOps(object):
                 spaxel_spec = data[:, i, j]
                 spaxel_noise = noise[:, i, j]
 
-                # account for different spectral resolutions
+                # first search for the linepeak, which may be different
+                # to that specified by the systemic redshift
+                # set the upper and lower ranges for the t_index search
 
-                if cube.filter == 'K':
+                t_index = np.argmax(spaxel_spec[line_idx - lower_t:
+                                                line_idx + upper_t])
 
-                    # first search for the linepeak, which may be different
-                    # to that specified by the systemic redshift
-                    # set the upper and lower ranges for the t_index search
+                # need this to be an absolute index
+                t_index = t_index + line_idx - lower_t
 
-                    lower_t = 8
-                    upper_t = 9
+                # then sum the flux inside the region over which the line
+                # will be. Width of line is roughly 0.003, which is 10
+                # spectral elements in K and 6 in HK
 
-                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
-                                                    line_idx + upper_t])
+                lower_limit = t_index - range_lower
+                upper_limit = t_index + range_upper
 
-                    # need this to be an absolute index
-                    t_index = t_index + line_idx - 8
+                line_counts = np.nansum(spaxel_spec[lower_limit:
+                                                    upper_limit])
 
-                    # then sum the flux inside the region over which the line
-                    # will be. Width of line is roughly 0.003, which is 10
-                    # spectral elements in K and 6 in HK
+                line_counts = line_counts * cube.dL
 
-                    # set the limits for the signal estimate
+                # do the gaussian fitting
 
-                    lower_limit = t_index - 10
-                    upper_limit = t_index + 11
+                plt.close('all')
+                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                     spaxel_spec[lower_limit: upper_limit])
 
-                    line_counts = np.nansum(spaxel_spec[lower_limit:
-                                                        upper_limit])
+                # define the ratio of line counts to the gaussian fitting flux
 
-                    sigma_array = spaxel_noise[lower_limit:upper_limit]
+                int_ratio = line_counts / gauss_values['amplitude']
 
-                    sigma_squared = sigma_array * sigma_array
 
-                    line_noise = np.sqrt(np.nansum(sigma_squared))
+                # assign variables to the gaussian fitting errors
+                # sometimes if fitting is so poor the errors are not defined
+                # define the errors as infinite in this case
 
-                elif cube.filter == 'HK':
+                try:
 
-                    lower_t = 5
-                    upper_t = 6
+                    amp_err = 100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']
 
-                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
-                                                    line_idx + upper_t])
+                    sig_err = 100 * np.sqrt(covar[0][0]) / gauss_values['sigma']
 
-                    t_index = t_index + line_idx - 5
+                    cen_err = 100 * np.sqrt(covar[1][1]) / gauss_values['center']
 
-                    # set the limits for the signal estimate
+                # if the error is thrown assign infinite errors
+                except TypeError:
 
-                    lower_limit = t_index - 5
-                    upper_limit = t_index + 6
+                    amp_err = np.inf
 
-                    line_counts = np.nansum(spaxel_spec[lower_limit:
-                                                        upper_limit])
+                    sig_err = np.inf
 
-                    sigma_array = spaxel_noise[lower_limit:upper_limit]
+                    cen_err = np.inf
 
-                    sigma_squared = sigma_array * sigma_array
-                    
-                    line_noise = np.sqrt(np.nansum(sigma_squared))
-                # any other band follows the same rules as K right now
+                # set up a 2D array to examine the variation in the
+                # difference between trapezoidal and gaussian errors
 
-                else:
+                try:
 
-                    lower_t = 8
-                    upper_t = 9
+                    measurement_array[i][j] = int_ratio
 
-                    t_index = np.argmax(spaxel_spec[line_idx - lower_t:
-                                                    line_idx + upper_t])
+                except TypeError:
 
-                    t_index = t_index + line_idx - 8
+                    measurement_array[i][j] = np.nan
 
-                    # set the limits for the signal estimate
+                # compute the line noise using the mask technique
 
-                    lower_limit = t_index - 10
-                    upper_limit = t_index + 11
+                sigma_array = spaxel_noise[lower_limit:upper_limit]
 
-                    line_counts = np.nansum(spaxel_spec[lower_limit:
-                                                        upper_limit])
+                sigma_squared = sigma_array * sigma_array
 
-                    sigma_array = spaxel_noise[lower_limit:upper_limit]
+                line_noise = np.sqrt(np.nansum(sigma_squared))
 
-                    sigma_squared = sigma_array * sigma_array
-                    
-                    line_noise = np.sqrt(np.nansum(sigma_squared))
+                # this must also be multiplied by the spectral resolution
+
+                line_noise = line_noise * cube.dL
+
+                print 'THIS IS THE SIGNAL %s' % line_counts
+                print 'THIS IS THE NOISE %s' % line_noise
 
                 if np.isnan(line_counts):
 
@@ -11180,11 +11237,11 @@ class pipelineOps(object):
 
                 line_sn = line_counts / line_noise
 
-                print '%s' % line_sn
+                print 'THIS IS THE SIGNAL TO NOISE %s' % line_sn
 
                 # searching the computed signal to noise in this section
 
-                if np.isnan(line_sn) or np.isinf(line_sn):
+                if np.isnan(line_sn) or np.isinf(line_sn) or np.isclose(line_sn, 0, atol=1E-5):
 
                     print 'getting rid of nan'
 
@@ -11195,101 +11252,40 @@ class pipelineOps(object):
                     disp_array[i, j] = np.nan
                     flux_array[i, j] = np.nan
 
-                elif line_sn > threshold:
+                # initial checks to see if gaussian should be fit
+                # the first conditions are that the difference between
+                # the trapezoidal and gaussian integrals is less than
+                # 25 percent on either side and that the signal to noise
+                # value is greater than 5
 
-                    print 'Threshold exceeded %s %s %s' % (i, j, line_sn)
+                # also have a set of constraints based on the gaussian
+                # fitting uncertainties - need these to be good (< 20%) to
+                # proceed with the computation of the galaxy properties
+                # otherwise don't just throw away - pass through for binning
 
-                    print '%s %s %s' % (t_index, lower_limit, upper_limit)
+                elif (line_sn > threshold) and \
+                     (int_ratio >= 0.8 and int_ratio <= 1.2) and \
+                     (amp_err < tol and sig_err < tol and cen_err < tol):
 
+                    print 'CRITERIA SATISFIED %s %s %s %s' % (i, j, line_sn, int_ratio)
+
+                    # plt.show()
                     # do stuff - calculate the velocity
-
-                    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-
-                    ax.plot(wave_array[lower_limit: upper_limit],
-                            spaxel_spec[lower_limit: upper_limit])
-
-                    plt.close('all')
-
-                    # attempting Monte Carlo procedure to compute the gaussian
-                    # parameters and the uncertainties
-
-                    mc_sig_array = []
-                    mc_amp_array = []
-                    mc_centre_array = []
-
-                    for loop in range(0, ntimes):
-
-                        print 'fitting %sth gaussian' % loop
-
-                        # get the perturbed array using the helper function
-                        new_flux = self.perturb_array(sigma_array,
-                                                      spaxel_spec[lower_limit: upper_limit])
-
-                        # fit the gaussian to recover the parameters
-                        gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
-                                                             new_flux)
-
-                        # append the returned values to the mc arrays
-
-                        mc_sig_array.append(gauss_values['sigma'])
-                        mc_amp_array.append(gauss_values['amplitude'])
-                        mc_centre_array.append(gauss_values['center'])
-
-                    # np array the resultant mc arrays
-
-                    mc_sig_array = np.array(mc_sig_array)
-                    mc_amp_array = np.array(mc_amp_array)
-                    mc_centre_array = np.array(mc_centre_array)
-
-                    line_amp = np.nanmedian(mc_amp_array)
-                    line_amp_error = np.nanstd(mc_amp_array)
-
-                    line_sig = np.nanmedian(mc_sig_array)
-                    line_sig_error = np.nanstd(mc_sig_array)
-
-                    line_centre = np.nanmedian(mc_centre_array)
-                    line_centre_error = np.nanstd(mc_centre_array)
-
-                    print 'LINE CENTRE AND ERROR %s %s' % (line_centre, line_centre_error)
-                    print 'LINE SIG AND ERROR %s %s' % (line_sig, line_sig_error)
-                    print 'LINE AMP AND ERROR %s %s' % (line_amp, line_amp_error)
 
                     # if the gaussian does not fit correctly this can throw
                     # a nonetype error, since covar is empty
 
-                    try:
+                    c = 2.99792458E5
 
-                        if (line_centre_error / line_centre ) > tol \
-                            or (line_amp_error / line_amp ) > tol \
-                            or (line_sig_error / line_sig ) > tol:
+                    vel = c * ((gauss_values['center']
+                                - central_wl) / central_wl)
 
-                            print 'Gaussian errors too large - reject fit'
+                    sig = c * ((gauss_values['sigma']) / central_wl)
 
-                            sn_array[i, j] = line_sn
-                            vel_array[i, j] = np.nan
-                            disp_array[i, j] = np.nan
-                            flux_array[i, j] = np.nan
-
-                        else:
-
-                            c = 2.99792458E5
-
-                            vel = c * ((line_centre
-                                        - central_wl) / central_wl)
-
-                            sig = c * ((line_sig) / central_wl)
-
-                            sn_array[i, j] = line_sn
-                            vel_array[i, j] = vel
-                            disp_array[i, j] = sig
-                            flux_array[i, j] = line_amp
-
-                    except TypeError:
-
-                        sn_array[i, j] = line_sn
-                        vel_array[i, j] = np.nan
-                        disp_array[i, j] = np.nan
-                        flux_array[i, j] = np.nan
+                    sn_array[i, j] = line_sn
+                    vel_array[i, j] = vel
+                    disp_array[i, j] = sig
+                    flux_array[i, j] = gauss_values['amplitude']
 
                 # don't bother expanding area if line_sn starts negative
 
@@ -11307,251 +11303,191 @@ class pipelineOps(object):
                 # centre (don't know if this introduces a bias to the
                 # measurement or not)
 
-                elif (line_sn > 0 and line_sn < threshold):
+                elif (line_sn > 0 and line_sn < threshold) or \
+                     (line_sn > threshold and (int_ratio < 0.8 or int_ratio > 1.2)) or \
+                     (line_sn > threshold and (amp_err > tol or sig_err > tol or cen_err > tol)):
 
                     print 'Attempting to improve signal: %s %s %s' % (line_sn, i, j)
 
                     # compute the stacked 3x3 spectrum using helper method
 
-                    spec = self.binning_three(data,
-                                              i,
-                                              j,
-                                              lower_limit,
-                                              upper_limit,
-                                              method)
+                    spec, new_noise = self.binning_three(data,
+                                                         line_noise,
+                                                         i,
+                                                         j,
+                                                         lower_limit,
+                                                         upper_limit,
+                                                         method)
 
                     # now that spec has been computed, look at whether
                     # the signal to noise of the stack has improved
 
                     new_line_counts = np.nansum(spec)
 
-                    new_sn = new_line_counts / line_noise
+                    new_line_counts = new_line_counts * cube.dL
 
-                    print 'did things improve: %s %s' % (new_sn, line_sn)
+                    new_sn = new_line_counts / new_noise
+
+                    # have to fit gaussian at this point as well
+                    # and examine similarity between the gaussian fit
+                    # and the line_counts
+                    plt.close('all')
+
+                    gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                         spec)
+
+                    try:
+
+                        amp_err = 100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']
+
+                        sig_err = 100 * np.sqrt(covar[0][0]) / gauss_values['sigma']
+
+                        cen_err = 100 * np.sqrt(covar[1][1]) / gauss_values['center']
+
+                    # if the error is thrown assign infinite errors
+                    except TypeError:
+
+                        amp_err = np.inf
+
+                        sig_err = np.inf
+
+                        cen_err = np.inf      
+
+                    int_ratio = new_line_counts / gauss_values['amplitude']
+
+                    print 'did things improve: new %s old %s' % (new_sn, line_sn)
 
                     # if the new signal to noise is greater than the
                     # threshold, save this in the cube and proceed
 
-                    if new_sn > threshold:
+                    if (new_sn > threshold) and \
+                       (int_ratio >= 0.8 and int_ratio <= 1.2) and \
+                       (amp_err < tol and sig_err < tol and cen_err < tol):
 
-                        # add to the signal to noise array
+                        print 'CRITERIA SATISFIED by 3x3 binning %s %s %s %s' % (i, j, new_sn, int_ratio)
 
-                        print 'The binning raised above threshold!'
-
-                        sn_array[i, j] = line_sn
-
-                        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-
-                        ax.plot(wave_array[lower_limit: upper_limit],
-                                spec)
-
-                        plt.close('all')
-
-                        mc_sig_array = []
-                        mc_amp_array = []
-                        mc_centre_array = []
-
-                        for loop in range(0, ntimes):
-
-                            print 'fitting %sth gaussian' % loop
-
-                            # get the perturbed array using the helper function
-                            new_flux = self.perturb_array(sigma_array,
-                                                          spaxel_spec[lower_limit: upper_limit])
-
-                            # fit the gaussian to recover the parameters
-                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
-                                                                 new_flux)
-
-                            # append the returned values to the mc arrays
-
-                            mc_sig_array.append(gauss_values['sigma'])
-                            mc_amp_array.append(gauss_values['amplitude'])
-                            mc_centre_array.append(gauss_values['center'])
-
-                        # np array the resultant mc arrays
-
-                        mc_sig_array = np.array(mc_sig_array)
-                        mc_amp_array = np.array(mc_amp_array)
-                        mc_centre_array = np.array(mc_centre_array)
-
-                        line_amp = np.nanmedian(mc_amp_array)
-                        line_amp_error = np.nanstd(mc_amp_array)
-
-                        line_sig = np.nanmedian(mc_sig_array)
-                        line_sig_error = np.nanstd(mc_sig_array)
-
-                        line_centre = np.nanmedian(mc_centre_array)
-                        line_centre_error = np.nanstd(mc_centre_array)
-
-                        print 'LINE CENTRE AND ERROR %s %s' % (line_centre, line_centre_error)
-                        print 'LINE SIG AND ERROR %s %s' % (line_sig, line_sig_error)
-                        print 'LINE AMP AND ERROR %s %s' % (line_amp, line_amp_error)
+                        # plt.show()
+                        # do stuff - calculate the velocity
 
                         # if the gaussian does not fit correctly this can throw
                         # a nonetype error, since covar is empty
 
-                        try:
+                        c = 2.99792458E5
 
-                            if (line_centre_error / line_centre ) > tol \
-                                or (line_amp_error / line_amp ) > tol \
-                                or (line_sig_error / line_sig ) > tol:
+                        vel = c * ((gauss_values['center']
+                                    - central_wl) / central_wl)
 
-                                print 'Gaussian errors too large - reject fit'
+                        sig = c * ((gauss_values['sigma']) / central_wl)
 
-                                sn_array[i, j] = line_sn
-                                vel_array[i, j] = np.nan
-                                disp_array[i, j] = np.nan
-                                flux_array[i, j] = np.nan
+                        sn_array[i, j] = new_sn
+                        vel_array[i, j] = vel
+                        disp_array[i, j] = sig
+                        flux_array[i, j] = gauss_values['amplitude']
 
-                            else:
+                    # don't bother expanding area if line_sn starts negative
 
-                                c = 2.99792458E5
+                    elif new_sn < 0:
 
-                                vel = c * ((line_centre
-                                            - central_wl) / central_wl)
-
-                                sig = c * ((line_sig) / central_wl)
-
-                                sn_array[i, j] = line_sn
-                                vel_array[i, j] = vel
-                                disp_array[i, j] = sig
-                                flux_array[i, j] = line_amp
-
-                        except TypeError:
-
-                            sn_array[i, j] = line_sn
-                            vel_array[i, j] = np.nan
-                            disp_array[i, j] = np.nan
-                            flux_array[i, j] = np.nan
-
-                    elif new_sn <= line_sn:
-
-                        # got worse - entry becomes a nan
-
-                        print 'no improvement, stop trying to fix'
+                        print 'Found negative signal %s %s' % (i, j)
 
                         sn_array[i, j] = np.nan
                         vel_array[i, j] = np.nan
                         disp_array[i, j] = np.nan
                         flux_array[i, j] = np.nan
 
-                    elif (new_sn > line_sn and new_sn < threshold):
+                    # If between 0 and the threshold, search surrounding area
+                    # for more signal - do this in the direction of the galaxy
+                    # centre (don't know if this introduces a bias to the
+                    # measurement or not)
+
+                    elif (new_sn > 0 and new_sn < threshold) or \
+                         (new_sn > threshold and (int_ratio < 0.8 or int_ratio > 1.2)) or \
+                         (new_sn > threshold and (amp_err > tol or sig_err > tol or cen_err > tol)):
 
                         # try the 5x5 approach towards the cube centre
 
-                        spec = self.binning_five(data,
-                                                 i,
-                                                 j,
-                                                 lower_limit,
-                                                 upper_limit,
-                                                 method)
+                        spec, final_noise = self.binning_five(data,
+                                                              line_noise,
+                                                              i,
+                                                              j,
+                                                              lower_limit,
+                                                              upper_limit,
+                                                              method)
 
                     # now that spec has been computed, look at whether
                     # the signal to noise of the stack has improved
 
                         final_line_counts = np.nansum(spec)
 
-                        final_sn = final_line_counts / line_noise
+                        final_line_counts = cube.dL * final_line_counts
 
-                        print 'did things improve: %s %s' % (final_sn, new_sn)
+                        final_sn = final_line_counts / final_noise
+
+                        plt.close('all')
+
+                        gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
+                                                             spec)
+
+                        try:
+
+                            amp_err = 100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']
+
+                            sig_err = 100 * np.sqrt(covar[0][0]) / gauss_values['sigma']
+
+                            cen_err = 100 * np.sqrt(covar[1][1]) / gauss_values['center']
+
+                        # if the error is thrown assign infinite errors
+                        except TypeError:
+
+                            amp_err = np.inf
+
+                            sig_err = np.inf
+
+                            cen_err = np.inf      
+
+                        int_ratio = final_line_counts / gauss_values['amplitude']
+
+                        print 'did things improve: final %s old %s' % (final_sn, new_sn)
 
                         # if the new signal to noise is greater than the
                         # threshold, save this in the cube and proceed
 
-                        if final_sn > threshold:
+                        if (final_sn > threshold) and \
+                           (int_ratio >= 0.8 and int_ratio <= 1.2) and \
+                           (amp_err < tol and sig_err < tol and cen_err < tol):
+
+                            # time.sleep(2)
 
                             # add to the signal to noise array
 
-                            print 'The biggest binning raised above threshold!'
-                            
+                            print 'CRITERIA SATISFIED AFTER 5x5 binning %s %s %s %s %s %s' % (i, j, final_sn, int_ratio, gauss_values['center'], gauss_values['sigma'])
 
                             sn_array[i, j] = final_sn
 
-                            fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+                            # plt.show()
 
-                            ax.plot(wave_array[lower_limit: upper_limit],
-                                    spec)
-                            
-                            plt.close('all')
+                            c = 2.99792458E5
 
-                            mc_sig_array = []
-                            mc_amp_array = []
-                            mc_centre_array = []
+                            vel = c * ((gauss_values['center']
+                                        - central_wl) / central_wl)
 
-                            for loop in range(0, ntimes):
+                            sig = c * ((gauss_values['sigma']) / central_wl)
 
-                                print 'fitting %sth gaussian' % loop
+                            sn_array[i, j] = final_sn
+                            vel_array[i, j] = vel
+                            disp_array[i, j] = sig
+                            flux_array[i, j] = gauss_values['amplitude']
 
-                                # get the perturbed array using the helper function
-                                new_flux = self.perturb_array(sigma_array,
-                                                              spaxel_spec[lower_limit: upper_limit])
+                        elif (final_sn > 0 and final_sn < threshold) or \
+                             (final_sn > threshold and (int_ratio < 0.8 or int_ratio > 1.2)) or \
+                             (final_sn > threshold and (amp_err > tol or sig_err > tol or cen_err > tol)):
 
-                                # fit the gaussian to recover the parameters
-                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit: upper_limit],
-                                                                     new_flux)
-
-                                # append the returned values to the mc arrays
-
-                                mc_sig_array.append(gauss_values['sigma'])
-                                mc_amp_array.append(gauss_values['amplitude'])
-                                mc_centre_array.append(gauss_values['center'])
-
-                            # np array the resultant mc arrays
-
-                            mc_sig_array = np.array(mc_sig_array)
-                            mc_amp_array = np.array(mc_amp_array)
-                            mc_centre_array = np.array(mc_centre_array)
-
-                            line_amp = np.nanmedian(mc_amp_array)
-                            line_amp_error = np.nanstd(mc_amp_array)
-
-                            line_sig = np.nanmedian(mc_sig_array)
-                            line_sig_error = np.nanstd(mc_sig_array)
-
-                            line_centre = np.nanmedian(mc_centre_array)
-                            line_centre_error = np.nanstd(mc_centre_array)
-
-                            print 'LINE CENTRE AND ERROR %s %s' % (line_centre, line_centre_error)
-                            print 'LINE SIG AND ERROR %s %s' % (line_sig, line_sig_error)
-                            print 'LINE AMP AND ERROR %s %s' % (line_amp, line_amp_error)
-
-                            # if the gaussian does not fit correctly this can throw
-                            # a nonetype error, since covar is empty
-
-                            try:
-
-                                if (line_centre_error / line_centre ) > tol \
-                                   or (line_amp_error / line_amp ) > tol \
-                                   or (line_sig_error / line_sig ) > tol:
-
-                                    print 'Gaussian errors too large - reject fit'
-
-                                    sn_array[i, j] = line_sn
-                                    vel_array[i, j] = np.nan
-                                    disp_array[i, j] = np.nan
-                                    flux_array[i, j] = np.nan
-
-                                else:
-
-                                    c = 2.99792458E5
-
-                                    vel = c * ((line_centre
-                                                - central_wl) / central_wl)
-
-                                    sig = c * ((line_sig) / central_wl)
-
-                                    sn_array[i, j] = line_sn
-                                    vel_array[i, j] = vel
-                                    disp_array[i, j] = sig
-                                    flux_array[i, j] = line_amp
-
-                            except TypeError:
-
-                                sn_array[i, j] = line_sn
-                                vel_array[i, j] = np.nan
-                                disp_array[i, j] = np.nan
-                                flux_array[i, j] = np.nan
+                            print 'Threshold reached but sum and gauss too disimilar'
+                        
+                            sn_array[i, j] = np.nan
+                            vel_array[i, j] = np.nan
+                            disp_array[i, j] = np.nan
+                            flux_array[i, j] = np.nan
 
                         else:
 
@@ -11576,9 +11512,27 @@ class pipelineOps(object):
 
         try:
 
-            vel_min, vel_max = np.nanpercentile(vel_array, [5.0, 95.0])
-            sig_min, sig_max = np.nanpercentile(disp_array, [5.0, 95.0])
-            flux_min, flux_max = np.nanpercentile(flux_array, [5.0, 95.0])
+            vel_min, vel_max = np.nanpercentile(vel_array[mask_x_low:mask_x_high,
+                                                          mask_y_low:mask_y_high],
+                                                [5.0, 95.0])
+            sig_min, sig_max = np.nanpercentile(disp_array[mask_x_low:mask_x_high,
+                                                           mask_y_low:mask_y_high],
+                                                [5.0, 95.0])
+            flux_min, flux_max = np.nanpercentile(flux_array[mask_x_low:mask_x_high,
+                                                             mask_y_low:mask_y_high],
+                                                  [5.0, 95.0])
+
+            s_min, s_max = np.nanpercentile(signal_array[mask_x_low:mask_x_high,
+                                                         mask_y_low:mask_y_high],
+                                            [5.0, 95.0])
+
+            sn_min, sn_max = np.nanpercentile(sn_array[mask_x_low:mask_x_high,
+                                                         mask_y_low:mask_y_high],
+                                            [5.0, 95.0])
+
+            g_min, g_max = np.nanpercentile(measurement_array[mask_x_low:mask_x_high,
+                                                         mask_y_low:mask_y_high],
+                                            [5.0, 95.0])
 
         except TypeError:
 
@@ -11592,7 +11546,25 @@ class pipelineOps(object):
 
         # create 1x3 postage stamps of the different properties
 
-        fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+        fig, ax = plt.subplots(1, 6, figsize=(25, 6))
+
+        flux_cut = flux_array[mask_x_low:mask_x_high,
+                              mask_y_low:mask_y_high]
+
+        masked_flux_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_low and i <= mask_x_high) \
+                   and (j >= mask_y_low and j <= mask_y_high):
+
+                    masked_flux_array[i][j] = flux_cut[i - mask_x_low - 1][j - mask_y_low - 1]
+
+                else:
+
+                    masked_flux_array[i][j] = masked_flux_array[i][j]
 
         im = ax[0].imshow(flux_array,
                           cmap=plt.get_cmap('jet'),
@@ -11600,7 +11572,7 @@ class pipelineOps(object):
                           vmax=flux_max,
                           interpolation='nearest')
 
-        ax[0].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+        # ax[0].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
         # ax[0].contour(flux_array, colors='k')
 
         # add colourbar to each plot
@@ -11611,13 +11583,31 @@ class pipelineOps(object):
         # set the title
         ax[0].set_title('[OIII] Flux')
 
-        im = ax[1].imshow(vel_array,
+        vel_cut = vel_array[mask_x_low:mask_x_high,
+                            mask_y_low:mask_y_high]
+
+        masked_vel_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_low and i <= mask_x_high) \
+                   and (j >= mask_y_low and j <= mask_y_high):
+
+                    masked_vel_array[i][j] = vel_cut[i - mask_x_low - 1][j - mask_y_low - 1]
+
+                else:
+
+                    masked_vel_array[i][j] = masked_vel_array[i][j]
+
+        im = ax[1].imshow(masked_vel_array,
                           vmin=vel_min,
                           vmax=vel_max,
                           cmap=plt.get_cmap('jet'),
                           interpolation='nearest')
 
-        ax[1].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+        # ax[1].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
 
         # add colourbar to each plot
         divider = make_axes_locatable(ax[1])
@@ -11627,13 +11617,31 @@ class pipelineOps(object):
         # set the title
         ax[1].set_title('[OIII] Velocity')
 
-        im = ax[2].imshow(disp_array,
+        disp_cut = disp_array[mask_x_low:mask_x_high,
+                              mask_y_low:mask_y_high]
+
+        masked_disp_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_low and i <= mask_x_high) \
+                   and (j >= mask_y_low and j <= mask_y_high):
+
+                    masked_disp_array[i][j] = disp_cut[i - mask_x_low - 1][j - mask_y_low - 1]
+
+                else:
+
+                    masked_disp_array[i][j] = masked_disp_array[i][j]
+
+        im = ax[2].imshow(masked_disp_array,
                           vmin=sig_min,
                           vmax=sig_max,
                           cmap=plt.get_cmap('jet'),
                           interpolation='nearest')
 
-        ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+        # ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
 
         # add colourbar to each plot
         divider = make_axes_locatable(ax[2])
@@ -11643,13 +11651,65 @@ class pipelineOps(object):
         # set the title
         ax[2].set_title('[OIII] Dispersion')
 
-        plt.show()
+        im = ax[3].imshow(signal_array,
+                          vmin=s_min,
+                          vmax=s_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
 
-        fig.savefig('%s_stamps_gauss%s_t%s.pdf' % (incube[:-5],
-                                                   str(tol),
-                                                   str(threshold)))
+        # ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[3])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+
+        # set the title
+        ax[3].set_title('Signal Array')
+
+        im = ax[4].imshow(sn_array,
+                          vmin=sn_min,
+                          vmax=sn_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        # ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[4])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[4].set_title('sn array')
+
+        im = ax[5].imshow(measurement_array,
+                          vmin=g_min,
+                          vmax=g_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        # ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[5])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[5].set_title('sum over gauss')
+
+        # plt.show()
+
+        fig.savefig('%s_stamps_gauss%s_t%s_%s_cube.pdf' % (incube[:-5],
+                                                           str(tol),
+                                                           str(threshold),
+                                                           method))
 
         plt.close('all')
+
+        return noise_array[mask_x_low:mask_x_high, mask_y_low:mask_y_high], signal_array[mask_x_low:mask_x_high, mask_y_low:mask_y_high]
 
     def binning_three(self,
                       data,
@@ -11911,6 +11971,14 @@ class pipelineOps(object):
 
             sky_cube = entry[5]
 
+            mask_x_lower = entry[6]
+
+            mask_x_upper = entry[7]
+
+            mask_y_lower = entry[8]
+
+            mask_y_upper = entry[9]
+
             # define the science directory for each cube
             sci_dir = obj_name[:len(obj_name) - obj_name[::-1].find("/") - 1]
 
@@ -11924,11 +11992,11 @@ class pipelineOps(object):
 
                 else:
 
-                    tolerance = 40
+                    tolerance = 30
 
             except KeyError:
 
-                tolerance = 40
+                tolerance = 30
 
             try:
 
@@ -11950,6 +12018,10 @@ class pipelineOps(object):
                                  threshold,
                                  centre_x,
                                  centre_y,
+                                 mask_x_lower,
+                                 mask_x_upper,
+                                 mask_y_lower,
+                                 mask_y_upper,
                                  tol=tolerance,
                                  method=stack_method)
 
@@ -12039,7 +12111,8 @@ class pipelineOps(object):
 
         # find the polynomial to subtract from each spaxel (thermal noise)
 
-        poly_best = self.noise_from_mask_poly_subtract(data,
+        poly_best = self.noise_from_mask_poly_subtract(cube.filter,
+                                                       data,
                                                        mask_x_low,
                                                        mask_x_high,
                                                        mask_y_low,
@@ -12668,15 +12741,17 @@ class pipelineOps(object):
 
         plt.show()
 
-        fig.savefig('%s_stamps_gauss%s_t%s.pdf' % (incube[:-5],
-                                                   str(tol),
-                                                   str(threshold)))
+        fig.savefig('%s_stamps_gauss%s_t%s_%s_mask.pdf' % (incube[:-5],
+                                                           str(tol),
+                                                           str(threshold),
+                                                           method))
 
         plt.close('all')
 
         return noise_array[mask_x_low:mask_x_high, mask_y_low:mask_y_high], signal_array[mask_x_low:mask_x_high, mask_y_low:mask_y_high]
 
     def noise_from_mask_poly_subtract(self,
+                                      cube_filter,
                                       data,
                                       mask_x_low,
                                       mask_x_high,
@@ -12742,14 +12817,31 @@ class pipelineOps(object):
         poly_noise = np.nanmedian(noise_list, axis=0)
         x = np.arange(0, len(poly_noise), 1)
 
-        poly_mod = PolynomialModel(5)
-        pars = poly_mod.guess(poly_noise[:1600], x=x[:1600])
-        out = poly_mod.fit(poly_noise[:1600], pars, x=x[:1600])
-        poly_best = out.eval(x=x)
+        if cube_filter == 'K':
+
+            poly_mod = PolynomialModel(5)
+            pars = poly_mod.guess(poly_noise[100:1600], x=x[100:1600])
+            out = poly_mod.fit(poly_noise[100:1600], pars, x=x[100:1600])
+            poly_best = out.eval(x=x)
+
+        elif cube_filter == 'HK':
+
+            poly_mod = PolynomialModel(5)
+            pars = poly_mod.guess(poly_noise[100:1950], x=x[100:1950])
+            out = poly_mod.fit(poly_noise[100:1950], pars, x=x[100:1950])
+            poly_best = out.eval(x=x)
+
+        else:
+
+            poly_mod = PolynomialModel(5)
+            pars = poly_mod.guess(poly_noise[100:1950], x=x[100:1950])
+            out = poly_mod.fit(poly_noise[100:1950], pars, x=x[100:1950])
+            poly_best = out.eval(x=x)
+
 
         fig, ax = plt.subplots(1, 1, figsize=(18, 10))
-        ax.plot(x[:1900], poly_noise[:1900])
-        ax.plot(x[:1900], poly_best[:1900])
+        ax.plot(x[100:1900], poly_noise[100:1900])
+        ax.plot(x[100:1900], poly_best[100:1900])
         # plt.show()
         plt.close('all')
 
@@ -13225,7 +13317,7 @@ class pipelineOps(object):
 
                 vel_dict[entry] = np.nan
                 flux_dict[entry] = np.nan
-                sig_dict[entry] = np.nan              
+                sig_dict[entry] = np.nan
 
         plt.close('all')
 
@@ -13281,6 +13373,9 @@ class pipelineOps(object):
         flux_cut = flux_2d
 
         masked_flux_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+
+        # reconstruct back into the full grid
 
         for i in range(xpixs):
 
@@ -13379,7 +13474,7 @@ class pipelineOps(object):
         ax[2].set_title('[OIII] Dispersion')
 
         # plt.tight_layout()
-        # plt.show()
+        plt.show()
 
         fig.savefig('%s_voronoi%s.pdf' % (incube[:-5],
                                           str(target_sn)))
@@ -13475,7 +13570,8 @@ class pipelineOps(object):
                                threshold,
                                stack='median',
                                line='oiii',
-                               tol=20):
+                               tol=20,
+                               noise_method='cube'):
 
         """
         Def:
@@ -13489,17 +13585,41 @@ class pipelineOps(object):
         # method. This is changeable.
 
         print 'INCUBE %s' % incube
-        noise_2d, signal_2d = self.vel_field_mask_noise(incube,
-                                                        line,
-                                                        redshift,
-                                                        threshold,
-                                                        centre_x,
-                                                        centre_y,
-                                                        mask_x_lower,
-                                                        mask_x_upper,
-                                                        mask_y_lower,
-                                                        mask_y_upper,
-                                                        tol=tol)
+
+        if noise_method == 'mask':
+
+            noise_2d, signal_2d = self.vel_field_mask_noise(incube,
+                                                            line,
+                                                            redshift,
+                                                            threshold,
+                                                            centre_x,
+                                                            centre_y,
+                                                            mask_x_lower,
+                                                            mask_x_upper,
+                                                            mask_y_lower,
+                                                            mask_y_upper,
+                                                            tol=tol)
+
+        elif noise_method == 'cube':
+
+            noise_2d, signal_2d = self.vel_field_sigma(incube,
+                                                       line,
+                                                       redshift,
+                                                       threshold,
+                                                       centre_x,
+                                                       centre_y,
+                                                       mask_x_lower,
+                                                       mask_x_upper,
+                                                       mask_y_lower,
+                                                       mask_y_upper,
+                                                       tol=tol)
+
+        else:
+
+            print 'Invalid noise method'
+
+            raise ValueError('Please supply valid noise method')
+
 
         # next feed this into the voronoi_binning_from_mask
 
