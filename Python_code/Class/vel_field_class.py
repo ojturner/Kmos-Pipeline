@@ -1,7 +1,6 @@
-from __future__ import print_function
-# class for carrying out analysis of 2D velocity fields created via the 
-# cube class. i.e. the input data file should be a 2D field of velocity 
-# measurements, which are made via the pipeline class initially 
+# class for carrying out analysis of 2D velocity fields created via the
+# cube class. i.e. the input data file should be a 2D field of velocity
+# measurements, which are made via the pipeline class initially
 
 # import the relevant modules
 import os, sys, numpy as np, random, math
@@ -28,6 +27,11 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.ticker import MaxNLocator
 from scipy.spatial import distance
 from copy import copy
+from photutils import CircularAperture
+from photutils import aperture_photometry
+import scipy.optimize as op
+import emcee
+import corner
 
 ####################################################################
 
@@ -52,37 +56,75 @@ class vel_field(object):
         Input: filename - name of file containing 1D spectrum 
                 z - The redshift of the galaxy being manipulated
         """
+
         self.self = self
+
         # Initialise the fileName object 
+
         self.fileName = fileName
+
         # initialise the centre of rotation in the x and y
+
         self.c_rot_x = c_rot_x
+
         self.c_rot_y = c_rot_y
+
         # Variable containing all the fits extensions 
+
         self.Table = fits.open(fileName)
+
         # create an object to house the data 
-        self.data = self.Table[0].data
+
+        self.vel_data = self.Table[0].data
+
+        # also load the associated velocity field errors
+
+        try:
+
+            self.er_table = fits.open('%serror_field.fits' % self.fileName[:-14])
+
+            self.error_data = self.er_table[0].data
+
+        except IOError:
+
+            print 'No associated error field'
+
+        #initialise x and y dimensions
+
+        self.xpix = self.vel_data.shape[0]
+
+        self.ypix = self.vel_data.shape[1]
+
         # set the lengths of the bins as x & y
-        xbin = np.arange(0, self.data.shape[0], 1)
-        ybin = np.arange(0, self.data.shape[1], 1)
+
+        xbin = np.arange(0, self.vel_data.shape[0], 1)
+
+        ybin = np.arange(0, self.vel_data.shape[1], 1)
+
         self.xbin, self.ybin = np.meshgrid(xbin, ybin)
+
         self.xbin = np.ravel(self.xbin)
+
         self.ybin = np.ravel(self.ybin)
 
         # initialise the flattened velocity array
+
         self.vel_flat = []
 
-        # now that we have the xbins and ybins, these are the coordinates 
-        # at which we want to evaluate the velocity in the 
-        # fit_kinematic_pa method. We can loop around the 
-        # the coordinates and create a flattened array 
-        # so that the velocity data values correspond to the bins 
+        # now that we have the xbins and ybins, these are the coordinates
+        # at which we want to evaluate the velocity in the
+        # fit_kinematic_pa method. We can loop around the
+        # the coordinates and create a flattened array
+        # so that the velocity data values correspond to the bins
 
         for x, y in zip(self.xbin, self.ybin):
-            # evaluate the velocity point 
-            self.vel_flat.append(self.data[x][y])
+
+            # evaluate the velocity point
+
+            self.vel_flat.append(self.vel_data[x][y])
 
         # make sure that vel_flat is a numpy array 
+
         self.vel_flat = np.array(self.vel_flat)
 
         # now can subtract the central positions from 
@@ -422,3 +464,563 @@ class vel_field(object):
 
         plt.show()
         return angBest, angErr, vSyst
+
+    def disk_function(self,
+                      theta,
+                      xpos,
+                      ypos):
+        """
+        Def: Function to calculate disk velocity given input values.
+        Note that all angles must be given in radians
+        """
+        # unpack the parameters
+
+        xcen, ycen, inc, pa, rt, vasym = theta
+
+        # look at the difference between central pixel and pixel 
+        # being modelled 
+
+        diff_x = (xcen - xpos) * 1.0
+
+        diff_y = (ycen - ypos) * 1.0
+
+        # print diff_x, diff_y
+
+        # calculate the pixel angle
+
+        if diff_y == 0 and diff_x != 0:
+
+            pixel_angle = np.arctan(np.sign(diff_x)*np.inf)
+            # print 'This is the pixel angle %s' % pixel_angle
+
+        elif diff_y == 0 and diff_x == 0:
+            # print 'In the middle'
+            pixel_angle = 0.0
+
+        else:
+            # print 'computing pixel angle'
+            pixel_angle = np.arctan(diff_x / diff_y)
+            # print 'pixel angle %s' % (pixel_angle * 180 / np.pi)
+
+        # work out phi which is the overall angle between 
+        # the spaxel being modelled and the central spaxel/position angle
+        # this involves summing with a rotation angle which depends on 
+        # the spaxel quadrant
+
+        if diff_x >= 0 and diff_y >= 0 and not(diff_x == 0 and diff_y == 0):
+
+            # print 'top left'
+            # we're in the upper left quadrant, want rot to be 270
+
+            rot = 3 * np.pi / 2
+
+        elif diff_x >= 0 and diff_y < 0:
+
+            # print 'top right'
+
+            # we're in the upper right quandrant, want rot to be 90
+
+            rot = np.pi / 2
+
+        elif diff_x < 0 and diff_y < 0:
+
+            # print 'lower right'
+
+            # we're in the lower right quadrant
+
+            rot = np.pi / 2
+
+        elif diff_x < 0 and diff_y >= 0:
+
+            # print 'lower left'
+
+            # we're in the lower left quadrant
+
+            rot = 3 * np.pi / 2
+
+        elif diff_x == 0 and diff_y == 0:
+
+            # print 'middle'
+
+            # we're in the middle
+
+            rot = pa
+
+        phi = pixel_angle - pa + rot
+
+    #    print 'differences: %s %s' % (diff_x, diff_y)
+    #    print 'pixel angle %s' % (pixel_angle * 180 / np.pi)
+    #    print 'position angle %s' % (pa * 180 / np.pi)
+    #    print 'rotation angle %s' % (rot * 180 / np.pi)
+    #    print 'overall angle %s' % (phi * 180 / np.pi)
+    #    print 'cosine of angle %s' % (np.cos(phi))
+
+        r = np.sqrt(diff_x*diff_x + diff_y*diff_y)
+
+        vel = np.cos(phi) * np.sin(inc) * (2 / np.pi) * vasym * np.arctan(r / rt)
+
+        # print vel, xpix, ypix
+
+        return vel
+
+    def grid(self):
+
+        """
+        Def: return an empty grid with the specified dimensions
+        """
+
+        # create a 1D arrays of length dim_x * dim_y containing the 
+        # spaxel coordinates
+
+        xbin = np.arange(0, self.xpix, 1)
+
+        ybin = np.arange(0, self.ypix, 1)
+
+        ybin, xbin = np.meshgrid(ybin, xbin)
+
+        xbin = np.ravel(xbin)
+
+        ybin = np.ravel(ybin)
+
+        return np.array(xbin) * 1.0, np.array(ybin) * 1.0
+
+    def compute_model_grid(self,
+                           theta):
+
+        """
+        Def:
+        Use the grid function to construct a basis for the model.
+        Then apply the disk function to each spaxel in the basis
+        reshape back to 2d array and plot the model velocity
+        """
+
+        xbin, ybin = self.grid()
+
+        # setup list to house the velocity measurements
+
+        vel_array = []
+
+        # compute the model at each spaxel location
+
+        for xpos, ypos in zip(xbin, ybin):
+
+            # run the disk function
+
+            vel_array.append(self.disk_function(theta,
+                                                xpos,
+                                                ypos))
+
+        # create numpy array from the vel_array list 
+
+        vel_array = np.array(vel_array)
+
+        # reshape back to the chosen grid dimensions
+
+        vel_2d = vel_array.reshape((self.xpix, self.ypix))
+
+        # plot as a 2d array
+
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+        im = ax.imshow(vel_2d,
+                       cmap=plt.get_cmap('jet'),
+                       interpolation='nearest')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax)
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax.set_title('model velocity')
+
+        # plt.show()
+        plt.close('all')
+
+        return vel_2d
+
+    def lnlike(self, 
+               theta):
+        """
+        Def: Return the log likelihood for the velocity field function.
+        All that has to be done is to compute the model in a grid the same size
+        as the data and then plug into the standard likelihood formula.
+
+        Input:
+                vel_data - the actual velocity field unicodedata
+                vel_errors - the velocity field error grid
+                theta - list of parameter values to be fed into the model
+
+        Output:
+                some single numerical value for the log likelihood
+        """
+        # sometimes nice to see what parameters are being tried in the
+        # MCMC step
+
+        print theta
+
+        # compute the model grid
+
+        model = self.compute_model_grid(theta)
+
+        # find the grid of inverse sigma values
+
+        inv_sigma2 = 1.0 / (self.error_data * self.error_data)
+
+        ans = -0.5 * (np.nansum((self.vel_data - model)**2 *
+                                inv_sigma2 - np.log(inv_sigma2)))
+
+        print ans
+
+        return ans
+
+    def lnprior(self,
+                theta):
+
+        """
+        Def:
+        Set an uninformative prior distribution for the parameters in the model
+        """
+
+        xcen, ycen, inc, pa, rt, vasym = theta
+
+        if 0 < xcen < 30.0 and \
+           0 < ycen < 30.0 and \
+           0 < inc < np.pi / 2 and \
+           0 < pa < 2 * np.pi and \
+           0 < rt < 20.0 and \
+           0 < vasym < 300:
+
+            return 0.0
+
+        return -np.inf
+
+    def lnprob(self,
+               theta):
+
+        lp = self.lnprior(theta)
+
+        if not np.isfinite(lp):
+
+            return -np.inf
+
+        return lp + self.lnlike(theta)
+
+    def run_emcee(self,
+                  theta,
+                  nsteps,
+                  nwalkers,
+                  burn_no):
+
+        ndim = len(theta)
+
+        pos = [theta + np.random.randn(ndim) for i in range(nwalkers)]
+
+        sampler = emcee.EnsembleSampler(nwalkers,
+                                        ndim,
+                                        self.lnprob)
+
+        sampler.run_mcmc(pos, nsteps)
+
+        samples = sampler.chain[:, burn_no:, :].reshape((-1, ndim))
+
+        fig = corner.corner(samples,
+                            labels=["$xcen$",
+                                    "$ycen$",
+                                    "$inc$",
+                                    "$pa$",
+                                    "rt",
+                                    "vasym"],
+                            truths=theta)
+
+        fig.savefig('%s_corner_plot.png' % self.fileName[:-5])
+
+        # print samples
+
+        p = sampler.lnprobability
+
+        max_p = np.unravel_index(p.argmax(), p.shape)
+
+        # print max_p
+
+        # print sampler.chain[max_p[0], max_p[1], :]
+
+        params_name = self.fileName[:-5] + '_params.txt'
+
+        np.savetxt(params_name, sampler.chain[max_p[0], max_p[1], :])
+
+        plt.show()
+
+    def plot_comparison(self,
+                        theta):
+
+        """
+        Def:
+        Plot the best fitting model alongside the original velocity field
+        with position angle and morphological angle also plotted
+
+        Input:
+                theta - the now best fit set of parameters
+                vel_data - the velocity field unicodedata
+                vel_errors - the velocity field errors
+
+        """
+
+        # compute the model grid with the specified parameters
+        model = self.compute_model_grid(theta)
+
+        # only want to see the evaluated model at the grid points
+        # where the data is not nan. Loop round the data and create
+        # a mask which can multiply the model
+
+        mask_array = np.empty(shape=(self.xpix, self.ypix))
+
+        for i in range(0, self.xpix):
+
+            for j in range(0, self.ypix):
+
+                if np.isnan(self.vel_data[i][j]):
+
+                    mask_array[i][j] = np.nan
+
+                else:
+
+                    mask_array[i][j] = 1.0
+
+
+        # take product of model and mask_array to return new data
+
+        trunc_model = mask_array * model
+
+        # plot the results
+
+        vel_min, vel_max = np.nanpercentile(self.vel_data,
+                                            [5.0, 95.0])
+        mod_min, mod_max = np.nanpercentile(trunc_model,
+                                            [5.0, 95.0])
+
+        plt.close('all')
+
+        fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+
+        im = ax[0].imshow(self.vel_data,
+                          cmap=plt.get_cmap('jet'),
+                          vmin=mod_min,
+                          vmax=mod_max,
+                          interpolation='nearest')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[0])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[0].set_title('[OIII] Velocity Data')
+
+        im = ax[1].imshow(trunc_model,
+                          cmap=plt.get_cmap('jet'),
+                          vmin=mod_min,
+                          vmax=mod_max,
+                          interpolation='nearest')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[1])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[1].set_title('[OIII] Velocity Model')
+        plt.show()
+        plt.close('all')
+
+    def extract_in_apertures(self,
+                             theta,
+                             r_aper,
+                             d_aper):
+
+        """
+        Def: Extract the velocity field along the kinematic axis returned by the
+        model fitting in both the data and the model for comparison. The model
+        will show a perfect arctangent function.
+
+        Input:
+                theta - array of best fitting model parameter values
+                model_data - best fit model computed from the compute_model_grid
+                vel_data - array containing the actual velocity data
+                r_aper - aperture size in pixels to use for each aperture
+                d_aper - distance spacing between apertures
+        Output:
+                1D arrays containing the extracted model and real velocity fields
+                along the kinematic major axis 
+        """
+
+        # assign the best fit parameters to variables from the theta array
+
+        xcen, ycen, inc, pa, rt, vasym = theta
+
+        # initialise the list of aperture positions with the xcen and ycen
+
+        positions = []
+
+        # find the model data
+
+        mod_data = self.compute_model_grid(theta)
+
+        # first job is to compute the central locations of the apertures
+        # do this by fixing the distance along the KA between aperture centres
+
+        xdim = self.xpix - 2
+
+        ydim = self.ypix - 2
+
+        # find the steps along the KA with which to increment
+
+        x_inc = d_aper * abs(np.sin((np.pi / 2.0) - pa))
+
+        y_inc = d_aper * abs(np.cos((np.pi / 2.0) - pa))
+
+        # now find the sequence of aperture centres up until the boundaries
+        # this is tricky - depending on the PA need to increase and decrease
+        # both x and y together, or increase one and decrease the other
+
+        if 0 < pa < np.pi / 2.0 or np.pi < pa < 3 * np.pi / 2.0:
+
+            print 'Top Right and Bottom Left'
+
+            # need to increase x and decrease y and vice versa
+
+            new_x = xcen + x_inc
+
+            new_y = ycen - y_inc
+
+            # while loop until xdim is breached or 0 is breached for y
+
+            while new_x < xdim and new_y > 2:
+
+                # append aperture centre to the positions array
+
+                positions.append((new_y, new_x))
+
+                new_x += x_inc
+
+                new_y -= y_inc
+
+                # print new_x, new_y
+
+            # starting from the left so need to reverse list direction
+            # and append the central point
+
+            positions = positions[::-1]
+
+            positions.append((ycen, xcen))
+
+            # now go in the other direction
+
+            new_x = xcen - x_inc
+
+            new_y = ycen + y_inc
+
+            # while loop until xdim is breached or 0 is breached for y
+
+            while new_x > 2 and new_y < ydim:
+
+                # append aperture centre to the positions array
+
+                positions.append((new_y, new_x))
+
+                new_x -= x_inc
+
+                new_y += y_inc
+
+                # print new_x, new_y
+
+        # deal with the other cases of position angle
+
+        else:
+
+            print 'Top Left and Bottom Right'
+
+            # need to increase x and increase y and vice versa
+
+            new_x = xcen - x_inc
+
+            new_y = ycen - y_inc
+
+            # while loop until xdim is 2 or ydim is 2
+
+            while new_x > 2 and new_y > 2:
+
+                # append aperture centre to the positions array
+
+                positions.append((new_y, new_x))
+
+                new_x -= x_inc
+
+                new_y -= y_inc
+
+            # starting from the left so need to reverse list direction
+            # and append the central point
+
+            positions = positions[::-1]
+
+            positions.append((ycen, xcen))
+
+            # now go in the other direction
+
+            new_x = xcen + x_inc
+
+            new_y = ycen + y_inc
+
+            # while loop until xdim is breached or ydim is breached
+
+            while new_x < xdim and new_y < ydim:
+
+                # append aperture centre to the positions array
+
+                positions.append((new_y, new_x))
+
+                new_x += x_inc
+
+                new_y += y_inc
+
+        # positions array should now be populated with all of the apertures
+
+        # print positions
+
+        # now perform aperture photometry on the model data to check that this
+        # actually works. Remember that the velocity computed for each
+        # aperture will be the sum returned divided by the area
+
+        apertures = CircularAperture(positions, r=r_aper)
+
+        pixel_area = np.pi * r_aper * r_aper
+
+        mod_phot_table = aperture_photometry(mod_data, apertures)
+
+        real_phot_table = aperture_photometry(self.vel_data, apertures)
+
+        print mod_phot_table
+
+        print real_phot_table
+
+        fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+
+        ax.imshow(mod_data)
+
+        plt.show()
+
+        plt.close('all')
+
+        mod_velocity_values = mod_phot_table['aperture_sum'] / pixel_area
+
+        real_velocity_values = real_phot_table['aperture_sum'] / pixel_area
+
+        x = np.arange(0, len(mod_phot_table['aperture_sum']), 1)
+
+        fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+
+        ax.plot(x, mod_velocity_values)
+
+        ax.scatter(x, real_velocity_values)
+
+        plt.show()
