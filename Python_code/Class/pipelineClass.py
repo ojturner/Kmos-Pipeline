@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import pyraf
 import numpy.ma as ma
+import pickle
 from scipy.spatial import distance
 from scipy import ndimage
 from copy import copy
@@ -11157,7 +11158,7 @@ class pipelineOps(object):
 
         factor_list.append(line_noise / np.nanstd(treb_array, axis=0))
 
-        print 'NOISE REDUCTION FACTOR: %s' % np.nanmedian(factor_list)
+        # print 'NOISE REDUCTION FACTOR: %s' % np.nanmedian(factor_list)
 
         return np.nanmedian(factor_list)
 
@@ -11332,7 +11333,7 @@ class pipelineOps(object):
 
         factor_list.append(line_noise / np.nanstd(treb_array, axis=0))
 
-        print 'NOISE REDUCTION FACTOR: %s' % np.nanmedian(factor_list)
+        # print 'NOISE REDUCTION FACTOR: %s' % np.nanmedian(factor_list)
 
         return np.nanmedian(factor_list)
 
@@ -11498,11 +11499,49 @@ class pipelineOps(object):
         # print out.fit_report()
 
         # plot to make sure things are working
-        fig, ax = plt.subplots(figsize=(14, 6))
-        ax.plot(fit_wl, fit_flux, color='blue')
-        ax.plot(fit_wl, out.best_fit, color='red')
+#        fig, ax = plt.subplots(figsize=(14, 6))
+#        ax.plot(fit_wl, fit_flux, color='blue')
+#        ax.plot(fit_wl, out.best_fit, color='red')
         # plt.show()
-        plt.close('all')
+        # plt.close('all')
+
+        return out.best_values, out.covar
+
+    def mc_gauss_fit(self, fit_wl, fit_flux):
+
+        """
+        Def:
+        Performs simple gaussian fit, guessing initial parameters from the data
+        and given input wavelength and input flux values
+
+        Input:
+                fit_wl - wavelength of spectrum to fit
+                fit_flux - flux of spectrum to fitsWavelength
+
+        Output:
+                fit_params - dictionary containing the best fit parameters
+                            for each of the spectra
+        """
+
+        # construct gaussian model using lmfit
+
+        gmod = GaussianModel()
+
+        # set the initial parameter values
+
+        pars = gmod.guess(fit_flux, x=fit_wl)
+
+        # perform the fit
+        out = gmod.fit(fit_flux, pars, x=fit_wl)
+
+        # print the fit report
+#        print out.fit_report()
+#        # plot to make sure things are working
+#        fig, ax = plt.subplots(figsize=(14, 6))
+#        ax.plot(fit_wl, fit_flux, color='blue')
+#        ax.plot(fit_wl, out.best_fit, color='red')
+#        plt.show()
+#        plt.close('all')
 
         return out.best_values, out.covar
 
@@ -11673,7 +11712,8 @@ class pipelineOps(object):
                                 g_c_max,
                                 tol=30,
                                 method='median',
-                                noise_method='cube'):
+                                noise_method='cube',
+                                ntimes=1000):
 
         """
         Def:
@@ -11801,6 +11841,8 @@ class pipelineOps(object):
 
         vel_error_array = np.empty(shape=(xpixs, ypixs))
 
+        sig_error_array = np.empty(shape=(xpixs, ypixs))
+
         # array to check the coincidence of gauss fit flux and
         # flux recovered by the sum
 
@@ -11809,6 +11851,8 @@ class pipelineOps(object):
         for i, xpix in enumerate(np.arange(0, xpixs, 1)):
 
             for j, ypix in enumerate(np.arange(0, ypixs, 1)):
+
+                print 'Fitting Spaxel %s/%s %s/%s' % (i, xpixs - 1, j, ypixs - 1)
 
                 spaxel_spec = data[:, i, j]
                 spaxel_noise = noise[:, i, j]
@@ -11884,13 +11928,13 @@ class pipelineOps(object):
                 # methods
                 if noise_method == 'mask':
 
-                    line_noise = self.noise_from_mask(data,
-                                                      lower_limit,
-                                                      upper_limit,
-                                                      mask_x_lower,
-                                                      mask_x_upper,
-                                                      mask_y_lower,
-                                                      mask_y_upper)
+                    line_noise, line_p_noise = self.noise_from_mask(data,
+                                                                    lower_limit,
+                                                                    upper_limit,
+                                                                    mask_x_lower,
+                                                                    mask_x_upper,
+                                                                    mask_y_lower,
+                                                                    mask_y_upper)
 
                 elif noise_method == 'cube':
 
@@ -11899,6 +11943,8 @@ class pipelineOps(object):
                     sigma_squared = sigma_array * sigma_array
 
                     line_noise = np.sqrt(np.nansum(sigma_squared))
+
+                    line_p_noise = np.std(sigma_array)
 
                 else:
 
@@ -11923,11 +11969,12 @@ class pipelineOps(object):
                                                                  upper_limit)
 
                 # this must also be multiplied by the spectral resolution
+                # print 'This is the original line noise: %s' % line_p_noise
 
                 line_noise = line_noise * cube.dL
 
-                print 'THIS IS THE SIGNAL %s' % line_counts
-                print 'THIS IS THE NOISE %s' % line_noise
+                # print 'THIS IS THE SIGNAL %s' % line_counts
+                # print 'THIS IS THE NOISE %s' % line_noise
 
                 # be careful with how the signal array is populated
 
@@ -11948,13 +11995,13 @@ class pipelineOps(object):
 
                 line_sn = line_counts / line_noise
 
-                print 'THIS IS THE SIGNAL TO NOISE %s' % line_sn
+                # print 'THIS IS THE SIGNAL TO NOISE %s' % line_sn
 
                 # searching the computed signal to noise in this section
 
                 if np.isnan(line_sn) or np.isinf(line_sn) or np.isclose(line_sn, 0, atol=1E-5):
 
-                    print 'getting rid of nan'
+                    # print 'getting rid of nan'
 
                     # we've got a nan entry - get rid of it
 
@@ -11962,6 +12009,8 @@ class pipelineOps(object):
                     vel_array[i, j] = np.nan
                     disp_array[i, j] = np.nan
                     flux_array[i, j] = np.nan
+                    vel_error_array[i, j] = np.nan
+                    sig_error_array[i, j] = np.nan
 
                 # initial checks to see if gaussian should be fit
                 # the first conditions are that the difference between
@@ -11994,12 +12043,15 @@ class pipelineOps(object):
                     mc_amp_array = []
                     mc_centre_array = []
 
-                    for loop in range(0, 100):
+                    # print 'This is the noise: %s' % p_line_noise
+                    # print 'This is the signal: %s' % spaxel_spec
 
-                        print 'fitting %sth gaussian' % loop
+                    for loop in range(0, ntimes):
+
+                        # print 'fitting %sth gaussian' % loop
 
                         # get the perturbed array using the helper function
-                        new_flux = self.perturb_value(line_noise,
+                        new_flux = self.perturb_value(line_p_noise,
                                                       spaxel_spec[lower_limit:
                                                                   upper_limit])
 
@@ -12009,53 +12061,91 @@ class pipelineOps(object):
                                                              new_flux)
 
                         # append the returned values to the mc arrays
+                        # only if the errors are less than tol
 
-                        mc_sig_array.append(gauss_values['sigma'])
-                        mc_amp_array.append(gauss_values['amplitude'])
-                        mc_centre_array.append(gauss_values['center'])
+                        try:
 
+                            amp_err = 100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']
+
+                            sig_err = 100 * np.sqrt(covar[0][0]) / gauss_values['sigma']
+
+                            cen_err = 100 * np.sqrt(covar[1][1]) / gauss_values['center']
+
+                        # if the error is thrown assign infinite errors
+                        except TypeError:
+
+                            amp_err = np.inf
+
+                            sig_err = np.inf
+
+                            cen_err = np.inf
+
+                        if (amp_err < tol and sig_err < tol and cen_err < tol):
+
+                            mc_sig_array.append(gauss_values['sigma'])
+                            mc_amp_array.append(gauss_values['amplitude'])
+                            mc_centre_array.append(gauss_values['center'])
+
+                    print 'This is how many survived %s' % len(mc_sig_array)
                     # np array the resultant mc arrays
-                    # make a histogram of the centre points and plot
-
-                    hist, edges = 
-
 
                     mc_sig_array = np.array(mc_sig_array)
                     mc_amp_array = np.array(mc_amp_array)
                     mc_centre_array = np.array(mc_centre_array)
 
-                    line_amp = np.nanmedian(mc_amp_array)
-                    line_amp_error = np.nanstd(mc_amp_array)
+                    # make a histogram of the centre points and plot
 
-                    line_sig = np.nanmedian(mc_sig_array)
-                    line_sig_error = np.nanstd(mc_sig_array)
-
-                    line_centre = np.nanmedian(mc_centre_array)
-                    line_centre_error = np.nanstd(mc_centre_array)
+#                    hist, edges = np.histogram(mc_centre_array)
+#                    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+#                    ax.plot(edges[:-1], hist)
+#                    plt.show()
+#                    plt.close('all')
 
                     c = 2.99792458E5
 
-                    vel = c * ((gauss_values['center']
-                                - central_wl) / central_wl)
+                    # make histograms of the MCMC results to
+                    # determine the gaussian fitting parameters
+                    # from a gaussian fit to those
 
-                    sig = c * ((gauss_values['sigma']) / central_wl)
+                    vel_hist, vel_edges = np.histogram((c * ((mc_centre_array
+                                             - central_wl) / central_wl)),
+                                                       bins=ntimes / 20.0)
+
+                    sig_hist, sig_edges = np.histogram(c * (mc_sig_array / central_wl),
+                                                       bins=ntimes / 20.0)
+
+                    amp_hist, amp_edges = np.histogram(mc_amp_array, bins=ntimes / 20.0)
+
+                    # make gaussian fits to these histograms
+
+                    vel_gauss_values, vel_covar = self.mc_gauss_fit(vel_edges[:-1],
+                                                                 vel_hist)
+
+                    sig_gauss_values, sig_covar = self.mc_gauss_fit(sig_edges[:-1],
+                                                                 sig_hist)
+
+                    amp_gauss_values, amp_covar = self.mc_gauss_fit(amp_edges[:-1],
+                                                                 amp_hist)
 
                     sn_array[i, j] = line_sn
-                    vel_array[i, j] = vel
-                    disp_array[i, j] = sig
-                    flux_array[i, j] = gauss_values['amplitude']
-                    vel_error_array[i, j] = vel * (cen_err / 100.0)
+                    vel_array[i, j] = vel_gauss_values['center']
+                    disp_array[i, j] = sig_gauss_values['center']
+                    flux_array[i, j] = amp_gauss_values['center']
+                    vel_error_array[i, j] = vel_gauss_values['sigma']
+                    sig_error_array[i, j] = sig_gauss_values['sigma']
 
                 # don't bother expanding area if line_sn starts negative
 
                 elif line_sn < 0:
 
-                    print 'Found negative signal %s %s' % (i, j)
+                    # print 'Found negative signal %s %s' % (i, j)
 
                     sn_array[i, j] = np.nan
                     vel_array[i, j] = np.nan
                     disp_array[i, j] = np.nan
                     flux_array[i, j] = np.nan
+                    vel_error_array[i, j] = np.nan
+                    sig_error_array[i, j] = np.nan
 
                 # If between 0 and the threshold, search surrounding area
                 # for more signal - do this in the direction of the galaxy
@@ -12066,7 +12156,7 @@ class pipelineOps(object):
                      (line_sn > threshold and (int_ratio < g_c_min or int_ratio > g_c_max)) or \
                      (line_sn > threshold and (amp_err > tol or sig_err > tol or cen_err > tol)):
 
-                    print 'Attempting to improve signal: %s %s %s' % (line_sn, i, j)
+                    # print 'Attempting to improve signal: %s %s %s' % (line_sn, i, j)
 
                     # compute the stacked 3x3 spectrum using helper method
 
@@ -12115,7 +12205,7 @@ class pipelineOps(object):
 
                     int_ratio = new_line_counts / gauss_values['amplitude']
 
-                    print 'did things improve: new %s old %s' % (new_sn, line_sn)
+                    # print 'did things improve: new %s old %s' % (new_sn, line_sn)
 
                     # if the new signal to noise is greater than the
                     # threshold, save this in the cube and proceed
@@ -12132,29 +12222,119 @@ class pipelineOps(object):
                         # if the gaussian does not fit correctly this can throw
                         # a nonetype error, since covar is empty
 
+                        mc_sig_array = []
+                        mc_amp_array = []
+                        mc_centre_array = []
+                        new_line_p_noise = line_p_noise / t_red
+
+                        # print 'This is the noise: %s' % new_line_p_noise
+                        # print 'This is the signal: %s' % spec
+
+                        for loop in range(0, ntimes):
+
+                            # print 'fitting %sth gaussian' % loop
+
+                            # get the perturbed array using the helper function
+                            new_flux = self.perturb_value(new_line_p_noise,
+                                                          spec)
+
+                            # fit the gaussian to recover the parameters
+                            gauss_values, covar = self.gauss_fit(wave_array[lower_limit:
+                                                                            upper_limit],
+                                                                 new_flux)
+
+                            # append the returned values to the mc arrays
+                            # only if the errors are less than tol
+
+                            try:
+
+                                amp_err = 100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']
+
+                                sig_err = 100 * np.sqrt(covar[0][0]) / gauss_values['sigma']
+
+                                cen_err = 100 * np.sqrt(covar[1][1]) / gauss_values['center']
+
+                            # if the error is thrown assign infinite errors
+                            except TypeError:
+
+                                amp_err = np.inf
+
+                                sig_err = np.inf
+
+                                cen_err = np.inf
+
+                            if (amp_err < tol and sig_err < tol and cen_err < tol):
+
+                                mc_sig_array.append(gauss_values['sigma'])
+                                mc_amp_array.append(gauss_values['amplitude'])
+                                mc_centre_array.append(gauss_values['center'])
+
+                        print 'This is how many survived %s' % len(mc_sig_array)
+                        # np array the resultant mc arrays
+
+                        mc_sig_array = np.array(mc_sig_array)
+                        mc_amp_array = np.array(mc_amp_array)
+                        mc_centre_array = np.array(mc_centre_array)
+
+                        # np array the resultant mc arrays
+
+                        mc_sig_array = np.array(mc_sig_array)
+                        mc_amp_array = np.array(mc_amp_array)
+                        mc_centre_array = np.array(mc_centre_array)
+
+                        # make a histogram of the centre points and plot
+
+    #                    hist, edges = np.histogram(mc_centre_array)
+    #                    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+    #                    ax.plot(edges[:-1], hist)
+    #                    plt.show()
+    #                    plt.close('all')
+
                         c = 2.99792458E5
 
-                        vel = c * ((gauss_values['center']
-                                    - central_wl) / central_wl)
+                        # make histograms of the MCMC results to
+                        # determine the gaussian fitting parameters
+                        # from a gaussian fit to those
 
-                        sig = c * ((gauss_values['sigma']) / central_wl)
+                        vel_hist, vel_edges = np.histogram((c * ((mc_centre_array
+                                                 - central_wl) / central_wl)),
+                                                           bins=ntimes / 20.0)
 
-                        sn_array[i, j] = new_sn
-                        vel_array[i, j] = vel
-                        disp_array[i, j] = sig
-                        flux_array[i, j] = gauss_values['amplitude']
-                        vel_error_array[i, j] = vel * (cen_err / 100.0)
+                        sig_hist, sig_edges = np.histogram(c * (mc_sig_array / central_wl),
+                                                           bins=ntimes / 20.0)
+
+                        amp_hist, amp_edges = np.histogram(mc_amp_array, bins=ntimes / 20.0)
+
+                        # make gaussian fits to these histograms
+
+                        vel_gauss_values, vel_covar = self.mc_gauss_fit(vel_edges[:-1],
+                                                                     vel_hist)
+
+                        sig_gauss_values, sig_covar = self.mc_gauss_fit(sig_edges[:-1],
+                                                                     sig_hist)
+
+                        amp_gauss_values, amp_covar = self.mc_gauss_fit(amp_edges[:-1],
+                                                                     amp_hist)
+
+                        sn_array[i, j] = line_sn
+                        vel_array[i, j] = vel_gauss_values['center']
+                        disp_array[i, j] = sig_gauss_values['center']
+                        flux_array[i, j] = amp_gauss_values['center']
+                        vel_error_array[i, j] = vel_gauss_values['sigma']
+                        sig_error_array[i, j] = sig_gauss_values['sigma']
 
                     # don't bother expanding area if line_sn starts negative
 
                     elif new_sn < 0:
 
-                        print 'Found negative signal %s %s' % (i, j)
+                        # print 'Found negative signal %s %s' % (i, j)
 
                         sn_array[i, j] = np.nan
                         vel_array[i, j] = np.nan
                         disp_array[i, j] = np.nan
                         flux_array[i, j] = np.nan
+                        vel_error_array[i, j] = np.nan
+                        sig_error_array[i, j] = np.nan
 
                     # If between 0 and the threshold, search surrounding area
                     # for more signal - do this in the direction of the galaxy
@@ -12209,7 +12389,7 @@ class pipelineOps(object):
 
                         int_ratio = final_line_counts / gauss_values['amplitude']
 
-                        print 'did things improve: final %s old %s' % (final_sn, new_sn)
+                        # print 'did things improve: final %s old %s' % (final_sn, new_sn)
 
                         # if the new signal to noise is greater than the
                         # threshold, save this in the cube and proceed
@@ -12228,40 +12408,130 @@ class pipelineOps(object):
 
                             # plt.show()
 
+                            mc_sig_array = []
+                            mc_amp_array = []
+                            mc_centre_array = []
+                            final_line_p_noise = line_p_noise / f_red
+
+                            # print 'This is the final noise: %s' % final_line_p_noise
+                            # print 'This is the signal: %s' % spec
+
+                            for loop in range(0, ntimes):
+
+                                # print 'fitting %sth gaussian' % loop
+
+                                # get the perturbed array using the helper function
+                                new_flux = self.perturb_value(final_line_p_noise,
+                                                              spec)
+
+                                # print new_flux
+
+                                # fit the gaussian to recover the parameters
+                                gauss_values, covar = self.gauss_fit(wave_array[lower_limit:
+                                                                                upper_limit],
+                                                                     new_flux)
+
+                                # append the returned values to the mc arrays
+                                # only if the errors are less than tol
+
+                                try:
+
+                                    amp_err = 100 * np.sqrt(covar[2][2]) / gauss_values['amplitude']
+
+                                    sig_err = 100 * np.sqrt(covar[0][0]) / gauss_values['sigma']
+
+                                    cen_err = 100 * np.sqrt(covar[1][1]) / gauss_values['center']
+
+                                # if the error is thrown assign infinite errors
+                                except TypeError:
+
+                                    amp_err = np.inf
+
+                                    sig_err = np.inf
+
+                                    cen_err = np.inf
+
+                                if (amp_err < tol and sig_err < tol and cen_err < tol):
+
+                                    mc_sig_array.append(gauss_values['sigma'])
+                                    mc_amp_array.append(gauss_values['amplitude'])
+                                    mc_centre_array.append(gauss_values['center'])
+
+                            print 'This is how many survived %s' % len(mc_sig_array)
+                            # np array the resultant mc arrays
+
+                            mc_sig_array = np.array(mc_sig_array)
+                            mc_amp_array = np.array(mc_amp_array)
+                            mc_centre_array = np.array(mc_centre_array)
+
+                            # make a histogram of the centre points and plot
+
+        #                    hist, edges = np.histogram(mc_centre_array)
+        #                    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        #                    ax.plot(edges[:-1], hist)
+        #                    plt.show()
+        #                    plt.close('all')
+
                             c = 2.99792458E5
 
-                            vel = c * ((gauss_values['center']
-                                        - central_wl) / central_wl)
+                            # make histograms of the MCMC results to
+                            # determine the gaussian fitting parameters
+                            # from a gaussian fit to those
 
-                            sig = c * ((gauss_values['sigma']) / central_wl)
+                            vel_hist, vel_edges = np.histogram((c * ((mc_centre_array
+                                                     - central_wl) / central_wl)),
+                                                               bins=ntimes / 20.0)
 
-                            sn_array[i, j] = final_sn
-                            vel_array[i, j] = vel
-                            disp_array[i, j] = sig
-                            flux_array[i, j] = gauss_values['amplitude']
-                            vel_error_array[i, j] = vel * (cen_err / 100.0)
+                            sig_hist, sig_edges = np.histogram(c * (mc_sig_array / central_wl),
+                                                               bins=ntimes / 20.0)
+
+                            amp_hist, amp_edges = np.histogram(mc_amp_array, bins=ntimes / 20.0)
+
+                            # make gaussian fits to these histograms
+
+                            vel_gauss_values, vel_covar = self.mc_gauss_fit(vel_edges[:-1],
+                                                                         vel_hist)
+
+                            sig_gauss_values, sig_covar = self.mc_gauss_fit(sig_edges[:-1],
+                                                                         sig_hist)
+
+                            amp_gauss_values, amp_covar = self.mc_gauss_fit(amp_edges[:-1],
+                                                                         amp_hist)
+
+                            sn_array[i, j] = line_sn
+                            vel_array[i, j] = vel_gauss_values['center']
+                            disp_array[i, j] = sig_gauss_values['center']
+                            flux_array[i, j] = amp_gauss_values['center']
+                            vel_error_array[i, j] = vel_gauss_values['sigma']
+                            sig_error_array[i, j] = sig_gauss_values['sigma']
 
                         elif (final_sn > 0 and final_sn < threshold) or \
                              (final_sn > threshold and (int_ratio < g_c_min or int_ratio > g_c_max)) or \
                              (final_sn > threshold and (amp_err > tol or sig_err > tol or cen_err > tol)):
 
-                            print 'Threshold reached but sum and gauss too disimilar'
+                            # print 'Threshold reached but sum and gauss too disimilar'
                         
                             sn_array[i, j] = np.nan
                             vel_array[i, j] = np.nan
                             disp_array[i, j] = np.nan
                             flux_array[i, j] = np.nan
+                            vel_error_array[i, j] = np.nan
+                            sig_error_array[i, j] = np.nan
 
                         else:
 
                             # didn't reach target - store as nan
 
-                            print 'no improvement, stop trying to fix'
+                            # print 'no improvement, stop trying to fix'
 
                             sn_array[i, j] = np.nan
                             vel_array[i, j] = np.nan
                             disp_array[i, j] = np.nan
                             flux_array[i, j] = np.nan
+                            vel_error_array[i, j] = np.nan
+                            sig_error_array[i, j] = np.nan
+
+        # print 'This is the sigma error array: %s' % sig_error_array
 
         # loop around noise array to clean up nan entries
         for i in range(0, len(noise_array)):
@@ -12301,6 +12571,10 @@ class pipelineOps(object):
                                                          mask_y_lower:mask_y_upper],
                                             [5.0, 95.0])
 
+            sig_er_min, sig_er_max = np.nanpercentile(sig_error_array[mask_x_lower:mask_x_upper,
+                                                         mask_y_lower:mask_y_upper],
+                                            [5.0, 95.0])
+
         except TypeError:
 
             # origin of the error is lack of good S/N data
@@ -12311,12 +12585,14 @@ class pipelineOps(object):
             s_min, s_max = [0, 0.01]
             sn_min, sn_max = [0, 10]
             g_min, g_max = [0, 1.5]
+            er_min, er_max = [0, 100]
+            sig_er_min, sig_er_max = [0, 100]
 
         plt.close('all')
 
         # create 1x3 postage stamps of the different properties
 
-        fig, ax = plt.subplots(1, 7, figsize=(28, 6))
+        fig, ax = plt.subplots(1, 8, figsize=(30, 6))
 
         flux_cut = flux_array[mask_x_lower:mask_x_upper,
                               mask_y_lower:mask_y_upper]
@@ -12403,7 +12679,7 @@ class pipelineOps(object):
 
                 else:
 
-                    masked_disp_array[i ][j] = masked_disp_array[i][j]
+                    masked_disp_array[i][j] = masked_disp_array[i][j]
 
         im = ax[2].imshow(masked_disp_array,
                           vmin=sig_min,
@@ -12486,7 +12762,23 @@ class pipelineOps(object):
         # set the title
         ax[6].set_title('Velocity Error')
 
-        plt.show()
+        im = ax[7].imshow(sig_error_array,
+                          vmin=sig_er_min,
+                          vmax=sig_er_max,
+                          cmap=plt.get_cmap('jet'),
+                          interpolation='nearest')
+
+        # ax[2].scatter(centre_y, centre_x, marker='x', s=3E2, color='black')
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[7])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[7].set_title('Sigma Error')
+
+        # plt.show()
 
         fig.savefig('%s_stamps_gauss%s_t%s_%s_%s.pdf' % (incube[:-5],
                                                          str(tol),
@@ -12499,13 +12791,21 @@ class pipelineOps(object):
         # also want to return the velocity error array and the velocity
         # array as fits files so they can be loaded into disk
 
-        vel_hdu = fits.PrimaryHDU(vel_array)
+        vel_hdu = fits.PrimaryHDU(masked_vel_array)
 
-        vel_hdu.writeto('%s_vel_field.fits' % incube[:-5])
+        vel_hdu.writeto('%s_vel_field.fits' % incube[:-5], clobber=True)
 
         vel_err_hdu = fits.PrimaryHDU(vel_error_array)
 
-        vel_err_hdu.writeto('%s_error_field.fits' % incube[:-5])
+        vel_err_hdu.writeto('%s_error_field.fits' % incube[:-5], clobber=True)
+
+        sig_hdu = fits.PrimaryHDU(masked_disp_array)
+
+        sig_hdu.writeto('%s_sig_field.fits' % incube[:-5], clobber=True)
+
+        sig_error_hdu = fits.PrimaryHDU(sig_error_array)
+
+        sig_error_hdu.writeto('%s_sig_error_field.fits' % incube[:-5], clobber=True)
 
         # return the noise, signal and flux arrays for potential
         # voronoi binning
@@ -12607,9 +12907,9 @@ class pipelineOps(object):
             poly_best = out.eval(x=x)
 
 
-        fig, ax = plt.subplots(1, 1, figsize=(18, 10))
-        ax.plot(x[100:1900], poly_noise[100:1900])
-        ax.plot(x[100:1900], poly_best[100:1900])
+#        fig, ax = plt.subplots(1, 1, figsize=(18, 10))
+#        ax.plot(x[100:1900], poly_noise[100:1900])
+#        ax.plot(x[100:1900], poly_best[100:1900])
         # plt.show()
         plt.close('all')
 
@@ -12653,6 +12953,7 @@ class pipelineOps(object):
 
         noise_list = []
         noise_values = []
+        p_noise_values = []
 
         # loop round and append to this list
         # four different mask segments to append
@@ -12687,6 +12988,7 @@ class pipelineOps(object):
         for entry in noise_list:
 
             noise_values.append(np.nansum(entry[lower_l:upper_l]))
+            p_noise_values.append(np.std(entry[lower_l:upper_l]))
 
         noise_values = np.array(noise_values)
 
@@ -12706,8 +13008,9 @@ class pipelineOps(object):
         # will take the median for now but could also take the dispersion
 
         final_noise = np.nanstd(noise_values)
+        final_p_noise = np.median(p_noise_values)
 
-        return final_noise
+        return final_noise, final_p_noise
 
     def voronoi_binning_from_map(self,
                                  incube,
@@ -13043,13 +13346,13 @@ class pipelineOps(object):
             # methods
             if noise_method == 'mask':
 
-                line_noise = self.noise_from_mask(data,
-                                                  lower_limit,
-                                                  upper_limit,
-                                                  mask_x_lower,
-                                                  mask_x_upper,
-                                                  mask_y_lower,
-                                                  mask_y_upper)
+                line_noise, line_p_noise = self.noise_from_mask(data,
+                                                                lower_limit,
+                                                                upper_limit,
+                                                                mask_x_lower,
+                                                                mask_x_upper,
+                                                                mask_y_lower,
+                                                                mask_y_upper)
 
             elif noise_method == 'cube':
 
@@ -13636,16 +13939,12 @@ class pipelineOps(object):
 
         # construct the new flux array
 
-        new_flux = []
+        ran_array = np.random.normal(scale=noise, size=len(flux_array))
 
         # do the perturbation using a gaussian distributed value
         # with mean of the flux array and sigma of the noise value
 
-        for f in flux_array:
-
-            new_flux.append(np.random.normal(loc=f, scale=noise))
-
-        return np.array(new_flux)
+        return ran_array + flux_array 
 
     def compare_noise_methods(self,
                               infile,
@@ -13654,6 +13953,7 @@ class pipelineOps(object):
                               g_c_min,
                               g_c_max,
                               noise_method='cube',
+                              ntimes=1000,
                               **kwargs):
 
         """
@@ -13745,7 +14045,8 @@ class pipelineOps(object):
                                                        g_c_max,
                                                        tol=tolerance,
                                                        method=stack_method,
-                                                       noise_method='cube')
+                                                       noise_method='cube',
+                                                       ntimes=ntimes)
 
             flux_array_cube = return_list[2]
 
@@ -13767,7 +14068,8 @@ class pipelineOps(object):
                                                        g_c_max,
                                                        tol=tolerance,
                                                        method=stack_method,
-                                                       noise_method='mask')
+                                                       noise_method='mask',
+                                                       ntimes=ntimes)
 
             flux_array_mask = return_list[2]
 

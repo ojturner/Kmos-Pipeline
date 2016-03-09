@@ -12,6 +12,7 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.mlab as mlab
+import pickle
 from scipy import stats
 from scipy import interpolate
 from lmfit.models import GaussianModel, PolynomialModel
@@ -88,6 +89,34 @@ class vel_field(object):
         except IOError:
 
             print 'No associated error field'
+
+        try:
+
+            self.sig_table = fits.open('%ssig_field.fits' % self.fileName[:-14])
+
+            self.sig_data = self.sig_table[0].data
+
+        except IOError:
+
+            print 'No associated error field'
+
+        try:
+
+            self.sig_er_table = fits.open('%ssig_error_field.fits' % self.fileName[:-14])
+
+            self.sig_error_data = self.sig_er_table[0].data
+
+        except IOError:
+
+            print 'No associated error field'
+
+        # variables housing the pickled chain and lnp
+
+        self.chain_name = self.fileName[:-5] + '_chain.obj'
+
+        self.ln_p_name = self.fileName[:-5] + '_lnp.obj'
+
+        self.param_file = self.fileName[:-5] + '_params.txt'
 
         #initialise x and y dimensions
 
@@ -477,8 +506,8 @@ class vel_field(object):
 
         xcen, ycen, inc, pa, rt, vasym = theta
 
-        # look at the difference between central pixel and pixel 
-        # being modelled 
+        # look at the difference between central pixel and pixel
+        # being modelled
 
         diff_x = (xcen - xpos) * 1.0
 
@@ -491,20 +520,26 @@ class vel_field(object):
         if diff_y == 0 and diff_x != 0:
 
             pixel_angle = np.arctan(np.sign(diff_x)*np.inf)
+
             # print 'This is the pixel angle %s' % pixel_angle
 
         elif diff_y == 0 and diff_x == 0:
+
             # print 'In the middle'
+
             pixel_angle = 0.0
 
         else:
+
             # print 'computing pixel angle'
+
             pixel_angle = np.arctan(diff_x / diff_y)
+
             # print 'pixel angle %s' % (pixel_angle * 180 / np.pi)
 
-        # work out phi which is the overall angle between 
+        # work out phi which is the overall angle between
         # the spaxel being modelled and the central spaxel/position angle
-        # this involves summing with a rotation angle which depends on 
+        # this involves summing with a rotation angle which depends on
         # the spaxel quadrant
 
         if diff_x >= 0 and diff_y >= 0 and not(diff_x == 0 and diff_y == 0):
@@ -667,7 +702,7 @@ class vel_field(object):
 
         inv_sigma2 = 1.0 / (self.error_data * self.error_data)
 
-        ans = -0.5 * (np.nansum((self.vel_data - model)**2 *
+        ans = -0.5 * (np.nansum((self.vel_data - model)*(self.vel_data - model) *
                                 inv_sigma2 - np.log(inv_sigma2)))
 
         print ans
@@ -720,7 +755,8 @@ class vel_field(object):
                                         ndim,
                                         self.lnprob)
 
-        sampler.run_mcmc(pos, nsteps)
+        sampler.run_mcmc(pos,
+                         nsteps)
 
         samples = sampler.chain[:, burn_no:, :].reshape((-1, ndim))
 
@@ -735,24 +771,122 @@ class vel_field(object):
 
         fig.savefig('%s_corner_plot.png' % self.fileName[:-5])
 
-        # print samples
-
-        p = sampler.lnprobability
-
-        max_p = np.unravel_index(p.argmax(), p.shape)
-
-        # print max_p
-
-        # print sampler.chain[max_p[0], max_p[1], :]
-
-        params_name = self.fileName[:-5] + '_params.txt'
-
-        np.savetxt(params_name, sampler.chain[max_p[0], max_p[1], :])
-
         plt.show()
 
-    def plot_comparison(self,
-                        theta):
+        # print samples
+        # going to save pickled versions of the chain and the lnprobability
+        # so that these can be accessed again later if necessary
+
+        if os.path.isfile(self.chain_name):
+
+            os.system('rm %s' % self.chain_name)
+
+        if os.path.isfile(self.ln_p_name):
+
+            os.system('rm %s' % self.ln_p_name)
+
+        chain_file = open(self.chain_name, 'w')
+
+        pickle.dump(sampler.chain, chain_file)
+
+        chain_file.close()
+
+        ln_p_file = open(self.ln_p_name, 'w')
+
+        pickle.dump(sampler.lnprobability, ln_p_file)
+
+        ln_p_file.close()
+
+        # now use the helper function below to open up
+        # the pickled files and write to params file
+
+        self.write_params(burn_no)
+
+        # set a variable to the log probability value
+
+    def write_params(self,
+                     burn_no):
+
+        """
+        Def:
+        Helper function to open up the pickled chain and lnp files
+        and write the maximum likelihood, 50th percentile, 16th per and 84th
+        per parameters to file for ease of application later on
+
+        Input:
+                burn_no - number of entries (steps) to burn from the chain
+        """
+
+        chain = pickle.load(open(self.chain_name, 'r'))
+
+        lnp = pickle.load(open(self.ln_p_name, 'r'))
+
+        samples = chain[:, burn_no:, :].reshape((-1, chain.shape[2]))
+
+        # initialise the parameter names
+
+        param_names = ['type',
+                       'centre_x',
+                       'centre_y',
+                       'inclination',
+                       'position_angle',
+                       'Flattening_Radius',
+                       'Flattening_Velocity']
+
+        # find the max likelihood parameters
+
+        max_p = np.unravel_index(lnp.argmax(), lnp.shape)
+
+        max_params = chain[max_p[0], max_p[1], :]
+
+        x_mcmc, y_mcmc, i_mcmc, \
+            pa_mcmc, rt_mcmc, va_mcmc \
+            = zip(*np.percentile(samples, [16, 50, 84],
+                  axis=0))
+
+        param_file = self.fileName[:-5] + '_params.txt'
+
+        if os.path.isfile(param_file):
+
+            os.system('rm %s' % param_file)
+
+        # write all of these values to file
+
+        with open(param_file, 'a') as f:
+
+            for item in param_names:
+
+                f.write('%s\t' % item)
+
+            f.write('\nMAX_lnp:\t')
+
+            for item in max_params:
+
+                f.write('%s\t' % item)
+
+            f.write('\n50th_lnp:\t%s\t%s\t%s\t%s\t%s\t%s\t' % (x_mcmc[1],
+                                                               y_mcmc[1],
+                                                               i_mcmc[1],
+                                                               pa_mcmc[1],
+                                                               rt_mcmc[1],
+                                                               va_mcmc[1]))
+
+            f.write('\n16th_lnp:\t%s\t%s\t%s\t%s\t%s\t%s\t' % (x_mcmc[0],
+                                                               y_mcmc[0],
+                                                               i_mcmc[0],
+                                                               pa_mcmc[0],
+                                                               rt_mcmc[0],
+                                                               va_mcmc[0]))
+
+            f.write('\n84th_lnp:\t%s\t%s\t%s\t%s\t%s\t%s\t' % (x_mcmc[2],
+                                                               y_mcmc[2],
+                                                               i_mcmc[2],
+                                                               pa_mcmc[2],
+                                                               rt_mcmc[2],
+                                                               va_mcmc[2]))
+
+
+    def plot_comparison(self):
 
         """
         Def:
@@ -766,8 +900,27 @@ class vel_field(object):
 
         """
 
+        # load in the file
+
+        param_file = np.genfromtxt(self.param_file)
+
+        theta_max = param_file[1][1:]
+
+        theta_50 = param_file[2][1:]
+
+        theta_16 = param_file[3][1:]
+
+        theta_84 = param_file[4][1:]
+
         # compute the model grid with the specified parameters
-        model = self.compute_model_grid(theta)
+
+        model_max = self.compute_model_grid(theta_max)
+
+        model_50 = self.compute_model_grid(theta_50)
+
+        model_16 = self.compute_model_grid(theta_16)
+
+        model_84 = self.compute_model_grid(theta_84)
 
         # only want to see the evaluated model at the grid points
         # where the data is not nan. Loop round the data and create
@@ -787,16 +940,22 @@ class vel_field(object):
 
                     mask_array[i][j] = 1.0
 
-
         # take product of model and mask_array to return new data
 
-        trunc_model = mask_array * model
+        trunc_model_max = mask_array * model_max
+
+        trunc_model_50 = mask_array * model_50
+
+        trunc_model_16 = mask_array * model_16
+
+        trunc_model_84 = mask_array * model_84
 
         # plot the results
 
         vel_min, vel_max = np.nanpercentile(self.vel_data,
                                             [5.0, 95.0])
-        mod_min, mod_max = np.nanpercentile(trunc_model,
+
+        mod_min, mod_max = np.nanpercentile(trunc_model_max,
                                             [5.0, 95.0])
 
         plt.close('all')
@@ -817,7 +976,7 @@ class vel_field(object):
         # set the title
         ax[0].set_title('[OIII] Velocity Data')
 
-        im = ax[1].imshow(trunc_model,
+        im = ax[1].imshow(trunc_model_50,
                           cmap=plt.get_cmap('jet'),
                           vmin=mod_min,
                           vmax=mod_max,
@@ -830,11 +989,14 @@ class vel_field(object):
 
         # set the title
         ax[1].set_title('[OIII] Velocity Model')
+
         plt.show()
+
+        fig.savefig('%s_model_comparison.png' % self.fileName[:-5])
+
         plt.close('all')
 
     def extract_in_apertures(self,
-                             theta,
                              r_aper,
                              d_aper):
 
@@ -851,20 +1013,66 @@ class vel_field(object):
                 d_aper - distance spacing between apertures
         Output:
                 1D arrays containing the extracted model and real velocity fields
-                along the kinematic major axis 
+                along the kinematic major axis
         """
 
         # assign the best fit parameters to variables from the theta array
 
-        xcen, ycen, inc, pa, rt, vasym = theta
+        # load in the file
+
+        param_file = np.genfromtxt(self.param_file)
+
+        theta_max = param_file[1][1:]
+
+        pa_max = theta_max[3]
+
+        xcen_max = theta_max[0]
+
+        ycen_max = theta_max[1]
+
+        theta_50 = param_file[2][1:]
+
+        pa_50 = theta_50[3]
+
+        xcen_50 = theta_50[0]
+
+        ycen_50 = theta_50[1]
+
+        theta_16 = param_file[3][1:]
+
+        pa_16 = theta_16[3]
+
+        xcen_16 = theta_16[0]
+
+        ycen_16 = theta_16[1]
+
+        theta_84 = param_file[4][1:]
+
+        pa_84 = theta_84[3]
+
+        xcen_84 = theta_84[0]
+
+        ycen_84 = theta_84[1]
+
+        # compute the model grid with the specified parameters
+
+        model_max = self.compute_model_grid(theta_max)
+
+        model_50 = self.compute_model_grid(theta_50)
+
+        model_16 = self.compute_model_grid(theta_16)
+
+        model_84 = self.compute_model_grid(theta_84)
 
         # initialise the list of aperture positions with the xcen and ycen
 
-        positions = []
+        positions_max = []
 
-        # find the model data
+        positions_50 = []
 
-        mod_data = self.compute_model_grid(theta)
+        positions_16 = []
+
+        positions_84 = []
 
         # first job is to compute the central locations of the apertures
         # do this by fixing the distance along the KA between aperture centres
@@ -875,64 +1083,78 @@ class vel_field(object):
 
         # find the steps along the KA with which to increment
 
-        x_inc = d_aper * abs(np.sin((np.pi / 2.0) - pa))
+        x_inc_max = d_aper * abs(np.sin((np.pi / 2.0) - pa_max))
 
-        y_inc = d_aper * abs(np.cos((np.pi / 2.0) - pa))
+        y_inc_max = d_aper * abs(np.cos((np.pi / 2.0) - pa_max))
+
+        x_inc_50 = d_aper * abs(np.sin((np.pi / 2.0) - pa_50))
+
+        y_inc_50 = d_aper * abs(np.cos((np.pi / 2.0) - pa_50))
+
+        x_inc_16 = d_aper * abs(np.sin((np.pi / 2.0) - pa_16))
+
+        y_inc_16 = d_aper * abs(np.cos((np.pi / 2.0) - pa_16))
+
+        x_inc_84 = d_aper * abs(np.sin((np.pi / 2.0) - pa_84))
+
+        y_inc_84 = d_aper * abs(np.cos((np.pi / 2.0) - pa_84))
 
         # now find the sequence of aperture centres up until the boundaries
         # this is tricky - depending on the PA need to increase and decrease
         # both x and y together, or increase one and decrease the other
 
-        if 0 < pa < np.pi / 2.0 or np.pi < pa < 3 * np.pi / 2.0:
+        # statements for the maximum likelihood position angle
+
+        if 0 < pa_max < np.pi / 2.0 or np.pi < pa_max < 3 * np.pi / 2.0:
 
             print 'Top Right and Bottom Left'
 
             # need to increase x and decrease y and vice versa
 
-            new_x = xcen + x_inc
+            new_x_max = xcen_max + x_inc_max
 
-            new_y = ycen - y_inc
+            new_y_max = ycen_max - y_inc_max
 
             # while loop until xdim is breached or 0 is breached for y
 
-            while new_x < xdim and new_y > 2:
+            while new_x_max < xdim and new_y_max > 2:
 
                 # append aperture centre to the positions array
 
-                positions.append((new_y, new_x))
+                positions_max.append((new_y_max, new_x_max))
 
-                new_x += x_inc
+                new_x_max += x_inc_max
 
-                new_y -= y_inc
+                new_y_max -= y_inc_max
 
-                # print new_x, new_y
+                # print new_x_max, new_y_max
 
             # starting from the left so need to reverse list direction
             # and append the central point
 
-            positions = positions[::-1]
+            positions_max = positions_max[::-1]
 
-            positions.append((ycen, xcen))
+            positions_max.append((ycen_max, xcen_max))
 
             # now go in the other direction
 
-            new_x = xcen - x_inc
+            new_x_max = xcen_max - x_inc_max
 
-            new_y = ycen + y_inc
+            new_y_max = ycen_max + y_inc_max
 
             # while loop until xdim is breached or 0 is breached for y
 
-            while new_x > 2 and new_y < ydim:
+            while new_x_max > 2 and new_y_max < ydim:
 
-                # append aperture centre to the positions array
+                # append aperture centre to the positions_max array
 
-                positions.append((new_y, new_x))
+                positions_max.append((new_y_max, new_x_max))
 
-                new_x -= x_inc
+                new_x_max -= x_inc_max
 
-                new_y += y_inc
+                new_y_max += y_inc_max
 
-                # print new_x, new_y
+                # print new_x, new_y_max
 
         # deal with the other cases of position angle
 
@@ -942,46 +1164,352 @@ class vel_field(object):
 
             # need to increase x and increase y and vice versa
 
-            new_x = xcen - x_inc
+            new_x_max = xcen_max - x_inc_max
 
-            new_y = ycen - y_inc
+            new_y_max = ycen_max - y_inc_max
 
             # while loop until xdim is 2 or ydim is 2
 
-            while new_x > 2 and new_y > 2:
+            while new_x_max > 2 and new_y_max > 2:
 
-                # append aperture centre to the positions array
+                # append aperture centre to the positions_max array
 
-                positions.append((new_y, new_x))
+                positions_max.append((new_y_max, new_x_max))
 
-                new_x -= x_inc
+                new_x_max -= x_inc_max
 
-                new_y -= y_inc
+                new_y_max -= y_inc_max
 
             # starting from the left so need to reverse list direction
             # and append the central point
 
-            positions = positions[::-1]
+            positions_max = positions_max[::-1]
 
-            positions.append((ycen, xcen))
+            positions_max.append((ycen_max, xcen_max))
 
             # now go in the other direction
 
-            new_x = xcen + x_inc
+            new_x_max = xcen_max + x_inc_max
 
-            new_y = ycen + y_inc
+            new_y_max = ycen_max + y_inc_max
 
             # while loop until xdim is breached or ydim is breached
 
-            while new_x < xdim and new_y < ydim:
+            while new_x_max < xdim and new_y_max < ydim:
+
+                # append aperture centre to the positions_max array
+
+                positions_max.append((new_y_max, new_x_max))
+
+                new_x_max += x_inc_max
+
+                new_y_max += y_inc_max
+
+        # statements for the 50th percentile position angle
+
+        if 0 < pa_50 < np.pi / 2.0 or np.pi < pa_50 < 3 * np.pi / 2.0:
+
+            print 'Top Right and Bottom Left'
+
+            # need to increase x and decrease y and vice versa
+
+            new_x_50 = xcen_50 + x_inc_50
+
+            new_y_50 = ycen_50 - y_inc_50
+
+            # while loop until xdim is breached or 0 is breached for y
+
+            while new_x_50 < xdim and new_y_50 > 2:
 
                 # append aperture centre to the positions array
 
-                positions.append((new_y, new_x))
+                positions_50.append((new_y_50, new_x_50))
 
-                new_x += x_inc
+                new_x_50 += x_inc_50
 
-                new_y += y_inc
+                new_y_50 -= y_inc_50
+
+                # print new_x_50, new_y_50
+
+            # starting from the left so need to reverse list direction
+            # and append the central point
+
+            positions_50 = positions_50[::-1]
+
+            positions_50.append((ycen_50, xcen_50))
+
+            # now go in the other direction
+
+            new_x_50 = xcen_50 - x_inc_50
+
+            new_y_50 = ycen_50 + y_inc_50
+
+            # while loop until xdim is breached or 0 is breached for y
+
+            while new_x_50 > 2 and new_y_50 < ydim:
+
+                # append aperture centre to the positions_50 array
+
+                positions_50.append((new_y_50, new_x_50))
+
+                new_x_50 -= x_inc_50
+
+                new_y_50 += y_inc_50
+
+                # print new_x, new_y_50
+
+        # deal with the other cases of position angle
+
+        else:
+
+            print 'Top Left and Bottom Right'
+
+            # need to increase x and increase y and vice versa
+
+            new_x_50 = xcen_50 - x_inc_50
+
+            new_y_50 = ycen_50 - y_inc_50
+
+            # while loop until xdim is 2 or ydim is 2
+
+            while new_x_50 > 2 and new_y_50 > 2:
+
+                # append aperture centre to the positions_50 array
+
+                positions_50.append((new_y_50, new_x_50))
+
+                new_x_50 -= x_inc_50
+
+                new_y_50 -= y_inc_50
+
+            # starting from the left so need to reverse list direction
+            # and append the central point
+
+            positions_50 = positions_50[::-1]
+
+            positions_50.append((ycen_50, xcen_50))
+
+            # now go in the other direction
+
+            new_x_50 = xcen_50 + x_inc_50
+
+            new_y_50 = ycen_50 + y_inc_50
+
+            # while loop until xdim is breached or ydim is breached
+
+            while new_x_50 < xdim and new_y_50 < ydim:
+
+                # append aperture centre to the positions_50 array
+
+                positions_50.append((new_y_50, new_x_50))
+
+                new_x_50 += x_inc_50
+
+                new_y_50 += y_inc_50
+
+        # statements for the 16th percentile position angle
+
+        if 0 < pa_16 < np.pi / 2.0 or np.pi < pa_16 < 3 * np.pi / 2.0:
+
+            print 'Top Right and Bottom Left'
+
+            # need to increase x and decrease y and vice versa
+
+            new_x_16 = xcen_16 + x_inc_16
+
+            new_y_16 = ycen_16 - y_inc_16
+
+            # while loop until xdim is breached or 0 is breached for y
+
+            while new_x_16 < xdim and new_y_16 > 2:
+
+                # append aperture centre to the positions array
+
+                positions_16.append((new_y_16, new_x_16))
+
+                new_x_16 += x_inc_16
+
+                new_y_16 -= y_inc_16
+
+                # print new_x_16, new_y_16
+
+            # starting from the left so need to reverse list direction
+            # and append the central point
+
+            positions_16 = positions_16[::-1]
+
+            positions_16.append((ycen_16, xcen_16))
+
+            # now go in the other direction
+
+            new_x_16 = xcen_16 - x_inc_16
+
+            new_y_16 = ycen_16 + y_inc_16
+
+            # while loop until xdim is breached or 0 is breached for y
+
+            while new_x_16 > 2 and new_y_16 < ydim:
+
+                # append aperture centre to the positions_16 array
+
+                positions_16.append((new_y_16, new_x_16))
+
+                new_x_16 -= x_inc_16
+
+                new_y_16 += y_inc_16
+
+                # print new_x, new_y_16
+
+        # deal with the other cases of position angle
+
+        else:
+
+            print 'Top Left and Bottom Right'
+
+            # need to increase x and increase y and vice versa
+
+            new_x_16 = xcen_16 - x_inc_16
+
+            new_y_16 = ycen_16 - y_inc_16
+
+            # while loop until xdim is 2 or ydim is 2
+
+            while new_x_16 > 2 and new_y_16 > 2:
+
+                # append aperture centre to the positions_16 array
+
+                positions_16.append((new_y_16, new_x_16))
+
+                new_x_16 -= x_inc_16
+
+                new_y_16 -= y_inc_16
+
+            # starting from the left so need to reverse list direction
+            # and append the central point
+
+            positions_16 = positions_16[::-1]
+
+            positions_16.append((ycen_16, xcen_16))
+
+            # now go in the other direction
+
+            new_x_16 = xcen_16 + x_inc_16
+
+            new_y_16 = ycen_16 + y_inc_16
+
+            # while loop until xdim is breached or ydim is breached
+
+            while new_x_16 < xdim and new_y_16 < ydim:
+
+                # append aperture centre to the positions_16 array
+
+                positions_16.append((new_y_16, new_x_16))
+
+                new_x_16 += x_inc_16
+
+                new_y_16 += y_inc_16
+
+        # statements for the 84th percenntile position angle
+
+        if 0 < pa_84 < np.pi / 2.0 or np.pi < pa_84 < 3 * np.pi / 2.0:
+
+            print 'Top Right and Bottom Left'
+
+            # need to increase x and decrease y and vice versa
+
+            new_x_84 = xcen_84 + x_inc_84
+
+            new_y_84 = ycen_84 - y_inc_84
+
+            # while loop until xdim is breached or 0 is breached for y
+
+            while new_x_84 < xdim and new_y_84 > 2:
+
+                # append aperture centre to the positions array
+
+                positions_84.append((new_y_84, new_x_84))
+
+                new_x_84 += x_inc_84
+
+                new_y_84 -= y_inc_84
+
+                # print new_x_84, new_y_84
+
+            # starting from the left so need to reverse list direction
+            # and append the central point
+
+            positions_84 = positions_84[::-1]
+
+            positions_84.append((ycen_84, xcen_84))
+
+            # now go in the other direction
+
+            new_x_84 = xcen_84 - x_inc_84
+
+            new_y_84 = ycen_84 + y_inc_84
+
+            # while loop until xdim is breached or 0 is breached for y
+
+            while new_x_84 > 2 and new_y_84 < ydim:
+
+                # append aperture centre to the positions_84 array
+
+                positions_84.append((new_y_84, new_x_84))
+
+                new_x_84 -= x_inc_84
+
+                new_y_84 += y_inc_84
+
+                # print new_x, new_y_84
+
+        # deal with the other cases of position angle
+
+        else:
+
+            print 'Top Left and Bottom Right'
+
+            # need to increase x and increase y and vice versa
+
+            new_x_84 = xcen_84 - x_inc_84
+
+            new_y_84 = ycen_84 - y_inc_84
+
+            # while loop until xdim is 2 or ydim is 2
+
+            while new_x_84 > 2 and new_y_84 > 2:
+
+                # append aperture centre to the positions_84 array
+
+                positions_84.append((new_y_84, new_x_84))
+
+                new_x_84 -= x_inc_84
+
+                new_y_84 -= y_inc_84
+
+            # starting from the left so need to reverse list direction
+            # and append the central point
+
+            positions_84 = positions_84[::-1]
+
+            positions_84.append((ycen_84, xcen_84))
+
+            # now go in the other direction
+
+            new_x_84 = xcen_84 + x_inc_84
+
+            new_y_84 = ycen_84 + y_inc_84
+
+            # while loop until xdim is breached or ydim is breached
+
+            while new_x_84 < xdim and new_y_84 < ydim:
+
+                # append aperture centre to the positions_84 array
+
+                positions_84.append((new_y_84, new_x_84))
+
+                new_x_84 += x_inc_84
+
+                new_y_84 += y_inc_84
 
         # positions array should now be populated with all of the apertures
 
@@ -991,36 +1519,190 @@ class vel_field(object):
         # actually works. Remember that the velocity computed for each
         # aperture will be the sum returned divided by the area
 
-        apertures = CircularAperture(positions, r=r_aper)
-
         pixel_area = np.pi * r_aper * r_aper
 
-        mod_phot_table = aperture_photometry(mod_data, apertures)
+        # the max likelihood extraction parameters
 
-        real_phot_table = aperture_photometry(self.vel_data, apertures)
+        apertures_max = CircularAperture(positions_max, r=r_aper)
 
-        print mod_phot_table
+        mod_phot_table_max = aperture_photometry(model_max, apertures_max)
 
-        print real_phot_table
+        real_phot_table_max = aperture_photometry(self.vel_data, apertures_max)
 
-        fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+        real_error_table_max = aperture_photometry(self.error_data, apertures_max)
 
-        ax.imshow(mod_data)
+        sig_table_max = aperture_photometry(self.sig_data, apertures_max)
+
+        sig_error_table_max = aperture_photometry(self.sig_error_data, apertures_max)
+
+        mod_velocity_values_max = mod_phot_table_max['aperture_sum'] / pixel_area
+
+        real_velocity_values_max = real_phot_table_max['aperture_sum'] / pixel_area
+
+        real_error_values_max = real_error_table_max['aperture_sum'] / pixel_area
+
+        sig_values_max = sig_table_max['aperture_sum'] / pixel_area
+
+        sig_error_values_max = sig_error_table_max['aperture_sum'] / pixel_area
+
+        x_max = np.arange(0, len(mod_phot_table_max['aperture_sum']), 1)
+
+        # the 50th percentile extraction parameters
+
+        apertures_50 = CircularAperture(positions_50, r=r_aper)
+
+        mod_phot_table_50 = aperture_photometry(model_50, apertures_50)
+
+        real_phot_table_50 = aperture_photometry(self.vel_data, apertures_50)
+
+        real_error_table_50 = aperture_photometry(self.error_data, apertures_50)
+
+        sig_table_50 = aperture_photometry(self.sig_data, apertures_50)
+
+        sig_error_table_50 = aperture_photometry(self.sig_error_data, apertures_50)
+
+        mod_velocity_values_50 = mod_phot_table_50['aperture_sum'] / pixel_area
+
+        real_velocity_values_50 = real_phot_table_50['aperture_sum'] / pixel_area
+
+        real_error_values_50 = real_error_table_50['aperture_sum'] / pixel_area
+
+        sig_values_50 = sig_table_50['aperture_sum'] / pixel_area
+
+        sig_error_values_50 = sig_error_table_50['aperture_sum'] / pixel_area
+
+        x_50 = np.arange(0, len(mod_phot_table_50['aperture_sum']), 1)
+
+        # the 16th percentile extraction parameters
+
+        apertures_16 = CircularAperture(positions_16, r=r_aper)
+
+        mod_phot_table_16 = aperture_photometry(model_16, apertures_16)
+
+        real_phot_table_16 = aperture_photometry(self.vel_data, apertures_16)
+
+        real_error_table_16 = aperture_photometry(self.error_data, apertures_16)
+
+        sig_table_16 = aperture_photometry(self.sig_data, apertures_16)
+
+        sig_error_table_16 = aperture_photometry(self.sig_error_data, apertures_16)
+
+        mod_velocity_values_16 = mod_phot_table_16['aperture_sum'] / pixel_area
+
+        real_velocity_values_16 = real_phot_table_16['aperture_sum'] / pixel_area
+
+        real_error_values_16 = real_error_table_16['aperture_sum'] / pixel_area
+
+        sig_values_16 = sig_table_16['aperture_sum'] / pixel_area
+
+        sig_error_values_16 = sig_error_table_16['aperture_sum'] / pixel_area
+
+        x_16 = np.arange(0, len(mod_phot_table_16['aperture_sum']), 1)
+
+        # the 84th percentile extraction parameters
+
+        apertures_84 = CircularAperture(positions_84, r=r_aper)
+
+        mod_phot_table_84 = aperture_photometry(model_84, apertures_84)
+
+        real_phot_table_84 = aperture_photometry(self.vel_data, apertures_84)
+
+        real_error_table_84 = aperture_photometry(self.error_data, apertures_84)
+
+        sig_table_84 = aperture_photometry(self.sig_data, apertures_84)
+
+        sig_error_table_84 = aperture_photometry(self.sig_error_data, apertures_84)
+
+        mod_velocity_values_84 = mod_phot_table_84['aperture_sum'] / pixel_area
+
+        real_velocity_values_84 = real_phot_table_84['aperture_sum'] / pixel_area
+
+        real_error_values_84 = real_error_table_84['aperture_sum'] / pixel_area
+
+        sig_values_84 = sig_table_84['aperture_sum'] / pixel_area
+
+        sig_error_values_84 = sig_error_table_84['aperture_sum'] / pixel_area
+
+        x_84 = np.arange(0, len(mod_phot_table_84['aperture_sum']), 1)
+
+        # plotting the model and extracted quantities
+
+        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+
+        ax.plot(x_max,
+                mod_velocity_values_max,
+                color='red',
+                label='max_model')
+
+        ax.errorbar(x_max,
+                    real_velocity_values_max,
+                    yerr=real_error_values_max,
+                    fmt='o',
+                    color='red',
+                    label='max_data')
+
+        ax.plot(x_50,
+                mod_velocity_values_50,
+                color='blue',
+                label='50_model')
+
+        ax.errorbar(x_50,
+                    real_velocity_values_50,
+                    yerr=real_error_values_50,
+                    fmt='o',
+                    color='blue',
+                    label='50_data')
+
+        ax.plot(x_16,
+                mod_velocity_values_16,
+                color='orange',
+                linestyle='--',
+                label='16_model')
+
+        ax.plot(x_84,
+                mod_velocity_values_84,
+                color='purple',
+                linestyle='--',
+                label='84_model')
+
+        ax.legend(prop={'size':10})
+
+        ax.set_title('Model and Real Velocity')
+
+        ax.set_ylabel('velocity (kms$^{-1}$)')
+
+        ax.set_xlabel('aperture number')
 
         plt.show()
+
+        fig.savefig('%s_1d_velocity_plot.png' % self.fileName[:-5])
 
         plt.close('all')
 
-        mod_velocity_values = mod_phot_table['aperture_sum'] / pixel_area
+        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
-        real_velocity_values = real_phot_table['aperture_sum'] / pixel_area
+        ax.errorbar(x_max,
+                    sig_values_max,
+                    yerr=sig_error_values_max,
+                    fmt='o',
+                    color='red',
+                    label='max_data')
 
-        x = np.arange(0, len(mod_phot_table['aperture_sum']), 1)
+        ax.errorbar(x_50,
+                    sig_values_50,
+                    yerr=sig_error_values_50,
+                    fmt='o',
+                    color='blue',
+                    label='50_data')
 
-        fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+        ax.set_title('Velocity Dispersion')
 
-        ax.plot(x, mod_velocity_values)
+        ax.set_ylabel('velocity (kms$^{-1}$)')
 
-        ax.scatter(x, real_velocity_values)
+        ax.set_xlabel('aperture number')
+
+        ax.legend(prop={'size':10})
 
         plt.show()
+
+        fig.savefig('%s_1d_dispersion_plot.png' % self.fileName[:-5])
