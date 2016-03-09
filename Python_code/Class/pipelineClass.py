@@ -32,6 +32,7 @@ sys.path.append('/disk1/turner/PhD'
 
 from cubeClass import cubeOps
 from galPhysClass import galPhys
+from vel_field_class import vel_field
 
 
 class pipelineOps(object):
@@ -14237,3 +14238,107 @@ class pipelineOps(object):
                                                                     stack_method))
 
             plt.close('all')
+
+    def multi_apply_mcmc(self,
+                         infile,
+                         nwalkers,
+                         nsteps,
+                         burn_no,
+                         raper,
+                         daper):
+
+        """
+        Def: Convenience method for applying MCMC to build and compute
+        the model parameters for each of the velocity fields in the infile.
+        Also will extract the velocity field along the best fit position
+        angle and plot this with the same name as the object but with a
+        different extension.
+
+        Input:
+                infile - list containing object names and guess parameters
+                nwalkers - number of walkers in the __metaclass__
+                nsteps - number of steps each walker takes
+                burn_no - how many steps to burn at the beginning
+                raper - aperture size for velocity field extraction
+                daper - distance between consecutive apertures in pixels
+
+        Output:
+                obj_vel_field_1d_dispersion_plot.png
+                obj_vel_field_1d_velocity_plot.png
+                obj_vel_field_chain.obj - saved mcmc chain 
+                obj_vel_field_lnp.obj - saved mcmc log probabilities
+                obj_vel_field_corner_plot.png - marginalised mcmc distributions
+                obj_vel_field_model_comparison.png 
+                obj_vel_field_params.txt - stored maximum, 50th, 16th, 84th
+                                            percentile param values
+
+        """
+
+        # load in the relevant information from the infile
+
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0][:-5] + '_vel_field.fits'
+
+            redshift = entry[1]
+
+            centre_x = entry[3]
+
+            centre_y = entry[2]
+
+            std_cube = entry[4]
+
+            sky_cube = entry[5]
+
+            mask_x_lower = entry[6]
+
+            mask_x_upper = entry[7]
+
+            mask_y_lower = entry[8]
+
+            mask_y_upper = entry[9]
+
+            xcen = entry[10]
+
+            ycen = entry[11]
+
+            inc = entry[12]
+
+            pa = entry[13]
+
+            rt = entry[14]
+
+            vmax = entry[15]
+
+            # initiate the guess parameters for the modelling
+            guess_params = [xcen,
+                            ycen,
+                            inc,
+                            pa,
+                            rt,
+                            vmax]
+
+            # create an instance of the velocity field class
+            # for each object in the infile
+
+            vel = vel_field(obj_name,
+                            xcen,
+                            ycen)
+
+            # apply the mcmc, plot_comparison and extract_in_apertures methods
+
+            vel.run_emcee(guess_params,
+                          nsteps,
+                          nwalkers,
+                          burn_no)
+
+            vel.plot_comparison()
+
+            vel.extract_in_apertures(raper,
+                                     daper)
+
+

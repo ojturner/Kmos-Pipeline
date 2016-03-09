@@ -95,16 +95,17 @@ vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voron
 guess_params = [21, 18, 1.5, 0.38, 2.44, 54]
 
 
-v_field.run_emcee(guess_params, 100, 500, 50)
+pipe_methods.multi_apply_mcmc('/disk1/turner/DATA/all_names_new.txt', 100, 500, 50, 0.8, 0.6)
+#v_field.run_emcee(guess_params, 100, 500, 50)
 #v_field.plot_comparison()
-v_field.extract_in_apertures(1.5, 1.0)
+#v_field.extract_in_apertures(1.5, 1.0)
 #pipe_methods.compare_noise_methods('/disk1/turner/DATA/all_names_new.txt', 'oiii', 3.0, g_c_min=0.5, g_c_max=1.5, method='mean',ntimes=1000)
 #pipe_methods.perturb_value(0.2, [5, 6.5, 7])
 #pipe_methods.multi_apply_masked_voronoi(target_sn=5, out_dir=sci_dir, infile=infile, threshold=5, line='oiii', tol=50)
 #pipe_methods.masked_voronoi_fitting(target_sn, out_dir, incube, centre_x, centre_y, mask_x_lower, mask_x_upper, mask_y_lower, mask_y_upper, redshift, threshold)
 #pipe_methods.masked_voronoi_fitting(4.0, sci_dir, obj_cube_gal, 10, 16, 8, 30, 7, 28, 3.47539936102, 5, tol=30, noise_method='mask')
 #pipe_methods.vel_field_mask_noise(incube, line, redshift, threshold, centre_x, centre_y, mask_x_low, mask_x_high, mask_y_low, mask_y_high)
-#pipe_methods.vel_field_stott_binning(obj_cube_gal, 'oiii', 3.28609, 4.0, 10, 16, 6, 25, 6, 29, g_c_min=0.6, g_c_max=1.4, tol=30, method='mean', noise_method='mask', ntimes=1000)
+#pipe_methods.vel_field_stott_binning(obj_cube_gal, 'oiii', 3.6091050, 4.0, 10, 16, 6, 25, 6, 29, g_c_min=0.6, g_c_max=1.4, tol=30, method='mean', noise_method='mask', ntimes=1000)
 #pipe_methods.multi_vel_field_stott('/disk1/turner/DATA/all_names_new.txt', 'oiii', 5.0, method='mean', noise_method='cube')
 #pipe_methods.vel_field_sigma(obj_cube_gal, 'oiii', 3.28733447279, 6.0, 10, 16, 6, 25, 6, 29, tol=30, method='mean')
 #pipe_methods.stott_postage_stamps('/disk1/turner/DATA/all_names.txt', 'oiii', 35)

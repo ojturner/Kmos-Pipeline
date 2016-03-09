@@ -655,20 +655,16 @@ class vel_field(object):
 
         # plot as a 2d array
 
-        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-
-        im = ax.imshow(vel_2d,
-                       cmap=plt.get_cmap('jet'),
-                       interpolation='nearest')
-
+        #fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        #im = ax.imshow(vel_2d,
+        #               cmap=plt.get_cmap('jet'),
+        #               interpolation='nearest')
         # add colourbar to each plot
-        divider = make_axes_locatable(ax)
-        cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        plt.colorbar(im, cax=cax_new)
-
+        #divider = make_axes_locatable(ax)
+        #cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        #plt.colorbar(im, cax=cax_new)
         # set the title
-        ax.set_title('model velocity')
-
+        #ax.set_title('model velocity')
         # plt.show()
         plt.close('all')
 
@@ -749,7 +745,7 @@ class vel_field(object):
 
         ndim = len(theta)
 
-        pos = [theta + np.random.randn(ndim) for i in range(nwalkers)]
+        pos = [theta + 1e-4*np.random.randn(ndim) for i in range(nwalkers)]
 
         sampler = emcee.EnsembleSampler(nwalkers,
                                         ndim,
@@ -771,7 +767,7 @@ class vel_field(object):
 
         fig.savefig('%s_corner_plot.png' % self.fileName[:-5])
 
-        plt.show()
+        # plt.show()
 
         # print samples
         # going to save pickled versions of the chain and the lnprobability
@@ -990,7 +986,7 @@ class vel_field(object):
         # set the title
         ax[1].set_title('[OIII] Velocity Model')
 
-        plt.show()
+        # plt.show()
 
         fig.savefig('%s_model_comparison.png' % self.fileName[:-5])
 
@@ -1673,7 +1669,7 @@ class vel_field(object):
 
         ax.set_xlabel('aperture number')
 
-        plt.show()
+        # plt.show()
 
         fig.savefig('%s_1d_velocity_plot.png' % self.fileName[:-5])
 
@@ -1703,6 +1699,6 @@ class vel_field(object):
 
         ax.legend(prop={'size':10})
 
-        plt.show()
+        # plt.show()
 
         fig.savefig('%s_1d_dispersion_plot.png' % self.fileName[:-5])
