@@ -30,6 +30,7 @@ from scipy.spatial import distance
 from copy import copy
 from photutils import CircularAperture
 from photutils import aperture_photometry
+from sys import stdout
 import scipy.optimize as op
 import emcee
 import corner
@@ -63,6 +64,28 @@ class vel_field(object):
         # Initialise the fileName object 
 
         self.fileName = fileName
+
+        # set an actual object name
+
+        try:
+
+            if self.fileName.find("/") == -1:
+
+                self.gal_name = copy(self.fileName)
+
+            # Otherwise the directory structure is included and have to
+            # search for the backslash and omit up to the last one
+
+            else:
+
+                self.gal_name = self.fileName[len(self.fileName) -
+                                              self.fileName[::-1].find("/"):]
+
+        except:
+
+            print 'Trouble setting galaxy name'
+
+        # print self.gal_name
 
         # initialise the centre of rotation in the x and y
 
@@ -645,7 +668,7 @@ class vel_field(object):
                                                 xpos,
                                                 ypos))
 
-        # create numpy array from the vel_array list 
+        # create numpy array from the vel_array list
 
         vel_array = np.array(vel_array)
 
@@ -688,7 +711,7 @@ class vel_field(object):
         # sometimes nice to see what parameters are being tried in the
         # MCMC step
 
-        print theta
+        # print theta
 
         # compute the model grid
 
@@ -701,7 +724,7 @@ class vel_field(object):
         ans = -0.5 * (np.nansum((self.vel_data - model)*(self.vel_data - model) *
                                 inv_sigma2 - np.log(inv_sigma2)))
 
-        print ans
+        # print ans
 
         return ans
 
@@ -751,8 +774,14 @@ class vel_field(object):
                                         ndim,
                                         self.lnprob)
 
-        sampler.run_mcmc(pos,
-                         nsteps)
+        for i, (pos, lnp, state) in enumerate(sampler.sample(pos,
+                                                             iterations=nsteps)):
+
+            stdout.write("\rObject %s %.1f%% complete" % (self.gal_name[:-15],
+                                                        100 * float(i + 1) / nsteps))
+            stdout.flush()
+
+        stdout.write('\n')
 
         samples = sampler.chain[:, burn_no:, :].reshape((-1, ndim))
 
@@ -1103,7 +1132,7 @@ class vel_field(object):
 
         if 0 < pa_max < np.pi / 2.0 or np.pi < pa_max < 3 * np.pi / 2.0:
 
-            print 'Top Right and Bottom Left'
+            # print 'Top Right and Bottom Left'
 
             # need to increase x and decrease y and vice versa
 
@@ -1156,7 +1185,7 @@ class vel_field(object):
 
         else:
 
-            print 'Top Left and Bottom Right'
+            # print 'Top Left and Bottom Right'
 
             # need to increase x and increase y and vice versa
 
@@ -1205,7 +1234,7 @@ class vel_field(object):
 
         if 0 < pa_50 < np.pi / 2.0 or np.pi < pa_50 < 3 * np.pi / 2.0:
 
-            print 'Top Right and Bottom Left'
+            # print 'Top Right and Bottom Left'
 
             # need to increase x and decrease y and vice versa
 
@@ -1258,7 +1287,7 @@ class vel_field(object):
 
         else:
 
-            print 'Top Left and Bottom Right'
+            # print 'Top Left and Bottom Right'
 
             # need to increase x and increase y and vice versa
 
@@ -1307,7 +1336,7 @@ class vel_field(object):
 
         if 0 < pa_16 < np.pi / 2.0 or np.pi < pa_16 < 3 * np.pi / 2.0:
 
-            print 'Top Right and Bottom Left'
+            # print 'Top Right and Bottom Left'
 
             # need to increase x and decrease y and vice versa
 
@@ -1360,7 +1389,7 @@ class vel_field(object):
 
         else:
 
-            print 'Top Left and Bottom Right'
+            # print 'Top Left and Bottom Right'
 
             # need to increase x and increase y and vice versa
 
@@ -1409,7 +1438,7 @@ class vel_field(object):
 
         if 0 < pa_84 < np.pi / 2.0 or np.pi < pa_84 < 3 * np.pi / 2.0:
 
-            print 'Top Right and Bottom Left'
+            # print 'Top Right and Bottom Left'
 
             # need to increase x and decrease y and vice versa
 
@@ -1462,7 +1491,7 @@ class vel_field(object):
 
         else:
 
-            print 'Top Left and Bottom Right'
+            # print 'Top Left and Bottom Right'
 
             # need to increase x and increase y and vice versa
 
@@ -1507,6 +1536,76 @@ class vel_field(object):
 
                 new_y_84 += y_inc_84
 
+        # construct the x_axis for the aperture extraction plot
+
+        x_max_array = []
+
+        for entry in positions_max:
+
+            x_max_array.append(entry[1])
+
+        x_max_array = np.array(x_max_array) - xcen_max
+
+        # print x_max_array
+
+        x_max_index = np.where(x_max_array == 0.0)[0]
+
+        x_max = np.linspace(-1. * d_aper * x_max_index,
+                            d_aper * (len(x_max_array) - x_max_index - 1),
+                            num=len(x_max_array))
+
+        x_max = x_max * 0.1
+
+        # print 'This is x_max: %s' % x_max
+
+        x_50_array = []
+
+        for entry in positions_50:
+
+            x_50_array.append(entry[1])
+
+        x_50_array = np.array(x_50_array) - xcen_50
+
+        x_50_index = np.where(x_50_array == 0.0)[0]
+
+        x_50 = np.linspace(-1. * d_aper * x_50_index,
+                            d_aper * (len(x_50_array) - x_50_index - 1),
+                            num=len(x_50_array))
+
+        x_50 = x_50 * 0.1
+
+        x_16_array = []
+
+        for entry in positions_16:
+
+            x_16_array.append(entry[1])
+
+        x_16_array = np.array(x_16_array) - xcen_16
+
+        x_16_index = np.where(x_16_array == 0.0)[0]
+
+        x_16 = np.linspace(-1. * d_aper * x_16_index,
+                            d_aper * (len(x_16_array) - x_16_index - 1),
+                            num=len(x_16_array))
+
+        x_16 = x_16 * 0.1
+
+        x_84_array = []
+
+        for entry in positions_84:
+
+            x_84_array.append(entry[1])
+
+        x_84_array = np.array(x_84_array) - xcen_84
+
+        x_84_index = np.where(x_84_array == 0.0)[0]
+
+        x_84 = np.linspace(-1. * d_aper * x_84_index,
+                            d_aper * (len(x_84_array) - x_84_index - 1),
+                            num=len(x_84_array))
+
+        x_84 = x_84 * 0.1
+
         # positions array should now be populated with all of the apertures
 
         # print positions
@@ -1541,8 +1640,6 @@ class vel_field(object):
 
         sig_error_values_max = sig_error_table_max['aperture_sum'] / pixel_area
 
-        x_max = np.arange(0, len(mod_phot_table_max['aperture_sum']), 1)
-
         # the 50th percentile extraction parameters
 
         apertures_50 = CircularAperture(positions_50, r=r_aper)
@@ -1566,8 +1663,6 @@ class vel_field(object):
         sig_values_50 = sig_table_50['aperture_sum'] / pixel_area
 
         sig_error_values_50 = sig_error_table_50['aperture_sum'] / pixel_area
-
-        x_50 = np.arange(0, len(mod_phot_table_50['aperture_sum']), 1)
 
         # the 16th percentile extraction parameters
 
@@ -1593,8 +1688,6 @@ class vel_field(object):
 
         sig_error_values_16 = sig_error_table_16['aperture_sum'] / pixel_area
 
-        x_16 = np.arange(0, len(mod_phot_table_16['aperture_sum']), 1)
-
         # the 84th percentile extraction parameters
 
         apertures_84 = CircularAperture(positions_84, r=r_aper)
@@ -1618,8 +1711,6 @@ class vel_field(object):
         sig_values_84 = sig_table_84['aperture_sum'] / pixel_area
 
         sig_error_values_84 = sig_error_table_84['aperture_sum'] / pixel_area
-
-        x_84 = np.arange(0, len(mod_phot_table_84['aperture_sum']), 1)
 
         # plotting the model and extracted quantities
 
@@ -1667,7 +1758,7 @@ class vel_field(object):
 
         ax.set_ylabel('velocity (kms$^{-1}$)')
 
-        ax.set_xlabel('aperture number')
+        ax.set_xlabel('arcsec')
 
         # plt.show()
 
@@ -1695,10 +1786,39 @@ class vel_field(object):
 
         ax.set_ylabel('velocity (kms$^{-1}$)')
 
-        ax.set_xlabel('aperture number')
+        ax.set_xlabel('arcsec')
 
         ax.legend(prop={'size':10})
+
+        plt.close('all')
 
         # plt.show()
 
         fig.savefig('%s_1d_dispersion_plot.png' % self.fileName[:-5])
+
+        # return the data used in plotting for use elsewhere
+
+        return {'max': [x_max, 
+                        mod_velocity_values_max,
+                        real_velocity_values_max,
+                        real_error_values_max,
+                        sig_values_max,
+                        sig_error_values_max],
+                '50': [x_50, 
+                        mod_velocity_values_50,
+                        real_velocity_values_50,
+                        real_error_values_50,
+                        sig_values_50,
+                        sig_error_values_50],
+                '16': [x_16, 
+                        mod_velocity_values_16,
+                        real_velocity_values_16,
+                        real_error_values_16,
+                        sig_values_16,
+                        sig_error_values_16],
+                '84': [x_84, 
+                        mod_velocity_values_84,
+                        real_velocity_values_84,
+                        real_error_values_84,
+                        sig_values_84,
+                        sig_error_values_84]}

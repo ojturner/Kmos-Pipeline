@@ -14331,6 +14331,9 @@ class pipelineOps(object):
 
             # apply the mcmc, plot_comparison and extract_in_apertures methods
 
+            print 'Running MCMC with %s walkers and %s steps' % (nwalkers,
+                                                                 nsteps)
+
             vel.run_emcee(guess_params,
                           nsteps,
                           nwalkers,
@@ -14340,5 +14343,234 @@ class pipelineOps(object):
 
             vel.extract_in_apertures(raper,
                                      daper)
+
+    def make_all_plots(self,
+                       infile):
+
+        """
+        Def: Take all of the data from the stott velocity fields,
+        mcmc modelling and hst imaging and return a grid of plots
+        summarising the results.
+
+        Input:
+                in_file - file path and name of object
+
+        Output:
+                grid of plots
+        """
+
+        # open the various files and run the methods to get the data
+        # for plotting
+
+        param_file = np.genfromtxt('%s_vel_field_params.txt' % infile[:-5])
+
+        theta_50 = param_file[1][1:]
+
+        xcen, ycen, inc, pa, rt, va = theta_50
+
+        table_hst = fits.open('%s_hst.fits' % infile[:-5])
+
+        data_hst = table_hst[1].data
+
+        vel_field_name = infile[:-5] + '_vel_field.fits'
+
+        table_vel = fits.open(vel_field_name)
+
+        data_vel = table_vel[0].data
+
+        vel = vel_field(vel_field_name,
+                        xcen,
+                        ycen)
+
+        xpix = data_vel.shape[0]
+
+        ypix = data_vel.shape[1]
+
+        data_model = vel.compute_model_grid(theta_50)
+
+        # truncate this to the data size
+
+        mask_array = np.empty(shape=(xpix, ypix))
+
+        for i in range(0, xpix):
+
+            for j in range(0, ypix):
+
+                if np.isnan(data_vel[i][j]):
+
+                    mask_array[i][j] = np.nan
+
+                else:
+
+                    mask_array[i][j] = 1.0
+
+        # take product of model and mask_array to return new data
+
+        data_model = data_model * mask_array
+
+        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
+
+        data_sig = table_sig[0].data
+
+        one_d_plots = vel.extract_in_apertures(0.8, 0.6)
+
+        x_max, mod_velocity_values_max, real_velocity_values_max, \
+            real_error_values_max, sig_values_max, sig_error_values_max \
+            = one_d_plots['max']
+
+        x_50, mod_velocity_values_50, real_velocity_values_50, \
+            real_error_values_50, sig_values_50, sig_error_values_50 \
+            = one_d_plots['50']
+
+        x_16, mod_velocity_values_16, real_velocity_values_16, \
+            real_error_values_16, sig_values_16, sig_error_values_16 \
+            = one_d_plots['16']
+
+        x_84, mod_velocity_values_84, real_velocity_values_84, \
+            real_error_values_84, sig_values_84, sig_error_values_84 \
+            = one_d_plots['84']
+
+        # set the imshow plotting limmits
+        vel_min, vel_max = np.nanpercentile(data_model,
+                                            [5.0, 95.0])
+
+        sig_min, sig_max = np.nanpercentile(data_sig,
+                                            [5.0, 95.0])
+
+        fig, ax = plt.subplots(1, 6, figsize=(24, 4))
+
+        im = ax[0].imshow(data_hst,
+                          cmap=plt.get_cmap('bone'))
+
+        # mask background of velocity data to black
+
+
+        m_data_vel = np.ma.array(data_vel,
+                                 mask=np.isnan(data_vel))
+        m_data_mod = np.ma.array(data_model,
+                                 mask=np.isnan(data_model))
+        m_data_sig = np.ma.array(data_sig,
+                                 mask=np.isnan(data_sig))
+
+        cmap = plt.cm.jet
+        cmap.set_bad('black', 1.)
+
+        im = ax[1].imshow(m_data_vel,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[1])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[1].set_title('Velocity from data')
+
+        im = ax[2].imshow(m_data_mod,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[2])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[2].set_title('Velocity from model')
+
+        im = ax[3].imshow(m_data_sig,
+                          vmin=sig_min,
+                          vmax=sig_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax[3])
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        # set the title
+        ax[3].set_title('Velocity Dispersion Data')
+
+        ax[4].plot(x_max,
+                   mod_velocity_values_max,
+                   color='red',
+                   label='max_model')
+
+        ax[4].errorbar(x_max,
+                       real_velocity_values_max,
+                       yerr=real_error_values_max,
+                       fmt='o',
+                       color='red',
+                       label='max_data')
+
+        ax[4].plot(x_50,
+                   mod_velocity_values_50,
+                   color='blue',
+                   label='50_model')
+
+        ax[4].errorbar(x_50,
+                       real_velocity_values_50,
+                       yerr=real_error_values_50,
+                       fmt='o',
+                       color='blue',
+                       label='50_data')
+
+        ax[4].plot(x_16,
+                   mod_velocity_values_16,
+                   color='orange',
+                   linestyle='--',
+                   label='16_model')
+
+        ax[4].plot(x_84,
+                   mod_velocity_values_84,
+                   color='purple',
+                   linestyle='--',
+                   label='84_model')
+
+        ax[4].legend(prop={'size':10})
+
+        ax[4].set_title('Model and Real Velocity')
+
+        ax[4].set_ylabel('velocity (kms$^{-1}$)')
+
+        ax[4].set_xlabel('arcsec')
+
+        ax[5].errorbar(x_max,
+                       sig_values_max,
+                       yerr=sig_error_values_max,
+                       fmt='o',
+                       color='red',
+                       label='max_data')
+
+        ax[5].errorbar(x_50,
+                       sig_values_50,
+                       yerr=sig_error_values_50,
+                       fmt='o',
+                       color='blue',
+                       label='50_data')
+
+        ax[5].set_title('Velocity Dispersion')
+
+        ax[5].set_ylabel('velocity (kms$^{-1}$)')
+
+        ax[5].set_xlabel('arcsec')
+
+        ax[5].legend(prop={'size':10})
+
+        plt.show()
+
+        fig.savefig('%s_grid.png' % infile[:-5])
+
+
+
+
+
+
 
 
