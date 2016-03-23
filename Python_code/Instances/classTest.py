@@ -25,7 +25,7 @@ pipe_methods = pipelineOps()
 cube = cubeOps('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/combine_sci_reconstructed_bs008543.fits')
 v_field = vel_field('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_'
                      + 'goods_p1_0.8_10_better/Science/combine_sci_reconstru'
-                     + 'cted_bs008543_vel_field.fits', 14, 15)
+                     + 'cted_b15573_vel_field.fits', 14, 15)
 #galaxy = galPhys('/disk1/turner/DATA/Gals2/comb/Science/comp_spectrum.fits', 0)
 #sky_cube = cubeOps(kskyCube)
 
@@ -75,16 +75,16 @@ v_field = vel_field('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_'
 #hobjframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
 #hskyframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-combine_input = '/disk1/turner/DATA/new_comb_calibrated/goods_p2_0.8_10_better/Science/all_nights.txt'
-sci_dir = '/disk1/turner/DATA/new_comb_calibrated/uncalibrated_goods_p1_0.8_10_better/Science'
+combine_input = '/disk2/turner/DATA/GOODS_H_P2/05-12-15_GOODS_H_P2/Calibrations/combine_input.txt'
+sci_dir = '/disk2/turner/DATA/GOODS_H_P2/05-12-15_GOODS_H_P2/comb_5'
 infile = '/disk1/turner/DATA/all_names_p1.txt'
 combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals_names.txt'
 obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
 cal_dir = '/disk1/turner/DATA/esther_tester/Calibrations'
-gal_dir = '/disk1/turner/DATA/new_comb_calibrated/goods_p2_0.8_10_better/Science'
+gal_dir = '/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science'
 sky_cube_gal = gal_dir + '/combine_sci_reconstructed_arm3_sky.fits'
-obj_cube_gal = gal_dir + '/combine_sci_reconstructed_cdfs_lbg_38.fits'
+obj_cube_gal = gal_dir + '/combine_sci_reconstructed_s_sa22b-md25.fits'
 std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_7656.fits'
 raw_file = '/disk1/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS344_0018_Corrected.fits'
 badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
@@ -94,9 +94,10 @@ vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voron
 
 guess_params = [23.9074004927, 15.3994941529, 1.38490858728, 4.84503696703, 4.7513167439, 118.223779319]
 
-
-pipe_methods.make_all_plots('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_goods_p1_0.8_10_better/Science/combine_sci_reconstructed_bs006516.fits')
-#pipe_methods.multi_apply_mcmc('/disk1/turner/DATA/all_names_new.txt', 100, 500, 50, 0.8, 0.6)
+#pipe_methods.multi_make_all_plots_no_image('/disk1/turner/DATA/all_names_new.txt')
+#pipe_methods.make_all_plots_no_image('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/combine_sci_reconstructed_s_sa22b-md25.fits')
+#pipe_methods.make_all_plots('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_goods_p1_0.8_10_better/Science/combine_sci_reconstructed_b012141_012208.fits')
+pipe_methods.multi_apply_mcmc('/disk1/turner/DATA/all_names_new.txt', 200, 1000, 50, 0.8, 0.6)
 #v_field.run_emcee(guess_params, 100, 500, 50)
 #v_field.plot_comparison()
 #v_field.extract_in_apertures(0.8, 0.6)
@@ -106,14 +107,14 @@ pipe_methods.make_all_plots('/disk1/turner/DATA/new_comb_calibrated/uncalibrated
 #pipe_methods.masked_voronoi_fitting(target_sn, out_dir, incube, centre_x, centre_y, mask_x_lower, mask_x_upper, mask_y_lower, mask_y_upper, redshift, threshold)
 #pipe_methods.masked_voronoi_fitting(4.0, sci_dir, obj_cube_gal, 10, 16, 8, 30, 7, 28, 3.47539936102, 5, tol=30, noise_method='mask')
 #pipe_methods.vel_field_mask_noise(incube, line, redshift, threshold, centre_x, centre_y, mask_x_low, mask_x_high, mask_y_low, mask_y_high)
-#pipe_methods.vel_field_stott_binning(obj_cube_gal, 'oiii', 3.4882990, 3.0, 10, 16, 13, 32, 10, 25, g_c_min=0.5, g_c_max=1.5, tol=30, method='mean', noise_method='mask', ntimes=1000)
-#pipe_methods.multi_vel_field_stott('/disk1/turner/DATA/all_names_new.txt', 'oiii', 5.0, method='mean', noise_method='cube')
+#pipe_methods.vel_field_stott_binning(obj_cube_gal, 'oiii', 3.3043123, 3.0, 10, 16, 5, 25, 10, 28, g_c_min=0.5, g_c_max=1.5, tol=30, method='mean', noise_method='mask', ntimes=1000)
+#pipe_methods.multi_vel_field_stott('/disk1/turner/DATA/all_names_new.txt', 'oiii', 3.0, g_c_min=0.5, g_c_max=1.5, method='mean')
 #pipe_methods.vel_field_sigma(obj_cube_gal, 'oiii', 3.28733447279, 6.0, 10, 16, 6, 25, 6, 29, tol=30, method='mean')
 #pipe_methods.stott_postage_stamps('/disk1/turner/DATA/all_names.txt', 'oiii', 35)
 #cube = cubeOps(obj_cube_gal)
 #cube.stott_velocity_field('oiii', 3.08705, 25, 19, 22, method='median')
 #pipe_methods.multi_apply_voronoi_binning('/disk1/turner/DATA/all_names_calibrated.txt', 10.0)
-#pipe_methods.combine_by_name(sci_dir, combine_input, 0.2, 0.8, 10)
+#pipe_methods.combine_by_name(sci_dir, combine_input, 0.2, 0.8, 5)
 #pipe_methods.voronoi_binning_by_line('oiii', obj_cube_gal, 3.47328838, 2.0, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi')
 #pipe_methods.apply_voronoi_binning(vor_infile, '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi', 1.5)
 #hb_flux, hb_vel, hb_sig = pipe_methods.vor_output_fitting(gal_dir, vor_output, obj_cube_gal, std_cube_gal, sky_cube_gal, 19, 20, 3.47328838, stack='median', line='hb')

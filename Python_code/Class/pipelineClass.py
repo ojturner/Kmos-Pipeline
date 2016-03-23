@@ -25,6 +25,7 @@ from astropy.io import fits, ascii
 from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from numpy import poly1d
+from sys import stdout
 
 # add the class file to the PYTHONPATH
 sys.path.append('/disk1/turner/PhD'
@@ -247,7 +248,7 @@ class pipelineOps(object):
         # Select the ocs.rot.naangle keyword
         obsAngle = table_o[0].header["HIERARCH ESO OCS ROT NAANGLE"]
 
-        print obsAngle
+        # print obsAngle
 
         if obsAngle < 0:
 
@@ -261,7 +262,7 @@ class pipelineOps(object):
 
         obsAngleNew = angleList[n]
 
-        print obsAngleNew
+        # print obsAngleNew
 
         # Find the extension to which this corresponds
         val = 0
@@ -284,14 +285,14 @@ class pipelineOps(object):
         elif obsAngleNew == 300:
             val = 16
 
-        print val
+        # print val
 
         # Loop over the fits image extensions, do the same each time
         for count in range(1, 4):
 
             vStackArray = []
 
-            print val
+            # print val
 
             data_o = table_o[count].data
 
@@ -356,9 +357,9 @@ class pipelineOps(object):
 
             for j in range(16):
 
-                print hor1
+                # print hor1
 
-                print hor2
+                # print hor2
 
                 # Counters for the slicing vertical slicing
                 x = 0
@@ -420,7 +421,7 @@ class pipelineOps(object):
                     # Each of these into 8 chunks of 256x64,
                     # 16 chunks of 128x64 and 32 chunks of 64x64
 
-                print objArray[1].shape
+                # print objArray[1].shape
 
                 # Start the loop for all the columns in the Array vectors
 
@@ -471,7 +472,7 @@ class pipelineOps(object):
 
             newObjData = np.vstack(vStackArray)
 
-            print newObjData.shape
+            # print newObjData.shape
 
             correctedExtensions.append(newObjData)
 
@@ -4172,10 +4173,14 @@ class pipelineOps(object):
             # leave the flux and wavelength unchanged right now
             # Check for where the flux exceeds a certain number of counts
 
-            if filter_id == 'HK' or filter_id == 'YJ' or \
+            if filter_id == 'HK' or \
                     filter_id == 'H' or filter_id == 'K':
 
                 emission_indices = np.where(sky_flux > 1000)[0]
+
+            elif filter_id == 'YJ':
+
+                emission_indices = np.where(sky_flux > 200)[0]
 
             else:
 
@@ -11396,7 +11401,7 @@ class pipelineOps(object):
 
         except IndexError:
 
-            print 'encountered the cube boundary'
+            # print 'encountered the cube boundary'
 
             spec = data[:, i, j][lower_lim: upper_lim]
 
@@ -11461,7 +11466,7 @@ class pipelineOps(object):
 
         except IndexError:
 
-            print 'encountered the cube boundary'
+            # print 'encountered the cube boundary'
 
             spec = data[:, i, j][lower_lim: upper_lim]
 
@@ -11648,6 +11653,8 @@ class pipelineOps(object):
             mask_y_lower = entry[8]
 
             mask_y_upper = entry[9]
+
+            noise_method = entry[16]
 
             # define the science directory for each cube
             sci_dir = obj_name[:len(obj_name) - obj_name[::-1].find("/") - 1]
@@ -11853,7 +11860,10 @@ class pipelineOps(object):
 
             for j, ypix in enumerate(np.arange(0, ypixs, 1)):
 
-                print 'Fitting Spaxel %s/%s %s/%s' % (i, xpixs - 1, j, ypixs - 1)
+                stdout.write("\r %.1f%% complete" % (100 * float(i + 1) / xpixs))
+                stdout.flush()
+
+                # print 'Fitting Spaxel %s/%s %s/%s' % (i, xpixs - 1, j, ypixs - 1)
 
                 spaxel_spec = data[:, i, j]
                 spaxel_noise = noise[:, i, j]
@@ -12028,7 +12038,7 @@ class pipelineOps(object):
                      (int_ratio >= g_c_min and int_ratio <= g_c_max) and \
                      (amp_err < tol and sig_err < tol and cen_err < tol):
 
-                    print 'CRITERIA SATISFIED %s %s %s %s' % (i, j, line_sn, int_ratio)
+                    # print 'CRITERIA SATISFIED %s %s %s %s' % (i, j, line_sn, int_ratio)
 
                     # plt.show()
                     # do stuff - calculate the velocity
@@ -12087,7 +12097,7 @@ class pipelineOps(object):
                             mc_amp_array.append(gauss_values['amplitude'])
                             mc_centre_array.append(gauss_values['center'])
 
-                    print 'This is how many survived %s' % len(mc_sig_array)
+                    # print 'This is how many survived %s' % len(mc_sig_array)
                     # np array the resultant mc arrays
 
                     mc_sig_array = np.array(mc_sig_array)
@@ -12215,7 +12225,7 @@ class pipelineOps(object):
                        (int_ratio >= g_c_min and int_ratio <= g_c_max) and \
                        (amp_err < tol and sig_err < tol and cen_err < tol):
 
-                        print 'CRITERIA SATISFIED by 3x3 binning %s %s %s %s' % (i, j, new_sn, int_ratio)
+                        # print 'CRITERIA SATISFIED by 3x3 binning %s %s %s %s' % (i, j, new_sn, int_ratio)
 
                         # plt.show()
                         # do stuff - calculate the velocity
@@ -12270,7 +12280,7 @@ class pipelineOps(object):
                                 mc_amp_array.append(gauss_values['amplitude'])
                                 mc_centre_array.append(gauss_values['center'])
 
-                        print 'This is how many survived %s' % len(mc_sig_array)
+                        # print 'This is how many survived %s' % len(mc_sig_array)
                         # np array the resultant mc arrays
 
                         mc_sig_array = np.array(mc_sig_array)
@@ -12403,7 +12413,7 @@ class pipelineOps(object):
 
                             # add to the signal to noise array
 
-                            print 'CRITERIA SATISFIED AFTER 5x5 binning %s %s %s %s %s %s' % (i, j, final_sn, int_ratio, gauss_values['center'], gauss_values['sigma'])
+                            # print 'CRITERIA SATISFIED AFTER 5x5 binning %s %s %s %s %s %s' % (i, j, final_sn, int_ratio, gauss_values['center'], gauss_values['sigma'])
 
                             sn_array[i, j] = final_sn
 
@@ -12458,7 +12468,7 @@ class pipelineOps(object):
                                     mc_amp_array.append(gauss_values['amplitude'])
                                     mc_centre_array.append(gauss_values['center'])
 
-                            print 'This is how many survived %s' % len(mc_sig_array)
+                            # print 'This is how many survived %s' % len(mc_sig_array)
                             # np array the resultant mc arrays
 
                             mc_sig_array = np.array(mc_sig_array)
@@ -12534,11 +12544,13 @@ class pipelineOps(object):
 
         # print 'This is the sigma error array: %s' % sig_error_array
 
+        stdout.write('\n')
+
         # loop around noise array to clean up nan entries
         for i in range(0, len(noise_array)):
             for j in range(0, len(noise_array[0])):
                 if np.isnan(noise_array[i][j]):
-                    print 'Fixing nan value'
+                    # print 'Fixing nan value'
                     noise_array[i][j] = np.nanmedian(noise_array)
 
         # print sn_array
@@ -12791,6 +12803,9 @@ class pipelineOps(object):
 
         # also want to return the velocity error array and the velocity
         # array as fits files so they can be loaded into disk
+        flux_hdu = fits.PrimaryHDU(masked_flux_array)
+
+        flux_hdu.writeto('%s_flux_field.fits' % incube[:-5], clobber=True)
 
         vel_hdu = fits.PrimaryHDU(masked_vel_array)
 
@@ -14344,8 +14359,8 @@ class pipelineOps(object):
             vel.extract_in_apertures(raper,
                                      daper)
 
-    def make_all_plots(self,
-                       infile):
+    def make_all_plots_no_image(self,
+                                infile):
 
         """
         Def: Take all of the data from the stott velocity fields,
@@ -14364,13 +14379,44 @@ class pipelineOps(object):
 
         param_file = np.genfromtxt('%s_vel_field_params.txt' % infile[:-5])
 
-        theta_50 = param_file[1][1:]
+        theta_50 = param_file[2][1:]
 
         xcen, ycen, inc, pa, rt, va = theta_50
 
-        table_hst = fits.open('%s_hst.fits' % infile[:-5])
+        print pa
 
-        data_hst = table_hst[1].data
+        # calculate the boundaries from which to draw a line
+        # through the images relating to the position angles
+
+        x_inc = 100 * np.abs(np.cos(pa))
+        y_inc = 100 * np.abs(np.sin(pa))
+
+        # find boundaries by imposing the same conditions as
+        # in the extract apertures for calculating the angle
+        # i.e. relying on the invariance of two segments
+
+        if 0 < pa < np.pi / 2.0 or np.pi < pa < 3 * np.pi / 2.0:
+
+            # in the top right and bottom left areas
+            # so adding to x goes with subtracting from y
+
+            x_low = xcen + x_inc
+            x_high = xcen - x_inc
+            y_low = ycen - y_inc
+            y_high = ycen + y_inc
+
+        else:
+
+            x_low = xcen - x_inc
+            x_high = xcen + x_inc
+            y_low = ycen - y_inc
+            y_high = ycen + y_inc
+
+        flux_name = infile[:-5] + '_flux_field.fits'
+
+        table_flux = fits.open(flux_name)
+
+        data_flux = table_flux[0].data
 
         vel_field_name = infile[:-5] + '_vel_field.fits'
 
@@ -14439,12 +14485,25 @@ class pipelineOps(object):
 
         fig, ax = plt.subplots(1, 6, figsize=(24, 4))
 
-        im = ax[0].imshow(data_hst,
-                          cmap=plt.get_cmap('bone'))
 
-        # mask background of velocity data to black
+        ax[0].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
 
+        ax[1].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
 
+        ax[2].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        print data_vel.shape
+        m_data_flux = np.ma.array(data_flux,
+                                 mask=np.isnan(data_flux))
         m_data_vel = np.ma.array(data_vel,
                                  mask=np.isnan(data_vel))
         m_data_mod = np.ma.array(data_model,
@@ -14455,16 +14514,32 @@ class pipelineOps(object):
         cmap = plt.cm.jet
         cmap.set_bad('black', 1.)
 
+        im = ax[0].imshow(m_data_flux,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[0].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[0].tick_params(axis='y',
+                          labelleft='off')
+
+
+        # set the title
+        ax[0].set_title('Velocity from data')
+
         im = ax[1].imshow(m_data_vel,
                           vmin=vel_min,
                           vmax=vel_max,
                           interpolation='nearest',
                           cmap=cmap)
 
-        # add colourbar to each plot
-        divider = make_axes_locatable(ax[1])
-        cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        plt.colorbar(im, cax=cax_new)
+        ax[1].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[1].tick_params(axis='y',
+                          labelleft='off')
+
 
         # set the title
         ax[1].set_title('Velocity from data')
@@ -14475,10 +14550,11 @@ class pipelineOps(object):
                           interpolation='nearest',
                           cmap=cmap)
 
-        # add colourbar to each plot
-        divider = make_axes_locatable(ax[2])
-        cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        plt.colorbar(im, cax=cax_new)
+        ax[2].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[2].tick_params(axis='y',
+                          labelleft='off')
 
         # set the title
         ax[2].set_title('Velocity from model')
@@ -14489,10 +14565,12 @@ class pipelineOps(object):
                           interpolation='nearest',
                           cmap=cmap)
 
-        # add colourbar to each plot
-        divider = make_axes_locatable(ax[3])
-        cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        plt.colorbar(im, cax=cax_new)
+        ax[3].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[3].tick_params(axis='y',
+                          labelleft='off')
+
 
         # set the title
         ax[3].set_title('Velocity Dispersion Data')
@@ -14533,13 +14611,23 @@ class pipelineOps(object):
                    linestyle='--',
                    label='84_model')
 
-        ax[4].legend(prop={'size':10})
+        ax[4].set_xlim(-1.5, 1.5)
+
+        # ax[4].legend(prop={'size':5}, loc=1)
 
         ax[4].set_title('Model and Real Velocity')
 
-        ax[4].set_ylabel('velocity (kms$^{-1}$)')
+        # ax[4].set_ylabel('velocity (kms$^{-1}$)')
 
         ax[4].set_xlabel('arcsec')
+
+        ax[4].axhline(0, color='silver', ls='-.')
+        ax[4].axvline(0, color='silver', ls='-.')
+        ax[4].axhline(va, color='silver', ls='--')
+        ax[4].axhline(-1.*va, color='silver', ls='--')
+
+
+        # also draw on lines
 
         ax[5].errorbar(x_max,
                        sig_values_max,
@@ -14557,15 +14645,429 @@ class pipelineOps(object):
 
         ax[5].set_title('Velocity Dispersion')
 
-        ax[5].set_ylabel('velocity (kms$^{-1}$)')
+        # ax[5].set_ylabel('velocity (kms$^{-1}$)')
 
         ax[5].set_xlabel('arcsec')
 
-        ax[5].legend(prop={'size':10})
+        # ax[5].legend(prop={'size':5}, loc=1)
 
         plt.show()
 
         fig.savefig('%s_grid.png' % infile[:-5])
+
+    def make_all_plots(self,
+                       infile):
+
+        """
+        Def: Take all of the data from the stott velocity fields,
+        mcmc modelling and hst imaging and return a grid of plots
+        summarising the results.
+
+        Input:
+                in_file - file path and name of object
+
+        Output:
+                grid of plots
+        """
+
+        # open the various files and run the methods to get the data
+        # for plotting
+
+        param_file = np.genfromtxt('%s_vel_field_params.txt' % infile[:-5])
+
+        theta_50 = param_file[2][1:]
+
+        xcen, ycen, inc, pa, rt, va = theta_50
+
+        table_hst = fits.open('%s_sn.fits' % infile[:-5])
+
+        hst_pa_str = table_hst[0].header['1_PA']
+
+        hst_pa = hst_pa_str[:len(hst_pa_str) -
+                                  hst_pa_str[::-1].find("+") - 2]
+
+        if hst_pa[0] == '[':
+
+            hst_pa = hst_pa[1:]
+
+        hst_pa = float(hst_pa)
+
+        # convert between degrees and radians
+
+        if hst_pa < 0:
+
+            hst_pa = hst_pa + 360
+
+        hst_pa = (hst_pa * np.pi) / 180
+
+        print hst_pa
+        print pa
+
+        # calculate the boundaries from which to draw a line
+        # through the images relating to the position angles
+
+        x_inc_hst = 100 * np.abs(np.cos(hst_pa))
+        y_inc_hst = 100 * np.abs(np.sin(hst_pa))
+
+        # find boundaries by imposing the same conditions as
+        # in the extract apertures for calculating the angle
+        # i.e. relying on the invariance of two segments
+
+        if 0 < hst_pa < np.pi / 2.0 or np.pi < hst_pa < 3 * np.pi / 2.0:
+
+            # in the top right and bottom left areas
+            # so adding to x goes with subtracting from y
+
+            x_h_low = xcen + x_inc_hst
+            x_h_high = xcen - x_inc_hst
+            y_h_low = ycen - y_inc_hst
+            y_h_high = ycen + y_inc_hst
+
+        else:
+
+            x_h_low = xcen - x_inc_hst
+            x_h_high = xcen + x_inc_hst
+            y_h_low = ycen - y_inc_hst
+            y_h_high = ycen + y_inc_hst
+
+        # calculate the boundaries from which to draw a line
+        # through the images relating to the position angles
+
+        x_inc = 100 * np.abs(np.cos(pa))
+        y_inc = 100 * np.abs(np.sin(pa))
+
+        # find boundaries by imposing the same conditions as
+        # in the extract apertures for calculating the angle
+        # i.e. relying on the invariance of two segments
+
+        if 0 < pa < np.pi / 2.0 or np.pi < pa < 3 * np.pi / 2.0:
+
+            # in the top right and bottom left areas
+            # so adding to x goes with subtracting from y
+
+            x_low = xcen + x_inc
+            x_high = xcen - x_inc
+            y_low = ycen - y_inc
+            y_high = ycen + y_inc
+
+        else:
+
+            x_low = xcen - x_inc
+            x_high = xcen + x_inc
+            y_low = ycen - y_inc
+            y_high = ycen + y_inc
+
+        data_hst = table_hst[0].data
+
+        flux_name = infile[:-5] + '_flux_field.fits'
+
+        table_flux = fits.open(flux_name)
+
+        data_flux = table_flux[0].data
+
+        vel_field_name = infile[:-5] + '_vel_field.fits'
+
+        table_vel = fits.open(vel_field_name)
+
+        data_vel = table_vel[0].data
+
+        vel = vel_field(vel_field_name,
+                        xcen,
+                        ycen)
+
+        xpix = data_vel.shape[0]
+
+        ypix = data_vel.shape[1]
+
+        data_model = vel.compute_model_grid(theta_50)
+
+        # truncate this to the data size
+
+        mask_array = np.empty(shape=(xpix, ypix))
+
+        for i in range(0, xpix):
+
+            for j in range(0, ypix):
+
+                if np.isnan(data_vel[i][j]):
+
+                    mask_array[i][j] = np.nan
+
+                else:
+
+                    mask_array[i][j] = 1.0
+
+        # take product of model and mask_array to return new data
+
+        data_model = data_model * mask_array
+
+        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
+
+        data_sig = table_sig[0].data
+
+        one_d_plots = vel.extract_in_apertures(0.8, 0.6)
+
+        x_max, mod_velocity_values_max, real_velocity_values_max, \
+            real_error_values_max, sig_values_max, sig_error_values_max \
+            = one_d_plots['max']
+
+        x_50, mod_velocity_values_50, real_velocity_values_50, \
+            real_error_values_50, sig_values_50, sig_error_values_50 \
+            = one_d_plots['50']
+
+        x_16, mod_velocity_values_16, real_velocity_values_16, \
+            real_error_values_16, sig_values_16, sig_error_values_16 \
+            = one_d_plots['16']
+
+        x_84, mod_velocity_values_84, real_velocity_values_84, \
+            real_error_values_84, sig_values_84, sig_error_values_84 \
+            = one_d_plots['84']
+
+        # set the imshow plotting limmits
+        vel_min, vel_max = np.nanpercentile(data_model,
+                                            [5.0, 95.0])
+
+        sig_min, sig_max = np.nanpercentile(data_sig,
+                                            [5.0, 95.0])
+
+        fig, ax = plt.subplots(1, 7, figsize=(24, 4))
+
+
+        ax[1].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine')
+        ax[1].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        ax[2].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine')
+        ax[2].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        ax[3].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine')
+        ax[3].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+        ax[4].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine')
+        ax[4].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        # mask background of velocity data to black
+
+        print data_hst.shape
+        print data_vel.shape
+
+        m_data_flux = np.ma.array(data_flux,
+                                 mask=np.isnan(data_flux))
+        m_data_hst = np.ma.array(data_hst,
+                                 mask=np.isnan(data_hst))
+        m_data_vel = np.ma.array(data_vel,
+                                 mask=np.isnan(data_vel))
+        m_data_mod = np.ma.array(data_model,
+                                 mask=np.isnan(data_model))
+        m_data_sig = np.ma.array(data_sig,
+                                 mask=np.isnan(data_sig))
+
+        cmap = plt.cm.bone
+        cmap.set_bad('black', 1.)
+
+        im = ax[0].imshow(data_hst,
+                          cmap=cmap,
+                          vmax=3,
+                          vmin=0)
+
+        ax[0].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[0].tick_params(axis='y',
+                          labelleft='off')
+
+
+        ax[0].set_title('HST imaging')
+
+        cmap = plt.cm.jet
+        cmap.set_bad('black', 1.)
+
+        im = ax[1].imshow(m_data_flux,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[1].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[1].tick_params(axis='y',
+                          labelleft='off')
+
+
+        # set the title
+        ax[1].set_title('[OIII] Flux')
+
+        im = ax[2].imshow(m_data_vel,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[2].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[2].tick_params(axis='y',
+                          labelleft='off')
+
+
+        # set the title
+        ax[2].set_title('Velocity from data')
+
+        im = ax[3].imshow(m_data_mod,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[3].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[3].tick_params(axis='y',
+                          labelleft='off')
+
+        # set the title
+        ax[3].set_title('Velocity from model')
+
+        im = ax[4].imshow(m_data_sig,
+                          vmin=sig_min,
+                          vmax=sig_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[4].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[4].tick_params(axis='y',
+                          labelleft='off')
+
+
+        # set the title
+        ax[4].set_title('Velocity Dispersion Data')
+
+        ax[5].plot(x_max,
+                   mod_velocity_values_max,
+                   color='red',
+                   label='max_model')
+
+        ax[5].errorbar(x_max,
+                       real_velocity_values_max,
+                       yerr=real_error_values_max,
+                       fmt='o',
+                       color='red',
+                       label='max_data')
+
+        ax[5].plot(x_50,
+                   mod_velocity_values_50,
+                   color='blue',
+                   label='50_model')
+
+        ax[5].errorbar(x_50,
+                       real_velocity_values_50,
+                       yerr=real_error_values_50,
+                       fmt='o',
+                       color='blue',
+                       label='50_data')
+
+        ax[5].plot(x_16,
+                   mod_velocity_values_16,
+                   color='orange',
+                   linestyle='--',
+                   label='16_model')
+
+        ax[5].plot(x_84,
+                   mod_velocity_values_84,
+                   color='purple',
+                   linestyle='--',
+                   label='84_model')
+
+        ax[5].set_xlim(-1.5, 1.5)
+
+        # ax[5].legend(prop={'size':5}, loc=1)
+
+        ax[5].set_title('Model and Real Velocity')
+
+        # ax[5].set_ylabel('velocity (kms$^{-1}$)')
+
+        ax[5].set_xlabel('arcsec')
+
+        ax[5].axhline(0, color='silver', ls='-.')
+        ax[5].axvline(0, color='silver', ls='-.')
+        ax[5].axhline(va, color='silver', ls='--')
+        ax[5].axhline(-1.*va, color='silver', ls='--')
+
+
+        # also draw on lines
+
+
+
+        ax[6].errorbar(x_max,
+                       sig_values_max,
+                       yerr=sig_error_values_max,
+                       fmt='o',
+                       color='red',
+                       label='max_data')
+
+        ax[6].errorbar(x_50,
+                       sig_values_50,
+                       yerr=sig_error_values_50,
+                       fmt='o',
+                       color='blue',
+                       label='50_data')
+
+        ax[6].set_title('Velocity Dispersion')
+
+        # ax[6].set_ylabel('velocity (kms$^{-1}$)')
+
+        ax[6].set_xlabel('arcsec')
+
+        # ax[6].legend(prop={'size':5}, loc=1)
+
+        plt.show()
+
+        fig.savefig('%s_grid.png' % infile[:-5])
+
+    def multi_make_all_plots(self, infile):
+
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            self.make_all_plots(obj_name)
+
+    def multi_make_all_plots_no_image(self, infile):
+
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            self.make_all_plots_no_image(obj_name)
+
+
 
 
 

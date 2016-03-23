@@ -1063,6 +1063,8 @@ class vel_field(object):
 
         ycen_50 = theta_50[1]
 
+        va_50 = theta_50[5]
+
         theta_16 = param_file[3][1:]
 
         pa_16 = theta_16[3]
@@ -1752,8 +1754,15 @@ class vel_field(object):
                 linestyle='--',
                 label='84_model')
 
-        ax.legend(prop={'size':10})
+        # ax.legend(prop={'size':10})
+        ax.set_xlim(-1.5, 1.5)
 
+        # ax.legend(prop={'size':5}, loc=1)
+
+        ax.axhline(0, color='silver', ls='-.')
+        ax.axvline(0, color='silver', ls='-.')
+        ax.axhline(va_50, color='silver', ls='--')
+        ax.axhline(-1.*va_50, color='silver', ls='--')
         ax.set_title('Model and Real Velocity')
 
         ax.set_ylabel('velocity (kms$^{-1}$)')
