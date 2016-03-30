@@ -25,7 +25,7 @@ pipe_methods = pipelineOps()
 cube = cubeOps('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/combine_sci_reconstructed_bs008543.fits')
 v_field = vel_field('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_'
                      + 'goods_p1_0.8_10_better/Science/combine_sci_reconstru'
-                     + 'cted_b15573_vel_field.fits', 14, 15)
+                     + 'cted_bs006516_vel_field.fits', 24, 17)
 #galaxy = galPhys('/disk1/turner/DATA/Gals2/comb/Science/comp_spectrum.fits', 0)
 #sky_cube = cubeOps(kskyCube)
 
@@ -92,23 +92,44 @@ object_spectrum = gal_dir + '/combine_sci_reconstructed_n_c47_spectrum.fits'
 vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_voronoi_test.txt'
 vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
-guess_params = [23.9074004927, 15.3994941529, 1.38490858728, 4.84503696703, 4.7513167439, 118.223779319]
+guess_params = [24.4515843627, 17.7671445415, 1.10786694516, 5.76470601635, 1.09264956556, 65.2541589594]
+guess_params_fixed = [1.00634848977, 5.76455157004, 1.11046782343, 68.9020485689]
 
-#pipe_methods.multi_make_all_plots_no_image('/disk1/turner/DATA/all_names_new.txt')
+
+#pipe_methods.multi_vel_field_stott('/disk1/turner/DATA/all_names_new.txt', 'oiii', 6.5, g_c_min=0.5, g_c_max=1.5, method='mean')
+#pipe_methods.multi_make_all_plots_no_image_fixed('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6)
 #pipe_methods.make_all_plots_no_image('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/combine_sci_reconstructed_s_sa22b-md25.fits')
 #pipe_methods.make_all_plots('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_goods_p1_0.8_10_better/Science/combine_sci_reconstructed_b012141_012208.fits')
-pipe_methods.multi_apply_mcmc('/disk1/turner/DATA/all_names_new.txt', 200, 1000, 50, 0.8, 0.6)
-#v_field.run_emcee(guess_params, 100, 500, 50)
-#v_field.plot_comparison()
-#v_field.extract_in_apertures(0.8, 0.6)
+pipe_methods.multi_apply_mcmc_fixed('/disk1/turner/DATA/all_names_new.txt', 200, 1000, 1, 0.8, 0.6)
+#v_field.run_emcee_fixed(guess_params_fixed, 23.0536, 19.0002, 200, 1000, 100)
+#v_field.plot_comparison_fixed(24.4515843627, 17.7671445415)
+#v_field.extract_in_apertures_fixed(24.4515843627, 17.7671445415, 0.8, 0.6)
+#f = v_field.fitness(guess_params)
+#print f
+#p = v_field.population(100, guess_params[0], guess_params[1], guess_params[2], guess_params[3], guess_params[4], guess_params[5])
+#fitness_history = [v_field.grade(p),]
+#trace = []
+#for i in xrange(50):
+#    p = v_field.evolve(p, retain=0.1, random_select=0.1, mutate=0.05)
+#    graded = [(v_field.fitness(x), x) for x in p]
+#    # append fittest guy in each generation
+#    trace.append(sorted(graded)[0])
+#    fitness_history.append(v_field.grade(p))
+#print sorted(trace)
+# health = [v_field.fitness(entry) for entry in thing] 
+# print np.sort(health)
+# grade = v_field.grade(thing)
+# print grade
+# pop2 = v_field.evolve(thing)
+# grade_2 = v_field.grade(pop2)
+# print grade_2
 #pipe_methods.compare_noise_methods('/disk1/turner/DATA/all_names_new.txt', 'oiii', 3.0, g_c_min=0.5, g_c_max=1.5, method='mean',ntimes=1000)
 #pipe_methods.perturb_value(0.2, [5, 6.5, 7])
 #pipe_methods.multi_apply_masked_voronoi(target_sn=5, out_dir=sci_dir, infile=infile, threshold=5, line='oiii', tol=50)
 #pipe_methods.masked_voronoi_fitting(target_sn, out_dir, incube, centre_x, centre_y, mask_x_lower, mask_x_upper, mask_y_lower, mask_y_upper, redshift, threshold)
 #pipe_methods.masked_voronoi_fitting(4.0, sci_dir, obj_cube_gal, 10, 16, 8, 30, 7, 28, 3.47539936102, 5, tol=30, noise_method='mask')
 #pipe_methods.vel_field_mask_noise(incube, line, redshift, threshold, centre_x, centre_y, mask_x_low, mask_x_high, mask_y_low, mask_y_high)
-#pipe_methods.vel_field_stott_binning(obj_cube_gal, 'oiii', 3.3043123, 3.0, 10, 16, 5, 25, 10, 28, g_c_min=0.5, g_c_max=1.5, tol=30, method='mean', noise_method='mask', ntimes=1000)
-#pipe_methods.multi_vel_field_stott('/disk1/turner/DATA/all_names_new.txt', 'oiii', 3.0, g_c_min=0.5, g_c_max=1.5, method='mean')
+#pipe_methods.vel_field_stott_binning(obj_cube_gal, 'oiii', 3.3043123, 6.0, 10, 16, 5, 25, 10, 28, g_c_min=0.5, g_c_max=1.5, tol=30, method='mean', noise_method='mask', ntimes=1000)
 #pipe_methods.vel_field_sigma(obj_cube_gal, 'oiii', 3.28733447279, 6.0, 10, 16, 6, 25, 6, 29, tol=30, method='mean')
 #pipe_methods.stott_postage_stamps('/disk1/turner/DATA/all_names.txt', 'oiii', 35)
 #cube = cubeOps(obj_cube_gal)
