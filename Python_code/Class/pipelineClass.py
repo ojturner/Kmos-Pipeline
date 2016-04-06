@@ -11707,6 +11707,7 @@ class pipelineOps(object):
 
     def vel_field_stott_binning(self,
                                 incube,
+                                skycube,
                                 line,
                                 redshift,
                                 threshold,
@@ -14474,6 +14475,227 @@ class pipelineOps(object):
                                            raper,
                                            daper)
 
+    def multi_apply_mcmc_fixed_inc_vary(self,
+                                        infile,
+                                        nwalkers,
+                                        nsteps,
+                                        burn_no,
+                                        raper,
+                                        daper):
+
+        """
+        Def: Convenience method for applying MCMC to build and compute
+        the model parameters for each of the velocity fields in the infile.
+        Also will extract the velocity field along the best fit position
+        angle and plot this with the same name as the object but with a
+        different extension.
+
+        Input:
+                infile - list containing object names and guess parameters
+                nwalkers - number of walkers in the __metaclass__
+                nsteps - number of steps each walker takes
+                burn_no - how many steps to burn at the beginning
+                raper - aperture size for velocity field extraction
+                daper - distance between consecutive apertures in pixels
+
+        Output:
+                obj_vel_field_1d_dispersion_plot.png
+                obj_vel_field_1d_velocity_plot.png
+                obj_vel_field_chain.obj - saved mcmc chain 
+                obj_vel_field_lnp.obj - saved mcmc log probabilities
+                obj_vel_field_corner_plot.png - marginalised mcmc distributions
+                obj_vel_field_model_comparison.png 
+                obj_vel_field_params.txt - stored maximum, 50th, 16th, 84th
+                                            percentile param values
+
+        """
+
+        # load in the relevant information from the infile
+
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0][:-5] + '_vel_field.fits'
+
+            redshift = entry[1]
+
+            centre_x = entry[3]
+
+            centre_y = entry[2]
+
+            std_cube = entry[4]
+
+            sky_cube = entry[5]
+
+            mask_x_lower = entry[6]
+
+            mask_x_upper = entry[7]
+
+            mask_y_lower = entry[8]
+
+            mask_y_upper = entry[9]
+
+            xcen = entry[10]
+
+            ycen = entry[11]
+
+            inc = entry[12]
+
+            pa = entry[13]
+
+            rt = entry[14]
+
+            vmax = entry[15]
+
+            # initiate the guess parameters for the modelling
+            guess_params = [inc,
+                            pa,
+                            rt,
+                            vmax]
+
+            # create an instance of the velocity field class
+            # for each object in the infile
+
+            vel = vel_field(obj_name,
+                            xcen,
+                            ycen)
+
+            # apply the mcmc, plot_comparison and extract_in_apertures methods
+
+            print 'Running MCMC with %s walkers and %s steps' % (nwalkers,
+                                                                 nsteps)
+
+            vel.run_emcee_fixed_inc_vary(guess_params,
+                                         xcen,
+                                         ycen,
+                                         inc,
+                                         nsteps,
+                                         nwalkers,
+                                         burn_no)
+
+            vel.plot_comparison_fixed(xcen,
+                                      ycen,
+                                      vary=True)
+
+            vel.extract_in_apertures_fixed(xcen,
+                                           ycen,
+                                           raper,
+                                           daper,
+                                           vary=True)
+
+    def multi_apply_mcmc_fixed_inc_fixed(self,
+                                         infile,
+                                         nwalkers,
+                                         nsteps,
+                                         burn_no,
+                                         raper,
+                                         daper):
+
+        """
+        Def: Convenience method for applying MCMC to build and compute
+        the model parameters for each of the velocity fields in the infile.
+        Also will extract the velocity field along the best fit position
+        angle and plot this with the same name as the object but with a
+        different extension.
+
+        Input:
+                infile - list containing object names and guess parameters
+                nwalkers - number of walkers in the __metaclass__
+                nsteps - number of steps each walker takes
+                burn_no - how many steps to burn at the beginning
+                raper - aperture size for velocity field extraction
+                daper - distance between consecutive apertures in pixels
+
+        Output:
+                obj_vel_field_1d_dispersion_plot.png
+                obj_vel_field_1d_velocity_plot.png
+                obj_vel_field_chain.obj - saved mcmc chain 
+                obj_vel_field_lnp.obj - saved mcmc log probabilities
+                obj_vel_field_corner_plot.png - marginalised mcmc distributions
+                obj_vel_field_model_comparison.png 
+                obj_vel_field_params.txt - stored maximum, 50th, 16th, 84th
+                                            percentile param values
+
+        """
+
+        # load in the relevant information from the infile
+
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0][:-5] + '_vel_field.fits'
+
+            redshift = entry[1]
+
+            centre_x = entry[3]
+
+            centre_y = entry[2]
+
+            std_cube = entry[4]
+
+            sky_cube = entry[5]
+
+            mask_x_lower = entry[6]
+
+            mask_x_upper = entry[7]
+
+            mask_y_lower = entry[8]
+
+            mask_y_upper = entry[9]
+
+            xcen = entry[10]
+
+            ycen = entry[11]
+
+            inc = entry[12]
+
+            pa = entry[13]
+
+            rt = entry[14]
+
+            vmax = entry[15]
+
+            # initiate the guess parameters for the modelling
+            guess_params = [pa,
+                            rt,
+                            vmax]
+
+            # create an instance of the velocity field class
+            # for each object in the infile
+
+            vel = vel_field(obj_name,
+                            xcen,
+                            ycen)
+
+            # apply the mcmc, plot_comparison and extract_in_apertures methods
+
+            print 'Running MCMC with %s walkers and %s steps' % (nwalkers,
+                                                                 nsteps)
+
+            vel.run_emcee_fixed_inc_fixed(guess_params,
+                                          xcen,
+                                          ycen,
+                                          inc,
+                                          nsteps,
+                                          nwalkers,
+                                          burn_no)
+
+            vel.plot_comparison_fixed_inc_fixed(xcen,
+                                                ycen,
+                                                inc)
+
+            vel.extract_in_apertures_fixed_inc_fixed(xcen,
+                                                     ycen,
+                                                     inc,
+                                                     raper,
+                                                     daper)
+
     def make_all_plots_no_image(self,
                                 infile):
 
@@ -15187,7 +15409,8 @@ class pipelineOps(object):
                                       ycen,
                                       infile,
                                       raper,
-                                      daper):
+                                      daper,
+                                      vary=False):
 
         """
         Def: Take all of the data from the stott velocity fields,
@@ -15204,7 +15427,13 @@ class pipelineOps(object):
         # open the various files and run the methods to get the data
         # for plotting
 
-        param_file = np.genfromtxt('%s_vel_field_params_fixed.txt' % infile[:-5])
+        if vary:
+
+            param_file = np.genfromtxt('%s_vel_field_params_fixed_inc_vary.txt' % infile[:-5])
+
+        else:
+
+            param_file = np.genfromtxt('%s_vel_field_params_fixed.txt' % infile[:-5])
 
         theta_50 = param_file[2][1:]
 
@@ -15287,10 +15516,21 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots = vel.extract_in_apertures_fixed(xcen,
-                                                     ycen,
-                                                     raper,
-                                                     daper)
+        if vary:
+
+            one_d_plots = vel.extract_in_apertures_fixed(xcen,
+                                                         ycen,
+                                                         raper,
+                                                         daper,
+                                                         vary=True)
+
+        else:
+
+            one_d_plots = vel.extract_in_apertures_fixed(xcen,
+                                                         ycen,
+                                                         raper,
+                                                         daper,
+                                                         vary=False)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -15489,14 +15729,21 @@ class pipelineOps(object):
 
         plt.show()
 
-        fig.savefig('%s_grid_fixed.png' % infile[:-5])
+        if vary:
+
+            fig.savefig('%s_grid_fixed_inc_vary.png' % infile[:-5])
+
+        else:
+
+            fig.savefig('%s_grid_fixed.png' % infile[:-5])
 
     def make_all_plots_fixed(self,
                              xcen,
                              ycen,
                              infile,
                              raper,
-                             daper):
+                             daper,
+                             vary=False):
 
         """
         Def: Take all of the data from the stott velocity fields,
@@ -15513,7 +15760,13 @@ class pipelineOps(object):
         # open the various files and run the methods to get the data
         # for plotting
 
-        param_file = np.genfromtxt('%s_vel_field_params_fixed.txt' % infile[:-5])
+        if vary:
+
+            param_file = np.genfromtxt('%s_vel_field_params_fixed_inc_vary.txt' % infile[:-5])
+
+        else:
+
+            param_file = np.genfromtxt('%s_vel_field_params_fixed.txt' % infile[:-5])
 
         theta_50 = param_file[2][1:]
 
@@ -15647,10 +15900,20 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots = vel.extract_in_apertures_fixed(xcen,
-                                                     ycen,
-                                                     raper,
-                                                     daper)
+        if vary:
+
+            one_d_plots = vel.extract_in_apertures_fixed(xcen,
+                                                         ycen,
+                                                         raper,
+                                                         daper,
+                                                         vary=True)
+
+        else:
+
+            one_d_plots = vel.extract_in_apertures_fixed(xcen,
+                                                         ycen,
+                                                         raper,
+                                                         daper)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -15886,12 +16149,19 @@ class pipelineOps(object):
 
         plt.show()
 
-        fig.savefig('%s_grid_fixed.png' % infile[:-5])
+        if vary:
+
+            fig.savefig('%s_grid_fixed_inc_vary.png' % infile[:-5])
+
+        else:
+
+            fig.savefig('%s_grid_fixed.png' % infile[:-5])
 
     def multi_make_all_plots_fixed(self,
                                    infile,
                                    raper,
-                                   daper):
+                                   daper,
+                                   vary=False):
 
         # read in the table of cube names
         Table = ascii.read(infile)
@@ -15905,11 +16175,21 @@ class pipelineOps(object):
 
             ycen = entry[11]
 
-            self.make_all_plots_fixed(xcen,
-                                      ycen,
-                                      obj_name,
-                                      raper,
-                                      daper)
+            if vary:
+
+                self.make_all_plots_fixed(xcen,
+                                          ycen,
+                                          obj_name,
+                                          raper,
+                                          daper,
+                                          vary=True)
+            else:
+
+                self.make_all_plots_fixed(xcen,
+                                          ycen,
+                                          obj_name,
+                                          raper,
+                                          daper)
 
     def multi_make_all_plots_no_image_fixed(self,
                                             infile,
@@ -15928,12 +16208,789 @@ class pipelineOps(object):
 
             ycen = entry[11]
 
-            self.make_all_plots_no_image_fixed(xcen,
-                                               ycen,
-                                               obj_name,
-                                               raper,
-                                               daper)
+            if vary:
 
+                self.make_all_plots_no_image_fixed(xcen,
+                                                   ycen,
+                                                   obj_name,
+                                                   raper,
+                                                   daper,
+                                                   vary=True)
+
+            else:
+
+                self.make_all_plots_no_image_fixed(xcen,
+                                                   ycen,
+                                                   obj_name,
+                                                   raper,
+                                                   daper)
+
+    def make_all_plots_no_image_fixed_inc_fixed(self,
+                                                xcen,
+                                                ycen,
+                                                inc,
+                                                infile,
+                                                raper,
+                                                daper):
+
+        """
+        Def: Take all of the data from the stott velocity fields,
+        mcmc modelling and hst imaging and return a grid of plots
+        summarising the results.
+
+        Input:
+                in_file - file path and name of object
+
+        Output:
+                grid of plots
+        """
+
+        # open the various files and run the methods to get the data
+        # for plotting
+
+
+        param_file = np.genfromtxt('%s_vel_field_params_fixed_inc_fixed.txt' % infile[:-5])
+
+        theta_50 = param_file[2][1:]
+
+        pa, rt, va = theta_50
+
+        print pa
+
+        # calculate the boundaries from which to draw a line
+        # through the images relating to the position angles
+
+        x_inc = 100 * np.abs(np.cos(pa))
+        y_inc = 100 * np.abs(np.sin(pa))
+
+        # find boundaries by imposing the same conditions as
+        # in the extract apertures for calculating the angle
+        # i.e. relying on the invariance of two segments
+
+        if 0 < pa < np.pi / 2.0 or np.pi < pa < 3 * np.pi / 2.0:
+
+            # in the top right and bottom left areas
+            # so adding to x goes with subtracting from y
+
+            x_low = xcen + x_inc
+            x_high = xcen - x_inc
+            y_low = ycen - y_inc
+            y_high = ycen + y_inc
+
+        else:
+
+            x_low = xcen - x_inc
+            x_high = xcen + x_inc
+            y_low = ycen - y_inc
+            y_high = ycen + y_inc
+
+        flux_name = infile[:-5] + '_flux_field.fits'
+
+        table_flux = fits.open(flux_name)
+
+        data_flux = table_flux[0].data
+
+        vel_field_name = infile[:-5] + '_vel_field.fits'
+
+        table_vel = fits.open(vel_field_name)
+
+        data_vel = table_vel[0].data
+
+        vel = vel_field(vel_field_name,
+                        xcen,
+                        ycen)
+
+        xpix = data_vel.shape[0]
+
+        ypix = data_vel.shape[1]
+
+        data_model = vel.compute_model_grid_fixed_inc_fixed(theta_50,
+                                                            xcen,
+                                                            ycen,
+                                                            inc)
+
+        # truncate this to the data size
+
+        mask_array = np.empty(shape=(xpix, ypix))
+
+        for i in range(0, xpix):
+
+            for j in range(0, ypix):
+
+                if np.isnan(data_vel[i][j]):
+
+                    mask_array[i][j] = np.nan
+
+                else:
+
+                    mask_array[i][j] = 1.0
+
+        # take product of model and mask_array to return new data
+
+        data_model = data_model * mask_array
+
+        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
+
+        data_sig = table_sig[0].data
+
+        one_d_plots = vel.extract_in_apertures_fixed_inc_fixed(xcen,
+                                                               ycen,
+                                                               inc,
+                                                               raper,
+                                                               daper)
+
+        x_max, mod_velocity_values_max, real_velocity_values_max, \
+            real_error_values_max, sig_values_max, sig_error_values_max \
+            = one_d_plots['max']
+
+        x_50, mod_velocity_values_50, real_velocity_values_50, \
+            real_error_values_50, sig_values_50, sig_error_values_50 \
+            = one_d_plots['50']
+
+        x_16, mod_velocity_values_16, real_velocity_values_16, \
+            real_error_values_16, sig_values_16, sig_error_values_16 \
+            = one_d_plots['16']
+
+        x_84, mod_velocity_values_84, real_velocity_values_84, \
+            real_error_values_84, sig_values_84, sig_error_values_84 \
+            = one_d_plots['84']
+
+        # set the imshow plotting limmits
+        try:
+            vel_min, vel_max = np.nanpercentile(data_model,
+                                                [5.0, 95.0])
+
+            sig_min, sig_max = np.nanpercentile(data_sig,
+                                                [5.0, 95.0])
+        except TypeError:
+            vel_min, vel_max = [0, 100]
+            sig_min, sig_max = [0, 100]
+
+        fig, ax = plt.subplots(1, 6, figsize=(24, 4))
+
+
+        ax[0].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        ax[1].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        ax[2].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        # print data_vel.shape
+        m_data_flux = np.ma.array(data_flux,
+                                 mask=np.isnan(data_flux))
+        m_data_vel = np.ma.array(data_vel,
+                                 mask=np.isnan(data_vel))
+        m_data_mod = np.ma.array(data_model,
+                                 mask=np.isnan(data_model))
+        m_data_sig = np.ma.array(data_sig,
+                                 mask=np.isnan(data_sig))
+
+        cmap = plt.cm.jet
+        cmap.set_bad('black', 1.)
+
+        im = ax[0].imshow(m_data_flux,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[0].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[0].tick_params(axis='y',
+                          labelleft='off')
+
+
+        # set the title
+        ax[0].set_title('Velocity from data')
+
+        im = ax[1].imshow(m_data_vel,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[1].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[1].tick_params(axis='y',
+                          labelleft='off')
+
+
+        # set the title
+        ax[1].set_title('Velocity from data')
+
+        im = ax[2].imshow(m_data_mod,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[2].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[2].tick_params(axis='y',
+                          labelleft='off')
+
+        # set the title
+        ax[2].set_title('Velocity from model')
+
+        im = ax[3].imshow(m_data_sig,
+                          vmin=sig_min,
+                          vmax=sig_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[3].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[3].tick_params(axis='y',
+                          labelleft='off')
+
+
+        # set the title
+        ax[3].set_title('Velocity Dispersion Data')
+
+        ax[4].plot(x_max,
+                   mod_velocity_values_max,
+                   color='red',
+                   label='max_model')
+
+        ax[4].errorbar(x_max,
+                       real_velocity_values_max,
+                       yerr=real_error_values_max,
+                       fmt='o',
+                       color='red',
+                       label='max_data')
+
+        ax[4].plot(x_50,
+                   mod_velocity_values_50,
+                   color='blue',
+                   label='50_model')
+
+        ax[4].errorbar(x_50,
+                       real_velocity_values_50,
+                       yerr=real_error_values_50,
+                       fmt='o',
+                       color='blue',
+                       label='50_data')
+
+        ax[4].plot(x_16,
+                   mod_velocity_values_16,
+                   color='orange',
+                   linestyle='--',
+                   label='16_model')
+
+        ax[4].plot(x_84,
+                   mod_velocity_values_84,
+                   color='purple',
+                   linestyle='--',
+                   label='84_model')
+
+        ax[4].set_xlim(-1.5, 1.5)
+
+        # ax[4].legend(prop={'size':5}, loc=1)
+
+        ax[4].set_title('Model and Real Velocity')
+
+        # ax[4].set_ylabel('velocity (kms$^{-1}$)')
+
+        ax[4].set_xlabel('arcsec')
+
+        ax[4].axhline(0, color='silver', ls='-.')
+        ax[4].axvline(0, color='silver', ls='-.')
+        ax[4].axhline(va, color='silver', ls='--')
+        ax[4].axhline(-1.*va, color='silver', ls='--')
+
+
+        # also draw on lines
+
+        ax[5].errorbar(x_max,
+                       sig_values_max,
+                       yerr=sig_error_values_max,
+                       fmt='o',
+                       color='red',
+                       label='max_data')
+
+        ax[5].errorbar(x_50,
+                       sig_values_50,
+                       yerr=sig_error_values_50,
+                       fmt='o',
+                       color='blue',
+                       label='50_data')
+
+        ax[5].set_title('Velocity Dispersion')
+
+        # ax[5].set_ylabel('velocity (kms$^{-1}$)')
+
+        ax[5].set_xlabel('arcsec')
+
+        # ax[5].legend(prop={'size':5}, loc=1)
+
+        plt.show()
+
+        fig.savefig('%s_grid_fixed_inc_fixed.png' % infile[:-5])
+
+
+    def make_all_plots_fixed_inc_fixed(self,
+                                       xcen,
+                                       ycen,
+                                       inc,
+                                       infile,
+                                       raper,
+                                       daper):
+
+        """
+        Def: Take all of the data from the stott velocity fields,
+        mcmc modelling and hst imaging and return a grid of plots
+        summarising the results.
+
+        Input:
+                in_file - file path and name of object
+
+        Output:
+                grid of plots
+        """
+
+        # open the various files and run the methods to get the data
+        # for plotting
+
+
+        param_file = np.genfromtxt('%s_vel_field_params_fixed_inc_fixed.txt' % infile[:-5])
+
+        theta_50 = param_file[2][1:]
+
+        pa, rt, va = theta_50
+
+        table_hst = fits.open('%s_sn.fits' % infile[:-5])
+
+        hst_pa_str = table_hst[0].header['1_PA']
+
+        hst_pa = hst_pa_str[:len(hst_pa_str) -
+                                  hst_pa_str[::-1].find("+") - 2]
+
+        if hst_pa[0] == '[':
+
+            hst_pa = hst_pa[1:]
+
+        hst_pa = float(hst_pa)
+
+        # convert between degrees and radians
+
+        if hst_pa < 0:
+
+            hst_pa = hst_pa + 360
+
+        hst_pa = (hst_pa * np.pi) / 180
+
+        print hst_pa
+        print pa
+
+        # calculate the boundaries from which to draw a line
+        # through the images relating to the position angles
+
+        x_inc_hst = 100 * np.abs(np.cos(hst_pa))
+        y_inc_hst = 100 * np.abs(np.sin(hst_pa))
+
+        # find boundaries by imposing the same conditions as
+        # in the extract apertures for calculating the angle
+        # i.e. relying on the invariance of two segments
+
+        if 0 < hst_pa < np.pi / 2.0 or np.pi < hst_pa < 3 * np.pi / 2.0:
+
+            # in the top right and bottom left areas
+            # so adding to x goes with subtracting from y
+
+            x_h_low = xcen + x_inc_hst
+            x_h_high = xcen - x_inc_hst
+            y_h_low = ycen - y_inc_hst
+            y_h_high = ycen + y_inc_hst
+
+        else:
+
+            x_h_low = xcen - x_inc_hst
+            x_h_high = xcen + x_inc_hst
+            y_h_low = ycen - y_inc_hst
+            y_h_high = ycen + y_inc_hst
+
+        # calculate the boundaries from which to draw a line
+        # through the images relating to the position angles
+
+        x_inc = 100 * np.abs(np.cos(pa))
+        y_inc = 100 * np.abs(np.sin(pa))
+
+        # find boundaries by imposing the same conditions as
+        # in the extract apertures for calculating the angle
+        # i.e. relying on the invariance of two segments
+
+        if 0 < pa < np.pi / 2.0 or np.pi < pa < 3 * np.pi / 2.0:
+
+            # in the top right and bottom left areas
+            # so adding to x goes with subtracting from y
+
+            x_low = xcen + x_inc
+            x_high = xcen - x_inc
+            y_low = ycen - y_inc
+            y_high = ycen + y_inc
+
+        else:
+
+            x_low = xcen - x_inc
+            x_high = xcen + x_inc
+            y_low = ycen - y_inc
+            y_high = ycen + y_inc
+
+        data_hst = table_hst[0].data
+
+        flux_name = infile[:-5] + '_flux_field.fits'
+
+        table_flux = fits.open(flux_name)
+
+        data_flux = table_flux[0].data
+
+        vel_field_name = infile[:-5] + '_vel_field.fits'
+
+        table_vel = fits.open(vel_field_name)
+
+        data_vel = table_vel[0].data
+
+        vel = vel_field(vel_field_name,
+                        xcen,
+                        ycen)
+
+        xpix = data_vel.shape[0]
+
+        ypix = data_vel.shape[1]
+
+        data_model = vel.compute_model_grid_fixed_inc_fixed(theta_50,
+                                                            xcen,
+                                                            ycen,
+                                                            inc)
+
+        # truncate this to the data size
+
+        mask_array = np.empty(shape=(xpix, ypix))
+
+        for i in range(0, xpix):
+
+            for j in range(0, ypix):
+
+                if np.isnan(data_vel[i][j]):
+
+                    mask_array[i][j] = np.nan
+
+                else:
+
+                    mask_array[i][j] = 1.0
+
+        # take product of model and mask_array to return new data
+
+        data_model = data_model * mask_array
+
+        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
+
+        data_sig = table_sig[0].data
+
+        one_d_plots = vel.extract_in_apertures_fixed_inc_fixed(xcen,
+                                                               ycen,
+                                                               inc,
+                                                               raper,
+                                                               daper)
+
+        x_max, mod_velocity_values_max, real_velocity_values_max, \
+            real_error_values_max, sig_values_max, sig_error_values_max \
+            = one_d_plots['max']
+
+        x_50, mod_velocity_values_50, real_velocity_values_50, \
+            real_error_values_50, sig_values_50, sig_error_values_50 \
+            = one_d_plots['50']
+
+        x_16, mod_velocity_values_16, real_velocity_values_16, \
+            real_error_values_16, sig_values_16, sig_error_values_16 \
+            = one_d_plots['16']
+
+        x_84, mod_velocity_values_84, real_velocity_values_84, \
+            real_error_values_84, sig_values_84, sig_error_values_84 \
+            = one_d_plots['84']
+
+        # set the imshow plotting limmits
+        vel_min, vel_max = np.nanpercentile(data_model,
+                                            [5.0, 95.0])
+
+        sig_min, sig_max = np.nanpercentile(data_sig,
+                                            [5.0, 95.0])
+
+        fig, ax = plt.subplots(1, 7, figsize=(24, 4))
+
+
+        ax[1].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine')
+        ax[1].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        ax[2].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine')
+        ax[2].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        ax[3].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine')
+        ax[3].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+        ax[4].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine')
+        ax[4].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        # mask background of velocity data to black
+
+        # print data_hst.shape
+        # print data_vel.shape
+
+        m_data_flux = np.ma.array(data_flux,
+                                 mask=np.isnan(data_flux))
+        m_data_hst = np.ma.array(data_hst,
+                                 mask=np.isnan(data_hst))
+        m_data_vel = np.ma.array(data_vel,
+                                 mask=np.isnan(data_vel))
+        m_data_mod = np.ma.array(data_model,
+                                 mask=np.isnan(data_model))
+        m_data_sig = np.ma.array(data_sig,
+                                 mask=np.isnan(data_sig))
+
+        cmap = plt.cm.bone
+        cmap.set_bad('black', 1.)
+
+        im = ax[0].imshow(data_hst,
+                          cmap=cmap,
+                          vmax=3,
+                          vmin=0)
+
+        ax[0].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[0].tick_params(axis='y',
+                          labelleft='off')
+
+
+        ax[0].set_title('HST imaging')
+
+        cmap = plt.cm.jet
+        cmap.set_bad('black', 1.)
+
+        im = ax[1].imshow(m_data_flux,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[1].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[1].tick_params(axis='y',
+                          labelleft='off')
+
+
+        # set the title
+        ax[1].set_title('[OIII] Flux')
+
+        im = ax[2].imshow(m_data_vel,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[2].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[2].tick_params(axis='y',
+                          labelleft='off')
+
+
+        # set the title
+        ax[2].set_title('Velocity from data')
+
+        im = ax[3].imshow(m_data_mod,
+                          vmin=vel_min,
+                          vmax=vel_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[3].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[3].tick_params(axis='y',
+                          labelleft='off')
+
+        # set the title
+        ax[3].set_title('Velocity from model')
+
+        im = ax[4].imshow(m_data_sig,
+                          vmin=sig_min,
+                          vmax=sig_max,
+                          interpolation='nearest',
+                          cmap=cmap)
+
+        ax[4].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[4].tick_params(axis='y',
+                          labelleft='off')
+
+
+        # set the title
+        ax[4].set_title('Velocity Dispersion Data')
+
+        ax[5].plot(x_max,
+                   mod_velocity_values_max,
+                   color='red',
+                   label='max_model')
+
+        ax[5].errorbar(x_max,
+                       real_velocity_values_max,
+                       yerr=real_error_values_max,
+                       fmt='o',
+                       color='red',
+                       label='max_data')
+
+        ax[5].plot(x_50,
+                   mod_velocity_values_50,
+                   color='blue',
+                   label='50_model')
+
+        ax[5].errorbar(x_50,
+                       real_velocity_values_50,
+                       yerr=real_error_values_50,
+                       fmt='o',
+                       color='blue',
+                       label='50_data')
+
+        ax[5].plot(x_16,
+                   mod_velocity_values_16,
+                   color='orange',
+                   linestyle='--',
+                   label='16_model')
+
+        ax[5].plot(x_84,
+                   mod_velocity_values_84,
+                   color='purple',
+                   linestyle='--',
+                   label='84_model')
+
+        ax[5].set_xlim(-1.5, 1.5)
+
+        # ax[5].legend(prop={'size':5}, loc=1)
+
+        ax[5].set_title('Model and Real Velocity')
+
+        # ax[5].set_ylabel('velocity (kms$^{-1}$)')
+
+        ax[5].set_xlabel('arcsec')
+
+        ax[5].axhline(0, color='silver', ls='-.')
+        ax[5].axvline(0, color='silver', ls='-.')
+        ax[5].axhline(va, color='silver', ls='--')
+        ax[5].axhline(-1.*va, color='silver', ls='--')
+
+
+        # also draw on lines
+
+
+
+        ax[6].errorbar(x_max,
+                       sig_values_max,
+                       yerr=sig_error_values_max,
+                       fmt='o',
+                       color='red',
+                       label='max_data')
+
+        ax[6].errorbar(x_50,
+                       sig_values_50,
+                       yerr=sig_error_values_50,
+                       fmt='o',
+                       color='blue',
+                       label='50_data')
+
+        ax[6].set_title('Velocity Dispersion')
+
+        # ax[6].set_ylabel('velocity (kms$^{-1}$)')
+
+        ax[6].set_xlabel('arcsec')
+
+        # ax[6].legend(prop={'size':5}, loc=1)
+
+        plt.show()
+
+        fig.savefig('%s_grid_fixed_inc_fixed.png' % infile[:-5])
+
+    def multi_make_all_plots_fixed_inc_fixed(self,
+                                             infile,
+                                             raper,
+                                             daper):
+
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            xcen = entry[10]
+
+            ycen = entry[11]
+
+            inc = entry[12]
+
+            self.make_all_plots_fixed_inc_fixed(xcen,
+                                                ycen,
+                                                inc,
+                                                obj_name,
+                                                raper,
+                                                daper)
+
+    def multi_make_all_plots_no_image_fixed_inc_fixed(self,
+                                                      infile,
+                                                      raper,
+                                                      daper):
+
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            xcen = entry[10]
+
+            ycen = entry[11]
+
+            inc = entry[12]
+
+            self.make_all_plots_no_image_fixed_inc_fixed(xcen,
+                                                         ycen,
+                                                         inc,
+                                                         obj_name,
+                                                         raper,
+                                                         daper)
 
 
 
