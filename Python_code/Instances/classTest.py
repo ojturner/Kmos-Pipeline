@@ -25,7 +25,7 @@ pipe_methods = pipelineOps()
 cube = cubeOps('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/combine_sci_reconstructed_bs008543.fits')
 v_field = vel_field('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_'
                      + 'goods_p1_0.8_10_better/Science/combine_sci_reconstru'
-                     + 'cted_bs006516_vel_field.fits', 24, 17)
+                     + 'cted_bs008543_vel_field.fits', 24, 17)
 #galaxy = galPhys('/disk1/turner/DATA/Gals2/comb/Science/comp_spectrum.fits', 0)
 #sky_cube = cubeOps(kskyCube)
 
@@ -97,13 +97,13 @@ guess_params_fixed = [1.00634848977, 5.76455157004, 1.11046782343, 68.9020485689
 
 
 
-data = v_field.compute_model_grid(guess_params)
-fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-ax.imshow(data)
-plt.show()
-plt.close('all')
-shifted_cube = pipe_methods.construct_shifted_cube(data, 3.5, 100, cube.wave_array)
-pipe_methods.compute_beam_smear(data, 3.5, 60, cube.wave_array, 1.0, 24, 17, 0.6, 0.1)
+#data = v_field.compute_model_grid(guess_params)
+#fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+#ax.imshow(v_field.vel_data)
+#plt.show()
+#plt.close('all')
+#shifted_cube = pipe_methods.construct_shifted_cube(data, 3.5, 100, cube.wave_array)
+#pipe_methods.compute_beam_smear(v_field.vel_data, 3.47328838, 10, cube.wave_array, 2.0, 21.7896254246, 15.3774867771, 0.6, 0.1)
 #data = pipe_methods.sersic_grid(30, 30, 2.0, 15, 15)
 #data = np.zeros(shape=(30, 30))
 #data[13:15, 15] = 4
@@ -112,7 +112,7 @@ pipe_methods.compute_beam_smear(data, 3.5, 60, cube.wave_array, 1.0, 24, 17, 0.6
 #data[4,3] = 7
 #pipe_methods.blur_by_psf(data, 0.5, 0.1)
 #pipe_methods.psf_grid(30, 30, 15, 15, 0.7, 0.1)
-#pipe_methods.multi_vel_field_stott('/disk1/turner/DATA/all_names_new.txt', 'oiii', 3.0, g_c_min=0.5, g_c_max=1.5, method='mean')
+pipe_methods.multi_vel_field_stott('/disk1/turner/DATA/all_names_new.txt', 'oiii', 3.0, g_c_min=0.5, g_c_max=1.5, method='mean')
 #pipe_methods.multi_make_all_plots_fixed('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, vary=True)
 #pipe_methods.make_all_plots_no_image('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/combine_sci_reconstructed_s_sa22b-md25.fits')
 #pipe_methods.make_all_plots('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_goods_p1_0.8_10_better/Science/combine_sci_reconstructed_b012141_012208.fits')

@@ -11640,9 +11640,9 @@ class pipelineOps(object):
 
             redshift = entry[1]
 
-            centre_x = entry[3]
+            centre_x = entry[10]
 
-            centre_y = entry[2]
+            centre_y = entry[11]
 
             std_cube = entry[4]
 
@@ -12736,6 +12736,115 @@ class pipelineOps(object):
 
                     masked_vel_array[i][j] = masked_vel_array[i][j]
 
+        # now that we have the velocity array, can calculate the effects of
+        # beam smearing on the sigma profile
+
+        beam_smeared_sigma = self.compute_beam_smear(masked_vel_array,
+                                                     redshift,
+                                                     60,
+                                                     wave_array,
+                                                     2.0,
+                                                     centre_x,
+                                                     centre_y,
+                                                     0.6,
+                                                     0.1)
+
+        # want to save the observed sigma, the resolution sigma,
+        # the beam smeared sigma and the corrected intrinsic sigma
+        # separately
+
+        intrinsic_sigma = np.sqrt((disp_array - beam_smeared_sigma)**2 -
+                                  sky_res_grid ** 2)
+
+
+        # find the new total error - note once an error on the beam smearing
+        # is understood more comprehensively would be good to include this
+        # in the errors as well. Also I'm not sure this is the correct error
+        # combination formula for combining things in quadrature
+
+        total_sigma_error = np.sqrt(sig_error_array**2 + sky_res_error_grid**2)
+
+        tot_sig_error_cut = total_sigma_error[mask_x_lower:mask_x_upper,
+                                              mask_y_lower:mask_y_upper]
+
+        masked_tot_sig_error_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_lower and i < mask_x_upper) \
+                   and (j >= mask_y_lower and j < mask_y_upper):
+
+                    masked_tot_sig_error_array[i][j] = tot_sig_error_cut[i - mask_x_lower][j - mask_y_lower]
+
+                else:
+
+                    masked_tot_sig_error_array[i][j] = masked_tot_sig_error_array[i][j]
+
+        # and find the cut version of all of these arrays
+
+        int_sig_cut = intrinsic_sigma[mask_x_lower:mask_x_upper,
+                                      mask_y_lower:mask_y_upper]
+
+        masked_int_sig_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_lower and i < mask_x_upper) \
+                   and (j >= mask_y_lower and j < mask_y_upper):
+
+                    masked_int_sig_array[i][j] = int_sig_cut[i - mask_x_lower][j - mask_y_lower]
+
+                else:
+
+                    masked_int_sig_array[i][j] = masked_int_sig_array[i][j]
+
+        try:
+            int_sig_min, int_sig_max = np.nanpercentile(masked_int_sig_array,
+                                                        [5.0, 95.0])
+        except TypeError:
+
+            int_sig_min, int_sig_max = [50, 100]
+
+        beam_smeared_cut = beam_smeared_sigma[mask_x_lower:mask_x_upper,
+                                              mask_y_lower:mask_y_upper]
+
+        masked_beam_smeared_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_lower and i < mask_x_upper) \
+                   and (j >= mask_y_lower and j < mask_y_upper):
+
+                    masked_beam_smeared_array[i][j] = beam_smeared_cut[i - mask_x_lower][j - mask_y_lower]
+
+                else:
+
+                    masked_beam_smeared_array[i][j] = masked_beam_smeared_array[i][j]
+
+        sky_res_cut = sky_res_grid[mask_x_lower:mask_x_upper,
+                                   mask_y_lower:mask_y_upper]
+
+        masked_sky_res_array = np.nan * np.empty(shape=(xpixs, ypixs))
+
+        for i in range(xpixs):
+
+            for j in range(ypixs):
+
+                if (i >= mask_x_lower and i < mask_x_upper) \
+                   and (j >= mask_y_lower and j < mask_y_upper):
+
+                    masked_sky_res_array[i][j] = sky_res_cut[i - mask_x_lower][j - mask_y_lower]
+
+                else:
+
+                    masked_sky_res_array[i][j] = masked_sky_res_array[i][j]
+
         im = ax[1].imshow(masked_vel_array,
                           vmin=vel_min,
                           vmax=vel_max,
@@ -12770,9 +12879,9 @@ class pipelineOps(object):
 
                     masked_disp_array[i][j] = masked_disp_array[i][j]
 
-        im = ax[2].imshow(masked_disp_array,
-                          vmin=sig_min,
-                          vmax=sig_max,
+        im = ax[2].imshow(masked_int_sig_array,
+                          vmin=int_sig_min,
+                          vmax=int_sig_max,
                           cmap=plt.get_cmap('jet'),
                           interpolation='nearest')
 
@@ -12851,7 +12960,7 @@ class pipelineOps(object):
         # set the title
         ax[6].set_title('Velocity Error')
 
-        im = ax[7].imshow(sig_error_array,
+        im = ax[7].imshow(masked_tot_sig_error_array,
                           vmin=sig_er_min,
                           vmax=sig_er_max,
                           cmap=plt.get_cmap('jet'),
@@ -12867,7 +12976,7 @@ class pipelineOps(object):
         # set the title
         ax[7].set_title('Sigma Error')
 
-        # plt.show()
+        plt.show()
 
         fig.savefig('%s_stamps_gauss%s_t%s_%s_%s.pdf' % (incube[:-5],
                                                          str(tol),
@@ -12895,7 +13004,19 @@ class pipelineOps(object):
 
         sig_hdu.writeto('%s_sig_field.fits' % incube[:-5], clobber=True)
 
-        sig_error_hdu = fits.PrimaryHDU(sig_error_array)
+        sig_int_hdu = fits.PrimaryHDU(masked_int_sig_array)
+
+        sig_int_hdu.writeto('%s_int_sig_field.fits' % incube[:-5], clobber=True)
+
+        sig_sky_hdu = fits.PrimaryHDU(masked_sky_res_array)
+
+        sig_sky_hdu.writeto('%s_sig_sky_field.fits' % incube[:-5], clobber=True)
+
+        sig_beam_hdu = fits.PrimaryHDU(masked_beam_smeared_array)
+
+        sig_beam_hdu.writeto('%s_sig_beam_field.fits' % incube[:-5], clobber=True)
+
+        sig_error_hdu = fits.PrimaryHDU(masked_tot_sig_error_array)
 
         sig_error_hdu.writeto('%s_sig_error_field.fits' % incube[:-5], clobber=True)
 
@@ -12908,7 +13029,7 @@ class pipelineOps(object):
                              mask_y_lower:mask_y_upper],
                 flux_array,
                 masked_vel_array,
-                masked_disp_array]
+                masked_int_sig_array]
 
     def noise_from_mask_poly_subtract(self,
                                       cube_filter,
@@ -14861,7 +14982,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -15208,7 +15329,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -15582,7 +15703,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -15966,7 +16087,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -16399,7 +16520,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -16764,7 +16885,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -17189,9 +17310,9 @@ class pipelineOps(object):
 
         # and define the function
 
-        func = np.exp(-r**(1/n))
+        func = 50*np.exp(-r**(1/n))
 
-        return func 
+        return func
 
     def sersic_2d_mod(self):
 
@@ -17361,19 +17482,25 @@ class pipelineOps(object):
 
                 vel_value = vel_data[i, j]
 
-                l_o = central_l + central_l * (vel_value / self.c)
+                if np.isnan(vel_value):
 
-                # convert the given gaussian width in kms-1 into a
-                # wavelength width
+                    cube_array.append(np.repeat(np.nan, len(wave_array)))
 
-                sig_l = (central_l * sigma) / self.c
+                else:
 
-                # append the evaluated gaussian to the cube_array
+                    l_o = central_l + central_l * (vel_value / self.c)
 
-                cube_array.append(g_mod.eval(x=wave_array,
-                                             amplitude=1.0,
-                                             sigma=sig_l,
-                                             center=l_o))
+                    # convert the given gaussian width in kms-1 into a
+                    # wavelength width
+
+                    sig_l = (central_l * sigma) / self.c
+
+                    # append the evaluated gaussian to the cube_array
+
+                    cube_array.append(g_mod.eval(x=wave_array,
+                                                 amplitude=1.0,
+                                                 sigma=sig_l,
+                                                 center=l_o))
 
         # in theory that's it - now reshape the resultant array and
         # return that data cube
@@ -17451,70 +17578,83 @@ class pipelineOps(object):
                 # initiate list to hold the contributions to each spaxel
                 temp_list = []
 
-                seeing_profile = self.psf_grid(dim_x,
-                                               dim_y,
-                                               i,
-                                               j,
-                                               seeing,
-                                               pix_scale)
+                # if there is a nan value in the vel data - not interested
+                if np.isnan(vel_data[i, j]):
 
-                # compute the factor with which to ammend the
-                # cube gaussian array
+                    gauss_array.append(np.repeat(np.nan, len(wave_array)))
 
-                factor = sersic_2d[i, j] * seeing_profile[i, j]
+                # else compute the effects of smearing in the light from
+                # everywhere else
 
-                # and append this to the temp_list as the starting point
+                else:
 
-                temp_list.append(factor * shifted_cube[:, i, j])
+                    seeing_profile = self.psf_grid(dim_x,
+                                                   dim_y,
+                                                   i,
+                                                   j,
+                                                   seeing,
+                                                   pix_scale)
 
-                # now for the tricky part - computing the contributions
-                # from all other spaxels (smeared by the PSF)
-                # obviously less contribution as you get further away
-                # (translating to a decrease in this factor parameter)
-                # effect greatest when the flux and velocity centers are
-                # co-indicent
+                    # compute the factor with which to ammend the
+                    # cube gaussian array
 
-                for new_i in range(dim_x):
+                    factor = sersic_2d[i, j] * seeing_profile[i, j]
 
-                    for new_j in range(dim_y):
+                    # and append this to the temp_list as the starting point
 
-                        # if the new loop values are not equivalent to the
-                        # spaxel that we're trying to figure out
-                        # execute this block of code
+                    temp_list.append(factor * shifted_cube[:, i, j])
 
-                        if not((new_i == i) and (new_j == j)):
+                    # now for the tricky part - computing the contributions
+                    # from all other spaxels (smeared by the PSF)
+                    # obviously less contribution as you get further away
+                    # (translating to a decrease in this factor parameter)
+                    # effect greatest when the flux and velocity centers are
+                    # co-indicent
 
-                            # seeing profile initiated at new spatial location
+                    for new_i in range(dim_x):
 
-                            seeing_profile = self.psf_grid(dim_x,
-                                                           dim_y,
-                                                           new_i,
-                                                           new_j,
-                                                           seeing,
-                                                           pix_scale)
+                        for new_j in range(dim_y):
 
-                            # factor evaluated at old spatial location in the
-                            # seeing profile but new spatial location in the
-                            # sersic profile - because we are computing the
-                            # effect of blurring sersic new by psf at new at
-                            # the initial spatial location
+                            # if the new loop values are not equivalent to the
+                            # spaxel that we're trying to figure out
+                            # execute this block of code
 
-                            factor = sersic_2d[new_i, new_j] * \
-                                seeing_profile[i, j]
+                            if not((new_i == i) and (new_j == j)):
 
-                            # then append to the temp_list the factor mult
-                            # by the cube_array at the new spatial location
+                                # seeing profile initiated at new spatial loc
 
-                            temp_list.append(factor *
-                                             shifted_cube[:, new_i, new_j])
+                                seeing_profile = self.psf_grid(dim_x,
+                                                               dim_y,
+                                                               new_i,
+                                                               new_j,
+                                                               seeing,
+                                                               pix_scale)
 
-                # append to the gauss array the summed contributions to
-                # that spaxel from all others, the final line profile
-                # for that spaxel
+                                # factor evaluated at old spatial location in
+                                # seeing profile but new spatial location in
+                                # sersic profile - because we are computing the
+                                # effect of blurring sersic new by psf at
+                                # the initial spatial location
 
-                gauss_array.append(np.sum(temp_list, axis=0))
+                                factor = sersic_2d[new_i, new_j] * \
+                                    seeing_profile[i, j]
 
-                # loop back and do that for every spaxel
+                                # then append to the temp_list the factor mult
+                                # by the cube_array at the new spatial location
+
+                                temp_list.append(factor *
+                                                 shifted_cube[:, new_i, new_j])
+
+                    # append to the gauss array the summed contributions to
+                    # that spaxel from all others, the final line profile
+                    # for that spaxel
+
+                    # remember nansum because some of the blurred values
+                    # will be nan (actually most)
+
+                    gauss_array.append(np.nansum(temp_list, axis=0))
+
+                    # loop back and do that for every spaxel
 
         # now reshape the gauss_array in the same way as we did above
         gauss_array = np.array(gauss_array)
@@ -17531,47 +17671,30 @@ class pipelineOps(object):
 
             for h in range(dim_y):
 
-                gauss_values, cov = self.gauss_fit(wave_array,
-                                                   gauss_array_cube[:, g, h])
+                # same deal with checking for nan values
 
-                smear_array[g, h] = gauss_values['sigma']
+                if np.isnan(gauss_array_cube[:, g, h][0]):
+
+                    smear_array[g, h] = np.nan
+
+                else:
+
+                    gauss_values, cov = self.gauss_fit(wave_array,
+                                                       gauss_array_cube[:, g, h])
+
+                    smear_array[g, h] = gauss_values['sigma']
 
         # convert back to a kilometres per second value
 
         smear_array = smear_array * (self.c / central_l)
 
-        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+#        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+#        im = ax.imshow(smear_array - sigma)
+#        # add colourbar to each plot
+#        divider = make_axes_locatable(ax)
+#        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+#        plt.colorbar(im, cax=cax_new)
+#        plt.show()
+#        print np.nanmean(smear_array), np.nanmax(smear_array)
 
-        im = ax.imshow(smear_array)
-
-        # add colourbar to each plot
-        divider = make_axes_locatable(ax)
-        cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        plt.colorbar(im, cax=cax_new)
-
-        plt.show()
-
-        print np.mean(smear_array), np.max(smear_array)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return smear_array - sigma

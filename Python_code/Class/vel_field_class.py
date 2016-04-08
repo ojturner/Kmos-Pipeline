@@ -115,7 +115,7 @@ class vel_field(object):
 
         try:
 
-            self.sig_table = fits.open('%ssig_field.fits' % self.fileName[:-14])
+            self.sig_table = fits.open('%ssig_int_field.fits' % self.fileName[:-14])
 
             self.sig_data = self.sig_table[0].data
 
