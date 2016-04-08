@@ -14982,7 +14982,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_int_sig_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -15329,7 +15329,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_int_sig_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -15703,7 +15703,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_int_sig_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -16087,7 +16087,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_int_sig_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -16520,7 +16520,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_int_sig_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -16885,7 +16885,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_sig_int_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_int_sig_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
