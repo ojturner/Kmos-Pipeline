@@ -889,6 +889,7 @@ class cubeOps(object):
 
         # flattening the indices of data.shape
         x1 = np.ndarray.flatten(indices(self.imData.shape)[0])
+        print 'This is the x1 shape: %s' % x1.shape
 
         # print 'The first independent variable: %s %s' % (x1, type(x1))
         x2 = np.ndarray.flatten(indices(self.imData.shape)[1])

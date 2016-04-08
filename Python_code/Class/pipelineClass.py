@@ -43,6 +43,8 @@ class pipelineOps(object):
 
         self.self = self
 
+        self.c = 2.99792458E5
+
     def compute_offset_top_four(self,
                                 rawSubFile,
                                 objectFile):
@@ -11508,8 +11510,8 @@ class pipelineOps(object):
 #        fig, ax = plt.subplots(figsize=(14, 6))
 #        ax.plot(fit_wl, fit_flux, color='blue')
 #        ax.plot(fit_wl, out.best_fit, color='red')
-        # plt.show()
-        # plt.close('all')
+#        plt.show()
+#        plt.close('all')
 
         return out.best_values, out.covar
 
@@ -11593,11 +11595,11 @@ class pipelineOps(object):
         # print out.fit_report()
 
         # plot to make sure things are working
-        fig, ax = plt.subplots(figsize=(14, 6))
-        ax.plot(fit_wl, fit_flux, color='blue')
-        ax.plot(fit_wl, out.best_fit, color='red')
-        # plt.show()
-        # plt.close('all')
+#        fig, ax = plt.subplots(figsize=(14, 6))
+#        ax.plot(fit_wl, fit_flux, color='blue')
+#        ax.plot(fit_wl, out.best_fit, color='red')
+#        plt.show()
+#        plt.close('all')
 
         return out.best_values, out.covar
 
@@ -11690,6 +11692,7 @@ class pipelineOps(object):
                 stack_method = 'median'
 
             self.vel_field_stott_binning(obj_name,
+                                         sky_cube,
                                          line,
                                          redshift,
                                          threshold,
@@ -11704,10 +11707,38 @@ class pipelineOps(object):
                                          tol=tolerance,
                                          method=stack_method,
                                          noise_method=noise_method)
+    def sky_res(self,
+                sky_flux,
+                sky_wave,
+                sky_x_dim,
+                sky_y_dim,
+                llow,
+                lhigh):
+
+        """
+        Def:
+        Fit a skyline to determine the instrumental resolution.
+        """
+
+        sky_indices = np.where(np.logical_and(sky_wave > llow,
+                                              sky_wave < lhigh))[0]
+
+        sky_gauss_wave = sky_wave[sky_indices]
+
+        sky_gauss_flux = sky_flux[:,
+                                  np.round(sky_x_dim / 2.0),
+                                  np.round(sky_y_dim / 2.0)][sky_indices]
+
+        # plug these into the gaussian fitting routine
+
+        gauss_values, covar = self.ped_gauss_fit(sky_gauss_wave,
+                                             sky_gauss_flux)
+
+        return 2.99792458E5 * (gauss_values['sigma'] / gauss_values['center'])
 
     def vel_field_stott_binning(self,
                                 incube,
-                                skycube,
+                                sky_cube,
                                 line,
                                 redshift,
                                 threshold,
@@ -11754,6 +11785,16 @@ class pipelineOps(object):
 
         cube = cubeOps(incube)
 
+        skycube = cubeOps(sky_cube)
+
+        sky_wave = skycube.wave_array
+
+        sky_data = skycube.data
+
+        sky_x_dim = sky_data.shape[1]
+
+        sky_y_dim = sky_data.shape[2]
+
         data = cube.data
 
         noise = cube.Table[2].data
@@ -11761,6 +11802,33 @@ class pipelineOps(object):
         xpixs = data.shape[1]
 
         ypixs = data.shape[2]
+
+        # construct the instrumental resolution cube
+
+        l_tup = ([2.022,2.032],
+                 [2.03,2.039],
+                 [2.036,2.046],
+                 [2.068,2.078],
+                 [2.19,2.2])
+
+        res_array = []
+
+        for entry in l_tup:
+
+            res_array.append(self.sky_res(sky_data,
+                                          sky_wave,
+                                          sky_x_dim,
+                                          sky_y_dim,
+                                          entry[0],
+                                          entry[1]))
+
+        # now construct the 2D grid of values
+
+        sky_res_grid = np.full((xpixs,ypixs),
+                               np.mean(res_array))
+
+        sky_res_error_grid = np.full((xpixs,ypixs),
+                                     np.std(res_array))
 
         # set the search limits in the different filters
         # this is to account for differing spectral resolutions
@@ -14056,6 +14124,7 @@ class pipelineOps(object):
                 stack_method = 'median'
 
             return_list = self.vel_field_stott_binning(obj_name,
+                                                       sky_cube,
                                                        line,
                                                        redshift,
                                                        threshold,
@@ -14079,6 +14148,7 @@ class pipelineOps(object):
             sig_array_cube = return_list[4]
 
             return_list = self.vel_field_stott_binning(obj_name,
+                                                       sky_cube,
                                                        line,
                                                        redshift,
                                                        threshold,
@@ -16991,6 +17061,513 @@ class pipelineOps(object):
                                                          obj_name,
                                                          raper,
                                                          daper)
+
+    # experiment with modelling seeing conditions
+
+    # Create a gaussian function for use with lmfit
+    def gaussian(self,
+                 x1,
+                 x2,
+                 center_x,
+                 center_y,
+                 width):
+        """
+        Def: Return a two dimensional gaussian function
+        """
+
+        # make sure we have floating point values
+        width = float(width)
+
+        norm = 1.0 / (2 * np.pi * width**2)
+        num = (center_x - x1)**2 + (center_y - x2)**2
+        den = 2 * width**2
+
+        # Specify the gaussian function here
+        func = norm * np.exp(-1.0*num / den)
+
+        return func
+
+    def gauss2dMod(self):
+
+        mod = Model(self.gaussian,
+                    independent_vars=['x1', 'x2'],
+                    param_names=['center_x',
+                                 'center_y',
+                                 'width'],
+                    missing='drop')
+
+        # print mod.independent_vars
+        # print mod.param_names
+
+        return mod
+
+    def psf_grid(self,
+                 dim_x,
+                 dim_y,
+                 center_x,
+                 center_y,
+                 seeing,
+                 pix_scale):
+
+        """
+        Def:
+        Create a grid of dimensions dim_x, dim_y containing the
+        normalised seeing profile of a given atmosphere,
+
+        Input:
+        dim_x - dimensions of the grid in rows
+        dim_y - dimensions of the grid in columns
+        height - amplitude of the gaussian
+        center_x - center of gaussian in x direction
+        center_y - center of gaussian in y direction
+        seeing - given in arcseconds
+        pix_scale - given in arcseconds, dimension of individual pixel
+
+        Output:
+        normalised seeing profile centred at chosen location, which can be
+        outside the dimensions of the grid if desired, although that would
+        be totally contrary to the point of doing this
+        """
+
+        # set up the gaussian model with the chosen parameters
+
+        g_mod = self.gauss2dMod()
+
+        # set up the grid over which to evaluate the gaussian
+
+        xbin = np.arange(0, dim_x, 1)
+
+        ybin = np.arange(0, dim_y, 1)
+
+        ybin, xbin = np.meshgrid(ybin, xbin)
+
+        xbin = np.ravel(xbin)
+
+        ybin = np.ravel(ybin)
+
+        # the width is determined from the seeing and the pixel scale
+
+        width = (seeing / 2.355) / pix_scale
+
+        g_mod_eval_1d = g_mod.eval(x1=xbin,
+                                   x2=ybin,
+                                   center_x=center_x,
+                                   center_y=center_y,
+                                   width=width)
+
+        g_mod_eval = np.reshape(g_mod_eval_1d, (dim_x,dim_y))
+
+        return g_mod_eval
+
+    def sersic_2d(self,
+                  x1,
+                  x2,
+                  n,
+                  center_x,
+                  center_y):
+
+        """
+        Def:
+        2 dimensional sersic function, in analogy to the 2d gaussian
+        function above.
+
+        Input:
+                x1,x2 - dependent parameters (x, y)
+                n - the sersic index
+                center_x - center point in x direction
+                center_y - center point in y direction
+
+        Output:
+                return the function
+        """
+
+        n = float(n)
+
+        # first set the distance from the center
+
+        r = np.sqrt((center_x - x1)**2 + (center_y - x2)**2)
+
+        # and define the function
+
+        func = np.exp(-r**(1/n))
+
+        return func 
+
+    def sersic_2d_mod(self):
+
+        """
+        Def: create lmfit model of 2d sersic profile
+        """
+
+        mod = Model(self.sersic_2d,
+                    independent_vars=['x1', 'x2'],
+                    param_names=['n',
+                                 'center_x',
+                                 'center_y'],
+                    missing='drop')
+
+        return mod
+
+    def sersic_grid(self,
+                    dim_x,
+                    dim_y,
+                    n,
+                    center_x,
+                    center_y):
+
+        """
+        Def:
+        Create a grid of dimensions dim_x, dim_y containing the
+        normalised sersic profile of a galaxy
+
+        Input:
+        dim_x - dimensions of the grid in rows
+        dim_y - dimensions of the grid in columns
+        n - sersic index
+        center_x - center of sersic in x direction
+        center_y - center of sersic in y direction
+
+        Output:
+        normalised sersic profile centred at chosen location, which can be
+        outside the dimensions of the grid if desired, although that would
+        be totally contrary to the point of doing this
+        """
+
+        # set up the gaussian model with the chosen parameters
+
+        s_mod = self.sersic_2d_mod()
+
+        # set up the grid over which to evaluate the gaussian
+
+        xbin = np.arange(0, dim_x, 1)
+
+        ybin = np.arange(0, dim_y, 1)
+
+        ybin, xbin = np.meshgrid(ybin, xbin)
+
+        xbin = np.ravel(xbin)
+
+        ybin = np.ravel(ybin)
+
+        s_mod_eval_1d = s_mod.eval(x1=xbin,
+                                   x2=ybin,
+                                   n=n,
+                                   center_x=center_x,
+                                   center_y=center_y)
+
+        s_mod_eval = np.reshape(s_mod_eval_1d, (dim_x,dim_y))
+
+        return s_mod_eval
+
+    def blur_by_psf(self,
+                    data,
+                    seeing,
+                    pix_scale):
+
+        """
+        Def:
+        Take simulated data (intrinsic to an object) and simulate the
+        effect of passing through an atmosphere which is modelled by
+        a particular PSF.
+
+        Input:
+                data - 2d grid of data points, every spatial location will
+                        be given a PSF profile centred there
+
+                seeing - the seeing value with which to smear the object
+                pix_scale - pixel scale of the observations
+
+        Output:
+                blurred 2d grid of flux values
+        """
+
+        dim_x = data.shape[0]
+
+        dim_y = data.shape[0]
+
+        final_flux = []
+
+        for i in range(dim_x):
+
+            for j in range(dim_y):
+
+                temp_flux_grid = np.full((dim_x,dim_y), data[i,j])
+
+                seeing_profile = self.psf_grid(dim_x,
+                                               dim_y,
+                                               i,
+                                               j,
+                                               seeing,
+                                               pix_scale)
+
+                final_flux.append(temp_flux_grid * seeing_profile)
+
+        final_flux = np.sum(final_flux, axis=0)
+
+    def construct_shifted_cube(self,
+                               vel_data,
+                               redshift,
+                               sigma,
+                               wave_array):
+
+        """
+        Def:
+        Evaluate a gaussian function with the wavelength array as the
+        argument and centre computed using the known redshifted centre of
+        [OIII] augmented by the velocity value.
+        Return a datacube of dimensions (wave_array, vel_data.shape) with the
+        shifted [OIII] line profiles (which are at this point all the same
+        flux values).
+        The idea is that these values will be convolved with a gaussian profile
+        and a sersic profile, assuming that the gaussian flux fall off follows
+        exactly the sersic fall off (Physics?) to be able to start recovering
+        the effect of beam smearing on the simulated data.
+
+        Input:
+                vel_data - 2d velocity values representing a galaxy disk
+                redshift - the redshift of the galaxy in question
+                sigma - the starting width of the line (in kms-1)
+                wave_array - 1d array of wavelength points over which 
+                            the gaussians shall be evaluated.
+
+        Output:
+                3d cube containing in each spaxel the shifted wavelength arrays
+        """
+
+        # define the speed of light
+
+
+        # what is the actual central wavelength value for [OIII]
+
+        central_l = (1 + redshift) * 0.500824
+
+        # set up the gaussian model
+
+        g_mod = GaussianModel()
+
+        # initialise the cube array
+
+        cube_array = []
+
+        # loop over the velocity data dimensions
+        # and evaluate the gaussians
+
+        for i in range(vel_data.shape[0]):
+
+            for j in range(vel_data.shape[1]):
+
+                # use the velocity value to compute the new observed
+                # wavelength (which will become the gaussian centre)
+
+                vel_value = vel_data[i, j]
+
+                l_o = central_l + central_l * (vel_value / self.c)
+
+                # convert the given gaussian width in kms-1 into a
+                # wavelength width
+
+                sig_l = (central_l * sigma) / self.c
+
+                # append the evaluated gaussian to the cube_array
+
+                cube_array.append(g_mod.eval(x=wave_array,
+                                             amplitude=1.0,
+                                             sigma=sig_l,
+                                             center=l_o))
+
+        # in theory that's it - now reshape the resultant array and
+        # return that data cube
+        cube_array = np.array(cube_array)
+
+        cube = np.reshape(cube_array.T, (len(wave_array),
+                                         vel_data.shape[0],
+                                         vel_data.shape[1]))
+
+        return cube
+
+    def compute_beam_smear(self,
+                           vel_data,
+                           redshift,
+                           sigma,
+                           wave_array,
+                           sersic_n,
+                           center_x,
+                           center_y,
+                           seeing,
+                           pix_scale):
+
+        """
+        Def:
+        Compute the effects of beam smearing on all the pixels given
+        the shifted_cube computed from the model/observed velocity field.
+        First construct a sersic profile centered at the chosen location
+        and convolve with the seeing for each spaxel.
+
+        Input:
+                shifted_cube - output from construct_shifted_cube method
+                center_x - sersic center in the x-direction
+                center_y - sersic center in the y-direction
+
+        Output:
+                Not sure yet
+        """
+
+        # central [OIII] wavelength
+
+        central_l = (1 + redshift) * 0.500824
+
+        # construct the shifted cube
+
+        shifted_cube = self.construct_shifted_cube(vel_data,
+                                                   redshift,
+                                                   sigma,
+                                                   wave_array)
+
+        # initiate the sersic profile
+
+        dim_x = shifted_cube.shape[1]
+
+        dim_y = shifted_cube.shape[2]
+
+        sersic_2d = self.sersic_grid(dim_x,
+                                     dim_y,
+                                     sersic_n,
+                                     center_x,
+                                     center_y)
+
+        # initialise the overall smear array
+        gauss_array = []
+
+        # and the smear array for the gaussian fits to the
+        # summed profiles
+        smear_array = np.empty(shape=(dim_x, dim_y))
+
+        # loop around the shifted cube and blur
+
+        for i in range(dim_x):
+
+            for j in range(dim_y):
+
+                # initiate list to hold the contributions to each spaxel
+                temp_list = []
+
+                seeing_profile = self.psf_grid(dim_x,
+                                               dim_y,
+                                               i,
+                                               j,
+                                               seeing,
+                                               pix_scale)
+
+                # compute the factor with which to ammend the
+                # cube gaussian array
+
+                factor = sersic_2d[i, j] * seeing_profile[i, j]
+
+                # and append this to the temp_list as the starting point
+
+                temp_list.append(factor * shifted_cube[:, i, j])
+
+                # now for the tricky part - computing the contributions
+                # from all other spaxels (smeared by the PSF)
+                # obviously less contribution as you get further away
+                # (translating to a decrease in this factor parameter)
+                # effect greatest when the flux and velocity centers are
+                # co-indicent
+
+                for new_i in range(dim_x):
+
+                    for new_j in range(dim_y):
+
+                        # if the new loop values are not equivalent to the
+                        # spaxel that we're trying to figure out
+                        # execute this block of code
+
+                        if not((new_i == i) and (new_j == j)):
+
+                            # seeing profile initiated at new spatial location
+
+                            seeing_profile = self.psf_grid(dim_x,
+                                                           dim_y,
+                                                           new_i,
+                                                           new_j,
+                                                           seeing,
+                                                           pix_scale)
+
+                            # factor evaluated at old spatial location in the
+                            # seeing profile but new spatial location in the
+                            # sersic profile - because we are computing the
+                            # effect of blurring sersic new by psf at new at
+                            # the initial spatial location
+
+                            factor = sersic_2d[new_i, new_j] * \
+                                seeing_profile[i, j]
+
+                            # then append to the temp_list the factor mult
+                            # by the cube_array at the new spatial location
+
+                            temp_list.append(factor *
+                                             shifted_cube[:, new_i, new_j])
+
+                # append to the gauss array the summed contributions to
+                # that spaxel from all others, the final line profile
+                # for that spaxel
+
+                gauss_array.append(np.sum(temp_list, axis=0))
+
+                # loop back and do that for every spaxel
+
+        # now reshape the gauss_array in the same way as we did above
+        gauss_array = np.array(gauss_array)
+
+        gauss_array_cube = np.reshape(gauss_array.T,
+                                      (len(wave_array),
+                                       dim_x,
+                                       dim_y))
+
+        # fit a gaussian to every profile in the gauss_array_cube
+        # and store in the smear_array
+
+        for g in range(dim_x):
+
+            for h in range(dim_y):
+
+                gauss_values, cov = self.gauss_fit(wave_array,
+                                                   gauss_array_cube[:, g, h])
+
+                smear_array[g, h] = gauss_values['sigma']
+
+        # convert back to a kilometres per second value
+
+        smear_array = smear_array * (self.c / central_l)
+
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+        im = ax.imshow(smear_array)
+
+        # add colourbar to each plot
+        divider = make_axes_locatable(ax)
+        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        plt.colorbar(im, cax=cax_new)
+
+        plt.show()
+
+        print np.mean(smear_array), np.max(smear_array)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
