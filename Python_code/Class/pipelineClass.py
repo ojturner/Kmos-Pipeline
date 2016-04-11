@@ -12976,7 +12976,7 @@ class pipelineOps(object):
         # set the title
         ax[7].set_title('Sigma Error')
 
-        plt.show()
+        # plt.show()
 
         fig.savefig('%s_stamps_gauss%s_t%s_%s_%s.pdf' % (incube[:-5],
                                                          str(tol),
@@ -17454,9 +17454,6 @@ class pipelineOps(object):
         Output:
                 3d cube containing in each spaxel the shifted wavelength arrays
         """
-
-        # define the speed of light
-
 
         # what is the actual central wavelength value for [OIII]
 
