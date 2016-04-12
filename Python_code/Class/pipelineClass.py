@@ -14986,7 +14986,7 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots = vel.extract_in_apertures(0.8, 0.6)
+        one_d_plots, extract_values = vel.extract_in_apertures(0.8, 0.6)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -15333,7 +15333,7 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots = vel.extract_in_apertures(0.8, 0.6)
+        one_d_plots, extract_values = vel.extract_in_apertures(0.8, 0.6)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -15709,19 +15709,19 @@ class pipelineOps(object):
 
         if vary:
 
-            one_d_plots = vel.extract_in_apertures_fixed(xcen,
-                                                         ycen,
-                                                         raper,
-                                                         daper,
-                                                         vary=True)
+            one_d_plots, extract_values = vel.extract_in_apertures_fixed(xcen,
+                                                                         ycen,
+                                                                         raper,
+                                                                         daper,
+                                                                         vary=True)
 
         else:
 
-            one_d_plots = vel.extract_in_apertures_fixed(xcen,
-                                                         ycen,
-                                                         raper,
-                                                         daper,
-                                                         vary=False)
+            one_d_plots, extract_values = vel.extract_in_apertures_fixed(xcen,
+                                                                         ycen,
+                                                                         raper,
+                                                                         daper,
+                                                                         vary=False)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -16093,18 +16093,18 @@ class pipelineOps(object):
 
         if vary:
 
-            one_d_plots = vel.extract_in_apertures_fixed(xcen,
-                                                         ycen,
-                                                         raper,
-                                                         daper,
-                                                         vary=True)
+            one_d_plots, extract_values = vel.extract_in_apertures_fixed(xcen,
+                                                                         ycen,
+                                                                         raper,
+                                                                         daper,
+                                                                         vary=True)
 
         else:
 
-            one_d_plots = vel.extract_in_apertures_fixed(xcen,
-                                                         ycen,
-                                                         raper,
-                                                         daper)
+            one_d_plots, extract_values = vel.extract_in_apertures_fixed(xcen,
+                                                                         ycen,
+                                                                         raper,
+                                                                         daper)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -16524,11 +16524,11 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots = vel.extract_in_apertures_fixed_inc_fixed(xcen,
-                                                               ycen,
-                                                               inc,
-                                                               raper,
-                                                               daper)
+        one_d_plots, extract_values = vel.extract_in_apertures_fixed_inc_fixed(xcen,
+                                                                               ycen,
+                                                                               inc,
+                                                                               raper,
+                                                                               daper)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -16889,11 +16889,11 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots = vel.extract_in_apertures_fixed_inc_fixed(xcen,
-                                                               ycen,
-                                                               inc,
-                                                               raper,
-                                                               daper)
+        one_d_plots, extract_values = vel.extract_in_apertures_fixed_inc_fixed(xcen,
+                                                                               ycen,
+                                                                               inc,
+                                                                               raper,
+                                                                               daper)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -17695,3 +17695,255 @@ class pipelineOps(object):
 #        print np.nanmean(smear_array), np.nanmax(smear_array)
 
         return smear_array - sigma
+
+    def v_over_sigma_distribution(self,
+                                  infile,
+                                  r_aper,
+                                  d_aper,
+                                  i_option,
+                                  sig_option):
+
+        """
+        Def:
+        make distributions of the v/sigma ratio, albeit limited by the
+        small number statistics.
+        """
+
+        # read in the table of cube names
+        Table = ascii.read(infile)
+
+        # assign the distribution recording variables
+
+        x_real = []
+        x_50 = []
+        x_16 = []
+        x_84 = []
+        sigma_o = []
+        gal_names = []
+
+        # assign variables to the different items in the infile
+        for entry in Table:
+
+            obj_name = entry[0]
+
+            print obj_name
+
+            if obj_name.find("/") == -1:
+
+                gal_name = copy(obj_name)
+
+            # Otherwise the directory structure is included and have to
+            # search for the backslash and omit up to the last one
+
+            else:
+
+                gal_name = obj_name[len(obj_name) -
+                                            obj_name[::-1].find("/"):]
+
+            gal_names.append(gal_name)
+
+            xcen = entry[10]
+
+            ycen = entry[11]
+
+            inc = entry[12]
+
+            vel_field_name = obj_name[:-5] + '_vel_field.fits'
+
+            v_field = vel_field(vel_field_name,
+                                xcen,
+                                ycen)
+
+            ratio_list = v_field.v_over_sigma(i_option,
+                                              sig_option,
+                                              r_aper,
+                                              d_aper,
+                                              inc,
+                                              xcen,
+                                              ycen)
+
+            x_real.append(ratio_list[0])
+            x_50.append(ratio_list[1])
+            x_16.append(ratio_list[3])
+            x_84.append(ratio_list[2])
+            sigma_o.append(ratio_list[4])
+
+        x_real = np.array(x_real)
+        x_50 = np.array(x_50)
+        x_16 = np.array(x_16)
+        x_84 = np.array(x_84)
+        sigma_o = np.array(sigma_o)
+
+        print np.mean(x_real)
+
+        colors_scatter = cycle(cm.rainbow(np.linspace(0, 1, len(sigma_o))))
+
+        fig, ax = plt.subplots(1, 1, figsize=(14, 14))
+
+        for vel, sig, name in zip(x_real * sigma_o, sigma_o, gal_names):
+
+            ax.scatter(sig,
+                       vel,
+                       marker='^',
+                       alpha=.6,
+                       s=100,
+                       color=next(colors_scatter),
+                       label=name)
+
+        # ax.legend(loc='upper left', prop={'size':6})
+        ax.plot([0.1, 100],[0.1, 100], ls='--', color='black')
+        ax.set_xlabel(r'$\sigma _{int}$ $kms^{-1}$', fontsize=24)
+
+        ax.set_ylabel(r'$V _{max}$ $kms^{-1}$', fontsize=24)
+
+        ax.set_title('Maximum Velocity vs. Intrinsic Dispersion',
+                     fontsize=28)
+
+        ax.tick_params(axis='both',
+                       which='major',
+                       labelsize=15)
+
+        ax.text(100, 100, r'$V_{max} / \sigma _{int}$ $=$ $1$', fontsize=22)
+
+        ax.set_xlim([0, max(sigma_o) + 20])
+        ax.set_ylim([0, max(x_real * sigma_o) + 20])
+        plt.show()
+
+        scatter_name = '/disk1/turner/DATA/v_over_sigma/' + 'scatter' + \
+            i_option + '_' + sig_option + '.png'
+
+        fig.savefig(scatter_name)
+
+        plt.close('all')
+
+        hist_name = '/disk1/turner/DATA/v_over_sigma/' + 'hist' + \
+            i_option + '_' + sig_option + '.png'
+
+        fig, ax = plt.subplots(1, 1, figsize=(14, 14))
+
+        ax.hist(x_real,
+                bins=np.arange(0, 2.2, 0.2),
+                histtype='step',
+                label='data',
+                lw=3,
+                alpha=0.5)
+
+        ax.hist(x_50,
+                bins=np.arange(0, 2.2, 0.2),
+                histtype='step',
+                label='50th percentile',
+                lw=4,
+                alpha=0.5)
+
+        ax.hist(x_16,
+                bins=np.arange(0, 2.2, 0.2),
+                histtype='step',
+                label='16th percentile',
+                lw=5,
+                alpha=0.5)
+
+        ax.hist(x_84,
+                bins=np.arange(0, 2.2, 0.2),
+                histtype='step',
+                label='84th percentile',
+                lw=6,
+                alpha=0.5)
+
+        ax.text(1.5,
+                8,
+                'Data Average: %.3f' % np.mean(x_real),
+                fontsize=16)
+
+        ax.text(1.5,
+                7,
+                '50th Average: %.3f' % np.mean(x_50),
+                fontsize=16)
+
+        ax.text(1.5,
+                6,
+                '16th Average: %.3f' % np.mean(x_16),
+                fontsize=16)
+
+        ax.text(1.5,
+                5,
+                '84th Average: %.3f' % np.mean(x_84),
+                fontsize=16)
+
+        ax.legend(loc='upper right', prop={'size':14})
+
+        ax.set_xlabel(r'$V_{max} / \sigma _{int}$', fontsize=24)
+
+        ax.set_title(r'Distribution of $V_{max} / \sigma _{int}$',
+                     fontsize=28)
+
+        ax.tick_params(axis='both',
+                       which='major',
+                       labelsize=15)
+
+        plt.show()
+
+        fig.savefig(hist_name)
+
+        plt.close('all')
+
+
+        # also want to print out the results to file
+        res_file = '/disk1/turner/DATA/v_over_sigma/' + 'v_ratio_' + \
+            i_option + '_' + sig_option + '.txt'
+
+        if os.path.isfile(res_file):
+
+            os.system('rm %s' % res_file)
+
+        # write all of these values to file
+
+        column_names = ['name',
+                        'real_v',
+                        'v50',
+                        'v16',
+                        'v84',
+                        'sigma_0',
+                        'real_ratio',
+                        'v50_ratio',
+                        'v16_ratio',
+                        'v84_ratio']
+
+        with open(res_file, 'a') as f:
+
+            for item in column_names:
+
+                f.write('%s\t' % item)
+
+            f.write('\n')
+
+            for a,b,c,d,e,fu,g,h,i,j in zip(gal_names,
+                                            x_real * sigma_o,
+                                            x_50 * sigma_o,
+                                            x_16 * sigma_o,
+                                            x_84 * sigma_o,
+                                            sigma_o,
+                                            x_real,
+                                            x_50,
+                                            x_16,
+                                            x_84):
+
+                f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (a,
+                                                                      b,
+                                                                      c,
+                                                                      d,
+                                                                      e,
+                                                                      fu,
+                                                                      g,
+                                                                      h,
+                                                                      i,
+                                                                      j))
+
+            f.write('Averages:\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (np.mean(x_real * sigma_o),
+                                                                       np.mean(x_50 * sigma_o),
+                                                                       np.mean(x_16 * sigma_o),
+                                                                       np.mean(x_84 * sigma_o),
+                                                                       np.mean(sigma_o),
+                                                                       np.mean(x_real),
+                                                                       np.mean(x_50),
+                                                                       np.mean(x_16),
+                                                                       np.mean(x_84)))

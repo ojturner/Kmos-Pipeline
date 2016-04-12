@@ -1069,6 +1069,8 @@ class vel_field(object):
 
         ycen_50 = theta_50[1]
 
+        inc_50 = theta_50[2]
+
         va_50 = theta_50[5]
 
         theta_16 = param_file[3][1:]
@@ -1079,6 +1081,8 @@ class vel_field(object):
 
         ycen_16 = theta_16[1]
 
+        inc_16 = theta_16[2]
+
         theta_84 = param_file[4][1:]
 
         pa_84 = theta_84[3]
@@ -1086,6 +1090,8 @@ class vel_field(object):
         xcen_84 = theta_84[0]
 
         ycen_84 = theta_84[1]
+
+        inc_84 = theta_84[2]
 
         # compute the model grid with the specified parameters
 
@@ -1722,6 +1728,33 @@ class vel_field(object):
 
         # plotting the model and extracted quantities
 
+        min_ind = 0
+        max_ind = 0
+
+        while np.isnan(real_velocity_values_50[min_ind]):
+
+            min_ind += 1
+
+        while np.isnan(real_velocity_values_50[::-1][max_ind]):
+
+            max_ind += 1
+
+        max_ind = max_ind + 1
+
+        # construct dictionary of these velocity values and 
+        # the final distance at which the data is extracted from centre
+
+        extract_d = {'50': [mod_velocity_values_50[min_ind] / np.sin(inc_50),
+                            mod_velocity_values_50[-max_ind] / np.sin(inc_50)],
+                     '16': [mod_velocity_values_16[min_ind] / np.sin(inc_16),
+                            mod_velocity_values_16[-max_ind] / np.sin(inc_16)],
+                     '84': [mod_velocity_values_84[min_ind] / np.sin(inc_84),
+                            mod_velocity_values_84[-max_ind] / np.sin(inc_84)],
+                     'real': [real_velocity_values_50[min_ind] / np.sin(inc_50),
+                              real_velocity_values_50[-max_ind] / np.sin(inc_50)],
+                     'distance': [x_50[min_ind],
+                                  x_50[-max_ind]]}
+
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
         ax.plot(x_max,
@@ -1836,7 +1869,7 @@ class vel_field(object):
                         real_velocity_values_84,
                         real_error_values_84,
                         sig_values_84,
-                        sig_error_values_84]}
+                        sig_error_values_84]}, extract_d
 
     def disk_function_fixed(self,
                             theta,
@@ -2509,13 +2542,19 @@ class vel_field(object):
 
         va_50 = theta_50[3]
 
+        inc_50 = theta_50[0]
+
         theta_16 = param_file[3][1:]
 
         pa_16 = theta_16[1]
 
+        inc_16 = theta_16[0]
+
         theta_84 = param_file[4][1:]
 
         pa_84 = theta_84[1]
+
+        inc_84 = theta_84[0]
 
         # compute the model grid with the specified parameters
 
@@ -3158,6 +3197,36 @@ class vel_field(object):
 
         sig_error_values_84 = sig_error_table_84['aperture_sum'] / pixel_area
 
+        # find the indices of the first and last non-nan real velocity
+        # values for extraction
+
+        min_ind = 0
+        max_ind = 0
+
+        while np.isnan(real_velocity_values_50[min_ind]):
+
+            min_ind += 1
+
+        while np.isnan(real_velocity_values_50[::-1][max_ind]):
+
+            max_ind += 1
+
+        max_ind = max_ind + 1
+
+        # construct dictionary of these velocity values and
+        # the final distance at which the data is extracted from centre
+
+        extract_d = {'50': [mod_velocity_values_50[min_ind] / np.sin(inc_50),
+                            mod_velocity_values_50[-max_ind] / np.sin(inc_50)],
+                     '16': [mod_velocity_values_16[min_ind] / np.sin(inc_16),
+                            mod_velocity_values_16[-max_ind] / np.sin(inc_16)],
+                     '84': [mod_velocity_values_84[min_ind] / np.sin(inc_84),
+                            mod_velocity_values_84[-max_ind] / np.sin(inc_84)],
+                     'real': [real_velocity_values_50[min_ind] / np.sin(inc_50),
+                              real_velocity_values_50[-max_ind] / np.sin(inc_50)],
+                     'distance': [x_50[min_ind],
+                                  x_50[-max_ind]]}
+
         # plotting the model and extracted quantities
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
@@ -3286,7 +3355,7 @@ class vel_field(object):
                         real_velocity_values_84,
                         real_error_values_84,
                         sig_values_84,
-                        sig_error_values_84]}
+                        sig_error_values_84]}, extract_d
 
     def disk_function_fixed_inc_fixed(self,
                                       theta,
@@ -4486,6 +4555,33 @@ class vel_field(object):
 
         # plotting the model and extracted quantities
 
+        min_ind = 0
+        max_ind = 0
+
+        while np.isnan(real_velocity_values_50[min_ind]):
+
+            min_ind += 1
+
+        while np.isnan(real_velocity_values_50[::-1][max_ind]):
+
+            max_ind += 1
+
+        max_ind = max_ind + 1
+
+        # construct dictionary of these velocity values and 
+        # the final distance at which the data is extracted from centre
+
+        extract_d = {'50': [mod_velocity_values_50[min_ind] / np.sin(inc),
+                            mod_velocity_values_50[-max_ind] / np.sin(inc)],
+                     '16': [mod_velocity_values_16[min_ind] / np.sin(inc),
+                            mod_velocity_values_16[-max_ind] / np.sin(inc)],
+                     '84': [mod_velocity_values_84[min_ind] / np.sin(inc),
+                            mod_velocity_values_84[-max_ind] / np.sin(inc)],
+                     'real': [real_velocity_values_50[min_ind] / np.sin(inc),
+                              real_velocity_values_50[-max_ind] / np.sin(inc)],
+                     'distance': [x_50[min_ind],
+                                  x_50[-max_ind]]}
+
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
         ax.plot(x_max,
@@ -4600,7 +4696,109 @@ class vel_field(object):
                         real_velocity_values_84,
                         real_error_values_84,
                         sig_values_84,
-                        sig_error_values_84]}
+                        sig_error_values_84]}, extract_d
+
+    def v_over_sigma(self,
+                     i_option,
+                     sig_option,
+                     r_aper,
+                     d_aper,
+                     inc,
+                     xcen,
+                     ycen):
+
+        """
+        Def:
+        Use the different versions of the extract in apertures method
+        to look into the v_over_sigma ratios of given objects.
+        This is controlled by the i_option which can be one of either
+        free, fixed, fixed_vary or fixed_fixed. The sigma option dictates
+        how sigma is computed, whether we use a mean, or a flux weighted mean,
+        or central value or outskirts value.
+
+        Input:
+                i_option - inclination option, one of the values listed in the
+                            definition
+                sig_option - how do we compute sigma
+                r_aper - apertures size in pixels
+                d_aper - distance between adjacent apertures in pixels
+
+        Output:
+                v_over_sigma ratios for the model 50th, 16th and 84th pcntile,
+                as well as for the real data.
+        """
+
+        # dont do anything if an invalid i_option or sig_option is provided
+
+        if not((i_option == 'free' or i_option == 'fixed' or
+                i_option == 'fixed_vary' or i_option == 'fixed_fixed') and
+               (sig_option == 'mean' or
+                sig_option == 'weighted_mean' or sig_option == 'median')):
+
+            raise ValueError('Choose valid inclination and sigma options')
+
+        if sig_option == 'mean':
+
+            indices = ~np.isnan(self.sig_data)
+
+            sigma_o = np.average(self.sig_data[indices],
+                                 weights=1.0 / self.sig_error_data[indices])
+
+        elif sig_option == 'median':
+
+            sigma_o = np.nanmedian(self.sig_data)
+
+        if i_option == 'free':
+
+            other, e_val = self.extract_in_apertures(r_aper, d_aper)
+
+        elif i_option == 'fixed':
+
+            other, e_val = self.extract_in_apertures_fixed(xcen,
+                                                           ycen,
+                                                           r_aper,
+                                                           d_aper,
+                                                           vary=False)
+
+        elif i_option == 'fixed_vary':
+
+            other, e_val = self.extract_in_apertures_fixed(xcen,
+                                                           ycen,
+                                                           r_aper,
+                                                           d_aper,
+                                                           vary=True)
+
+        elif i_option == 'fixed_fixed':
+
+            other, e_val = self.extract_in_apertures_fixed_inc_fixed(xcen,
+                                                                     ycen,
+                                                                     inc,
+                                                                     r_aper,
+                                                                     d_aper)
+
+        mod_50_min = e_val['50'][0]
+        mod_50_max = e_val['50'][1]
+        mod_50_v = (abs(mod_50_min) + abs(mod_50_max)) / 2.0
+
+        mod_16_min = e_val['16'][0]
+        mod_16_max = e_val['16'][1]
+        mod_16_v = (abs(mod_16_min) + abs(mod_16_max)) / 2.0
+
+        mod_84_min = e_val['84'][0]
+        mod_84_max = e_val['84'][1]
+        mod_84_v = (abs(mod_84_min) + abs(mod_84_max)) / 2.0
+
+        real_min = e_val['real'][0]
+        real_max = e_val['real'][1]
+        real_v = (abs(real_min) + abs(real_max)) / 2.0
+
+        # print real_v / sigma_o, mod_50_v / sigma_o, mod_84_v / sigma_o, mod_16_v / sigma_o
+
+        return [real_v / sigma_o,
+                mod_50_v / sigma_o,
+                mod_84_v / sigma_o,
+                mod_16_v / sigma_o,
+                sigma_o]
 
 # genetic algorithm attempt
     
@@ -4886,14 +5084,4 @@ class vel_field(object):
         print grade
 
         return parents
-
-
-
-
-
-
-
-
-
-
 
