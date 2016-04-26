@@ -1731,17 +1731,29 @@ class vel_field(object):
         min_ind = 0
         max_ind = 0
 
-        while np.isnan(real_velocity_values_50[min_ind]):
+        try:
 
-            min_ind += 1
+            while np.isnan(real_velocity_values_50[min_ind]):
 
-        while np.isnan(real_velocity_values_50[::-1][max_ind]):
+                min_ind += 1
 
-            max_ind += 1
+        except IndexError:
 
-        max_ind = max_ind + 1
+            min_ind = 0
 
-        # construct dictionary of these velocity values and 
+        try:
+
+            while np.isnan(real_velocity_values_50[::-1][max_ind]):
+
+                max_ind += 1
+
+            max_ind = max_ind + 1
+
+        except IndexError:
+
+            max_ind = 0
+
+        # construct dictionary of these velocity values and
         # the final distance at which the data is extracted from centre
 
         extract_d = {'50': [mod_velocity_values_50[min_ind] / np.sin(inc_50),
@@ -1753,7 +1765,9 @@ class vel_field(object):
                      'real': [real_velocity_values_50[min_ind] / np.sin(inc_50),
                               real_velocity_values_50[-max_ind] / np.sin(inc_50)],
                      'distance': [x_50[min_ind],
-                                  x_50[-max_ind]]}
+                                  x_50[-max_ind]],
+                     'vel_error': [real_error_values_50[min_ind],
+                                   real_error_values_50[-max_ind]]}
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
@@ -3203,15 +3217,27 @@ class vel_field(object):
         min_ind = 0
         max_ind = 0
 
-        while np.isnan(real_velocity_values_50[min_ind]):
+        try:
 
-            min_ind += 1
+            while np.isnan(real_velocity_values_50[min_ind]):
 
-        while np.isnan(real_velocity_values_50[::-1][max_ind]):
+                min_ind += 1
 
-            max_ind += 1
+        except IndexError:
 
-        max_ind = max_ind + 1
+            min_ind = 0
+
+        try:
+
+            while np.isnan(real_velocity_values_50[::-1][max_ind]):
+
+                max_ind += 1
+
+            max_ind = max_ind + 1
+
+        except IndexError:
+
+            max_ind = 0
 
         # construct dictionary of these velocity values and
         # the final distance at which the data is extracted from centre
@@ -3225,7 +3251,9 @@ class vel_field(object):
                      'real': [real_velocity_values_50[min_ind] / np.sin(inc_50),
                               real_velocity_values_50[-max_ind] / np.sin(inc_50)],
                      'distance': [x_50[min_ind],
-                                  x_50[-max_ind]]}
+                                  x_50[-max_ind]],
+                     'vel_error': [real_error_values_50[min_ind],
+                                   real_error_values_50[-max_ind]]}
 
         # plotting the model and extracted quantities
 
@@ -4558,15 +4586,27 @@ class vel_field(object):
         min_ind = 0
         max_ind = 0
 
-        while np.isnan(real_velocity_values_50[min_ind]):
+        try:
 
-            min_ind += 1
+            while np.isnan(real_velocity_values_50[min_ind]):
 
-        while np.isnan(real_velocity_values_50[::-1][max_ind]):
+                min_ind += 1
 
-            max_ind += 1
+        except IndexError:
 
-        max_ind = max_ind + 1
+            min_ind = 0
+
+        try:
+
+            while np.isnan(real_velocity_values_50[::-1][max_ind]):
+
+                max_ind += 1
+
+            max_ind = max_ind + 1
+
+        except IndexError:
+
+            max_ind = 0
 
         # construct dictionary of these velocity values and 
         # the final distance at which the data is extracted from centre
@@ -4580,7 +4620,9 @@ class vel_field(object):
                      'real': [real_velocity_values_50[min_ind] / np.sin(inc),
                               real_velocity_values_50[-max_ind] / np.sin(inc)],
                      'distance': [x_50[min_ind],
-                                  x_50[-max_ind]]}
+                                  x_50[-max_ind]],
+                     'vel_error': [real_error_values_50[min_ind],
+                                   real_error_values_50[-max_ind]]}
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
@@ -4744,9 +4786,14 @@ class vel_field(object):
             sigma_o = np.average(self.sig_data[indices],
                                  weights=1.0 / self.sig_error_data[indices])
 
+            sigma_e = np.average(self.sig_error_data[indices],
+                                 weights=1.0 / self.sig_error_data[indices])
+
         elif sig_option == 'median':
 
             sigma_o = np.nanmedian(self.sig_data)
+
+            sigma_e = np.nanmedian(self.sig_error_data)
 
         if i_option == 'free':
 
@@ -4792,13 +4839,19 @@ class vel_field(object):
         real_max = e_val['real'][1]
         real_v = (abs(real_min) + abs(real_max)) / 2.0
 
+        error_v_min = e_val['vel_error'][0]
+        error_v_max = e_val['vel_error'][1]
+
         # print real_v / sigma_o, mod_50_v / sigma_o, mod_84_v / sigma_o, mod_16_v / sigma_o
 
         return [real_v / sigma_o,
                 mod_50_v / sigma_o,
                 mod_84_v / sigma_o,
                 mod_16_v / sigma_o,
-                sigma_o]
+                sigma_o,
+                sigma_e,
+                error_v_min,
+                error_v_max]
 
 # genetic algorithm attempt
     

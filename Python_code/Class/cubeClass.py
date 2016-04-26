@@ -947,7 +947,7 @@ class cubeOps(object):
 
         colFig.savefig(saveName)
 
-        # plt.show()
+        plt.show()
         plt.close('all')
 
         # return the FWHM and the masked profile

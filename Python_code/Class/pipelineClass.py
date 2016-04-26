@@ -4681,7 +4681,7 @@ class pipelineOps(object):
 
                 # Now just execute the esorex recipe for this new file
                 os.system('esorex --output-dir=%s kmos_sci_red' % sci_dir
-                          + '  --pix_scale=0.1 --oscan=FALSE --sky_tweak=TRUE'
+                          + '  --pix_scale=0.2 --oscan=FALSE --sky_tweak=TRUE'
                           + '  --b_samples=2048 --edge_nan=TRUE sci_reduc_temp.sof')
 
                 # We have all the science products now
@@ -12211,7 +12211,18 @@ class pipelineOps(object):
 
                     sn_array[i, j] = line_sn
                     vel_array[i, j] = vel_gauss_values['center']
-                    disp_array[i, j] = sig_gauss_values['center']
+
+                    # sometimes getting bung values for the width of
+                    # the emission lines
+
+                    if sig_gauss_values['center'] > 0 and sig_gauss_values['center'] < 300:
+
+                        disp_array[i, j] = sig_gauss_values['center']
+
+                    else:
+
+                        disp_array[i, j] = np.nan
+
                     flux_array[i, j] = amp_gauss_values['center']
                     vel_error_array[i, j] = vel_gauss_values['sigma']
                     sig_error_array[i, j] = sig_gauss_values['sigma']
@@ -12402,7 +12413,15 @@ class pipelineOps(object):
 
                         sn_array[i, j] = line_sn
                         vel_array[i, j] = vel_gauss_values['center']
-                        disp_array[i, j] = sig_gauss_values['center']
+
+                        if sig_gauss_values['center'] > 0 and sig_gauss_values['center'] < 300:
+
+                            disp_array[i, j] = sig_gauss_values['center']
+
+                        else:
+
+                            disp_array[i, j] = np.nan
+
                         flux_array[i, j] = amp_gauss_values['center']
                         vel_error_array[i, j] = vel_gauss_values['sigma']
                         sig_error_array[i, j] = sig_gauss_values['sigma']
@@ -12587,7 +12606,15 @@ class pipelineOps(object):
 
                             sn_array[i, j] = line_sn
                             vel_array[i, j] = vel_gauss_values['center']
-                            disp_array[i, j] = sig_gauss_values['center']
+
+                            if sig_gauss_values['center'] > 0 and sig_gauss_values['center'] < 300:
+
+                                disp_array[i, j] = sig_gauss_values['center']
+
+                            else:
+
+                                disp_array[i, j] = np.nan
+
                             flux_array[i, j] = amp_gauss_values['center']
                             vel_error_array[i, j] = vel_gauss_values['sigma']
                             sig_error_array[i, j] = sig_gauss_values['sigma']
@@ -14888,7 +14915,9 @@ class pipelineOps(object):
                                                      daper)
 
     def make_all_plots_no_image(self,
-                                infile):
+                                infile,
+                                r_aper,
+                                d_aper):
 
         """
         Def: Take all of the data from the stott velocity fields,
@@ -14986,7 +15015,7 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots, extract_values = vel.extract_in_apertures(0.8, 0.6)
+        one_d_plots, extract_values = vel.extract_in_apertures(r_aper, d_aper)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -15583,7 +15612,10 @@ class pipelineOps(object):
 
             self.make_all_plots(obj_name)
 
-    def multi_make_all_plots_no_image(self, infile):
+    def multi_make_all_plots_no_image(self,
+                                      infile,
+                                      r_aper,
+                                      d_aper):
 
         # read in the table of cube names
         Table = ascii.read(infile)
@@ -15593,7 +15625,9 @@ class pipelineOps(object):
 
             obj_name = entry[0]
 
-            self.make_all_plots_no_image(obj_name)
+            self.make_all_plots_no_image(obj_name,
+                                         r_aper,
+                                         d_aper)
 
     def make_all_plots_no_image_fixed(self,
                                       xcen,
@@ -16385,7 +16419,8 @@ class pipelineOps(object):
     def multi_make_all_plots_no_image_fixed(self,
                                             infile,
                                             raper,
-                                            daper):
+                                            daper,
+                                            vary=False):
 
         # read in the table of cube names
         Table = ascii.read(infile)
@@ -17719,6 +17754,9 @@ class pipelineOps(object):
         x_16 = []
         x_84 = []
         sigma_o = []
+        sigma_e = []
+        error_min = []
+        error_max = []
         gal_names = []
 
         # assign variables to the different items in the infile
@@ -17767,28 +17805,37 @@ class pipelineOps(object):
             x_16.append(ratio_list[3])
             x_84.append(ratio_list[2])
             sigma_o.append(ratio_list[4])
+            sigma_e.append(ratio_list[5])
+            error_min.append(ratio_list[6])
+            error_max.append(ratio_list[7])
 
         x_real = np.array(x_real)
         x_50 = np.array(x_50)
         x_16 = np.array(x_16)
         x_84 = np.array(x_84)
         sigma_o = np.array(sigma_o)
+        sigma_e = np.array(sigma_e)
+        error_min = np.array(error_min)
+        error_max = np.array(error_max)
+        error_v = (abs(error_min) + abs(error_max)) / 2.0
 
-        print np.mean(x_real)
+        print np.nanmean(x_real)
 
         colors_scatter = cycle(cm.rainbow(np.linspace(0, 1, len(sigma_o))))
 
         fig, ax = plt.subplots(1, 1, figsize=(14, 14))
 
-        for vel, sig, name in zip(x_real * sigma_o, sigma_o, gal_names):
+        for vel, sig, name, sig_e, vel_e in \
+                zip(x_real * sigma_o, sigma_o, gal_names, sigma_e, error_v):
 
-            ax.scatter(sig,
-                       vel,
-                       marker='^',
-                       alpha=.6,
-                       s=100,
-                       color=next(colors_scatter),
-                       label=name)
+            ax.errorbar(sig,
+                        vel,
+                        yerr=vel_e,
+                        xerr=sig_e,
+                        marker='^',
+                        alpha=.6,
+                        color=next(colors_scatter),
+                        label=name)
 
         # ax.legend(loc='upper left', prop={'size':6})
         ax.plot([0.1, 100],[0.1, 100], ls='--', color='black')
@@ -17938,12 +17985,12 @@ class pipelineOps(object):
                                                                       i,
                                                                       j))
 
-            f.write('Averages:\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (np.mean(x_real * sigma_o),
-                                                                       np.mean(x_50 * sigma_o),
-                                                                       np.mean(x_16 * sigma_o),
-                                                                       np.mean(x_84 * sigma_o),
-                                                                       np.mean(sigma_o),
-                                                                       np.mean(x_real),
-                                                                       np.mean(x_50),
-                                                                       np.mean(x_16),
-                                                                       np.mean(x_84)))
+            f.write('Averages:\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (np.nanmean(x_real * sigma_o),
+                                                                       np.nanmean(x_50 * sigma_o),
+                                                                       np.nanmean(x_16 * sigma_o),
+                                                                       np.nanmean(x_84 * sigma_o),
+                                                                       np.nanmean(sigma_o),
+                                                                       np.nanmean(x_real),
+                                                                       np.nanmean(x_50),
+                                                                       np.nanmean(x_16),
+                                                                       np.nanmean(x_84)))
