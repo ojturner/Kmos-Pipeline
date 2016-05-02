@@ -11805,11 +11805,21 @@ class pipelineOps(object):
 
         # construct the instrumental resolution cube
 
-        l_tup = ([2.022,2.032],
-                 [2.03,2.039],
-                 [2.036,2.046],
-                 [2.068,2.078],
-                 [2.19,2.2])
+        if cube.filter == 'K' or cube.filter == 'HK':
+
+            l_tup = ([2.022,2.032],
+                     [2.03,2.039],
+                     [2.036,2.046],
+                     [2.068,2.078],
+                     [2.19,2.2])
+
+        else:
+
+            l_tup = ([1.521,1.527],
+                     [1.600,1.607],
+                     [1.687,1.693],
+                     [1.698,1.704],
+                     [1.710,1.716])
 
         res_array = []
 
@@ -11896,7 +11906,7 @@ class pipelineOps(object):
 
         elif line == 'oii':
 
-            central_wl = 0.3729875 * (1. + redshift)
+            central_wl = 0.37275 * (1. + redshift)
 
         # find the index of the chosen emission line
         line_idx = np.argmin(np.abs(wave_array - central_wl))
