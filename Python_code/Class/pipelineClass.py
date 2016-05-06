@@ -17355,7 +17355,7 @@ class pipelineOps(object):
 
         # and define the function
 
-        func = 50*np.exp(-r**(1/n))
+        func = 50*np.exp(-r**(1.0/n))
 
         return func
 
@@ -17447,9 +17447,15 @@ class pipelineOps(object):
                 blurred 2d grid of flux values
         """
 
+        print np.sum(data)
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        ax.imshow(data)
+        plt.show()
+        plt.close('all')
+
         dim_x = data.shape[0]
 
-        dim_y = data.shape[0]
+        dim_y = data.shape[1]
 
         final_flux = []
 
@@ -17469,6 +17475,8 @@ class pipelineOps(object):
                 final_flux.append(temp_flux_grid * seeing_profile)
 
         final_flux = np.sum(final_flux, axis=0)
+
+        return final_flux
 
     def construct_shifted_cube(self,
                                vel_data,

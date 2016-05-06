@@ -35,6 +35,12 @@ import scipy.optimize as op
 import emcee
 import corner
 
+# add the functions folder to the PYTHONPATH
+sys.path.append('/disk1/turner/PhD'
+                + '/KMOS/Analysis_Pipeline/Python_code/functions')
+
+import psf_blurring as psf
+
 ####################################################################
 
 class vel_field(object):
@@ -523,6 +529,7 @@ class vel_field(object):
         plt.show()
         return angBest, angErr, vSyst
 
+
     def disk_function(self,
                       theta,
                       xpos,
@@ -648,6 +655,51 @@ class vel_field(object):
 
         return np.array(xbin) * 1.0, np.array(ybin) * 1.0
 
+    def grid_10(self):
+
+        """
+        Def: return an empty grid with 10 times spatial resolution of
+        the velocity data
+        """
+
+        # create a 1D arrays of length dim_x * dim_y containing the 
+        # spaxel coordinates
+
+        xbin = np.arange(0, self.xpix * 10, 1)
+
+        ybin = np.arange(0, self.ypix * 10, 1)
+
+        ybin, xbin = np.meshgrid(ybin, xbin)
+
+        xbin = np.ravel(xbin)
+
+        ybin = np.ravel(ybin)
+
+        return np.array(xbin) * 1.0, np.array(ybin) * 1.0
+
+    def grid_100(self):
+
+        """
+        Def: return an empty grid with 100 times spatial resolution of
+        the velocity data
+        """
+
+        # create a 1D arrays of length dim_x * dim_y containing the 
+        # spaxel coordinates
+
+        xbin = np.arange(0, self.xpix * 100, 1)
+
+        ybin = np.arange(0, self.ypix * 100, 1)
+
+        ybin, xbin = np.meshgrid(ybin, xbin)
+
+        xbin = np.ravel(xbin)
+
+        ybin = np.ravel(ybin)
+
+        return np.array(xbin) * 1.0, np.array(ybin) * 1.0
+
+
     def compute_model_grid(self,
                            theta):
 
@@ -684,20 +736,36 @@ class vel_field(object):
 
         # plot as a 2d array
 
-        #fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-        #im = ax.imshow(vel_2d,
-        #               cmap=plt.get_cmap('jet'),
-        #               interpolation='nearest')
-        # add colourbar to each plot
-        #divider = make_axes_locatable(ax)
-        #cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        #plt.colorbar(im, cax=cax_new)
-        # set the title
-        #ax.set_title('model velocity')
+        # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        # im = ax.imshow(vel_2d,
+        #                cmap=plt.get_cmap('jet'),
+        #                interpolation='nearest')
+        # # add colourbar to each plot
+        # divider = make_axes_locatable(ax)
+        # cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        # plt.colorbar(im, cax=cax_new)
+        # # set the title
+        # ax.set_title('model velocity')
         # plt.show()
-        plt.close('all')
+        # plt.close('all')
 
-        return vel_2d
+        # computationally expensive
+        vel_2d_blurred = psf.blur_by_psf(vel_2d, 0.5, 0.1)
+
+        # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        # im = ax.imshow(vel_2d_blurred,
+        #                cmap=plt.get_cmap('jet'),
+        #                interpolation='nearest')
+        # # add colourbar to each plot
+        # divider = make_axes_locatable(ax)
+        # cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        # plt.colorbar(im, cax=cax_new)
+        # # set the title
+        # ax.set_title('model velocity blurred')
+        # plt.show()
+        # plt.close('all')
+
+        return vel_2d_blurred
 
     def lnlike(self, 
                theta):
@@ -1991,6 +2059,17 @@ class vel_field(object):
 
         return vel
 
+    def shrink(self,
+               data,
+               rows,
+               cols):
+        return np.nanmedian(np.nanmedian(data.reshape(rows,
+                                                      data.shape[0] / float(rows),
+                                                      cols,
+                                                      data.shape[1] / float(cols)),
+                                         axis=1),
+                            axis=2)
+
     def compute_model_grid_fixed(self,
                                  theta,
                                  xcen,
@@ -2000,15 +2079,19 @@ class vel_field(object):
         Def:
         Use the grid function to construct a basis for the model.
         Then apply the disk function to each spaxel in the basis
-        reshape back to 2d array and plot the model velocity
+        reshape back to 2d array and plot the model velocity.
+
+        Toying around with constructing the model at much higher spatial
+        resolution to properly capture the arctangent function, and then
+        re-binning back to the original dimensions
         """
 
-        xbin, ybin = self.grid()
+        xbin, ybin = self.grid_10()
 
         # setup list to house the velocity measurements
 
         vel_array = []
-
+             
         # compute the model at each spaxel location
 
         for xpos, ypos in zip(xbin, ybin):
@@ -2016,8 +2099,8 @@ class vel_field(object):
             # run the disk function
 
             vel_array.append(self.disk_function_fixed(theta,
-                                                      xcen,
-                                                      ycen,
+                                                      xcen * 10,
+                                                      ycen * 10,
                                                       xpos,
                                                       ypos))
 
@@ -2027,24 +2110,28 @@ class vel_field(object):
 
         # reshape back to the chosen grid dimensions
 
-        vel_2d = vel_array.reshape((self.xpix, self.ypix))
+        vel_2d = vel_array.reshape((self.xpix * 10, self.ypix * 10))
+
+        vel_2d = self.shrink(vel_2d, self.xpix, self.ypix)
 
         # plot as a 2d array
 
-        #fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-        #im = ax.imshow(vel_2d,
-        #               cmap=plt.get_cmap('jet'),
-        #               interpolation='nearest')
-        # add colourbar to each plot
-        #divider = make_axes_locatable(ax)
-        #cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        #plt.colorbar(im, cax=cax_new)
-        # set the title
-        #ax.set_title('model velocity')
+        # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        # im = ax.imshow(vel_2d,
+        #                cmap=plt.get_cmap('jet'),
+        #                interpolation='nearest')
+        # # add colourbar to each plot
+        # divider = make_axes_locatable(ax)
+        # cax_new = divider.append_axes('right', size='10%', pad=0.05)
+        # plt.colorbar(im, cax=cax_new)
+        # # set the title
+        # ax.set_title('model velocity')
         # plt.show()
-        plt.close('all')
+        # plt.close('all')
 
-        return vel_2d
+        vel_2d_blurred = psf.blur_by_psf(vel_2d, 0.5, 0.1)
+
+        return vel_2d_blurred
 
     def lnlike_fixed(self, 
                      theta,
@@ -3547,7 +3634,9 @@ class vel_field(object):
         # plt.show()
         plt.close('all')
 
-        return vel_2d
+        vel_2d_blurred = psf.blur_by_psf(vel_2d, 0.5, 0.1)
+
+        return vel_2d_blurred
 
     def lnlike_fixed_inc_fixed(self, 
                                theta,
