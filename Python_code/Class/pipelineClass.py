@@ -4681,7 +4681,7 @@ class pipelineOps(object):
 
                 # Now just execute the esorex recipe for this new file
                 os.system('esorex --output-dir=%s kmos_sci_red' % sci_dir
-                          + '  --pix_scale=0.2 --oscan=FALSE --sky_tweak=TRUE'
+                          + '  --pix_scale=0.05 --oscan=FALSE --sky_tweak=TRUE'
                           + '  --b_samples=2048 --edge_nan=TRUE sci_reduc_temp.sof')
 
                 # We have all the science products now
@@ -11389,13 +11389,19 @@ class pipelineOps(object):
 
                 spec = np.nanmedian(stack_array, axis=0)[lower_lim:upper_lim]
 
+                new_noise_value = noise_value / red_factor
+
             elif method == 'sum':
 
-                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim] / 9.0
+                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim]
+
+                new_noise_value = (9.0 / red_factor) * noise_value
 
             elif method == 'mean':
 
                 spec = np.nanmean(stack_array, axis=0)[lower_lim:upper_lim]
+
+                new_noise_value = noise_value / red_factor
 
             else:
 
@@ -11407,7 +11413,9 @@ class pipelineOps(object):
 
             spec = data[:, i, j][lower_lim: upper_lim]
 
-        return spec, noise_value / red_factor
+            new_noise_value = noise_value
+
+        return spec, new_noise_value
 
     def binning_five(self,
                      data,
@@ -11454,13 +11462,19 @@ class pipelineOps(object):
 
                 spec = np.nanmedian(stack_array, axis=0)[lower_lim:upper_lim]
 
+                new_noise_value = noise_value / red_factor
+
             elif method == 'sum':
 
-                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim] / 25.0
+                spec = np.nansum(stack_array, axis=0)[lower_lim:upper_lim]
+
+                new_noise_value = (25.0 / red_factor) * noise_value
 
             elif method == 'mean':
 
                 spec = np.nanmean(stack_array, axis=0)[lower_lim:upper_lim]
+
+                new_noise_value = noise_value / red_factor
 
             else:
 
@@ -11472,9 +11486,11 @@ class pipelineOps(object):
 
             spec = data[:, i, j][lower_lim: upper_lim]
 
+            new_noise_value = noise_value
+
         # compute the new noise value
 
-        return spec, noise_value / red_factor
+        return spec, new_noise_value
 
     def gauss_fit(self, fit_wl, fit_flux):
 
@@ -11847,8 +11863,8 @@ class pipelineOps(object):
 
             # limits for the search for line-peak
 
-            lower_t = 5
-            upper_t = 6
+            lower_t = 8
+            upper_t = 9
 
             # limits for the search for signal computation
             # and gaussian fitting the emission line
@@ -11858,16 +11874,16 @@ class pipelineOps(object):
 
         elif cube.filter == 'HK':
 
-            lower_t = 3
-            upper_t = 4
+            lower_t = 5
+            upper_t = 6
 
             range_lower = 5
             range_upper = 6
 
         else:
 
-            lower_t = 5
-            upper_t = 6
+            lower_t = 8
+            upper_t = 9
 
             range_lower = 9
             range_upper = 10
@@ -12135,6 +12151,8 @@ class pipelineOps(object):
 
                     # print 'This is the noise: %s' % p_line_noise
                     # print 'This is the signal: %s' % spaxel_spec
+
+                    v_o = self.c * (gauss_values['center'] - central_wl) / central_wl
 
                     for loop in range(0, ntimes):
 
@@ -12421,6 +12439,7 @@ class pipelineOps(object):
                         amp_gauss_values, amp_covar = self.mc_gauss_fit(amp_edges[:-1],
                                                                      amp_hist)
 
+                        # append the original line-sn rather than the binned sn
                         sn_array[i, j] = line_sn
                         vel_array[i, j] = vel_gauss_values['center']
 
@@ -12776,15 +12795,59 @@ class pipelineOps(object):
         # now that we have the velocity array, can calculate the effects of
         # beam smearing on the sigma profile
 
-        beam_smeared_sigma = self.compute_beam_smear(masked_vel_array,
-                                                     redshift,
-                                                     60,
-                                                     wave_array,
-                                                     2.0,
-                                                     centre_x,
-                                                     centre_y,
-                                                     0.6,
-                                                     0.1)
+        # ideally want to use the model velocity field to compute the
+        # beam smearing. This is a bit cyclical as you need this
+        # method to finish to compute the model - but most of the time
+        # running this as a repeat. Therefore check for the existence of
+        # the velocity field and a parameters list and use these to compute
+        # the model field - if they don't exist.
+
+        vel_field_name = incube[:-5] + '_vel_field.fits'
+
+        params_name = incube[:-5] + '_vel_field_params_fixed.txt'
+
+        if os.path.isfile(vel_field_name) and \
+                os.path.isfile(params_name):
+
+            print 'computing beam smear from model'
+
+            param_file = np.genfromtxt(params_name)
+
+            theta_50 = param_file[2][1:]
+
+            v_field = vel_field(vel_field_name,
+                                centre_x,
+                                centre_y)
+
+            # compute high resolution velocity grid
+
+            mod_velocity = v_field.compute_model_grid_fixed_100(theta_50,
+                                                                centre_x,
+                                                                centre_y)
+
+            beam_smeared_sigma = self.compute_beam_smear(mod_velocity,
+                                                         redshift,
+                                                         65,
+                                                         wave_array,
+                                                         2.0,
+                                                         centre_x,
+                                                         centre_y,
+                                                         0.6,
+                                                         0.1)
+
+        else:
+
+            print 'Not computing beam smear from model'
+
+            beam_smeared_sigma = self.compute_beam_smear(masked_vel_array,
+                                                         redshift,
+                                                         65,
+                                                         wave_array,
+                                                         2.0,
+                                                         centre_x,
+                                                         centre_y,
+                                                         0.6,
+                                                         0.1)
 
         # want to save the observed sigma, the resolution sigma,
         # the beam smeared sigma and the corrected intrinsic sigma
@@ -13361,6 +13424,8 @@ class pipelineOps(object):
                                 mask_x_upper,
                                 mask_y_lower,
                                 mask_y_upper,
+                                g_c_min,
+                                g_c_max,
                                 z,
                                 tol,
                                 stack='median',
@@ -13427,8 +13492,8 @@ class pipelineOps(object):
 
             # limits for the search for line-peak
 
-            lower_t = 5
-            upper_t = 6
+            lower_t = 8
+            upper_t = 9
 
             # limits for the search for signal computation
             # and gaussian fitting the emission line
@@ -13438,16 +13503,16 @@ class pipelineOps(object):
 
         elif cube.filter == 'HK':
 
-            lower_t = 3
-            upper_t = 4
+            lower_t = 5
+            upper_t = 6
 
             range_lower = 5
             range_upper = 6
 
         else:
 
-            lower_t = 5
-            upper_t = 6
+            lower_t = 8
+            upper_t = 9
 
             range_lower = 9
             range_upper = 10
@@ -13954,6 +14019,7 @@ class pipelineOps(object):
                                target_sn,
                                out_dir,
                                incube,
+                               sky_cube,
                                centre_x,
                                centre_y,
                                mask_x_lower,
@@ -13966,7 +14032,7 @@ class pipelineOps(object):
                                threshold,
                                stack='median',
                                line='oiii',
-                               tol=20,
+                               tol=30,
                                noise_method='cube'):
 
         """
@@ -13980,9 +14046,8 @@ class pipelineOps(object):
         # first get the signal and noise arrays from the vel_field_mask_noise
         # method. This is changeable.
 
-        print 'INCUBE %s' % incube
-
         return_list = self.vel_field_stott_binning(incube,
+                                                   sky_cube,
                                                    line,
                                                    redshift,
                                                    threshold,
@@ -13995,7 +14060,9 @@ class pipelineOps(object):
                                                    g_c_min,
                                                    g_c_max,
                                                    tol=tol,
-                                                   noise_method=noise_method)
+                                                   method=stack,
+                                                   noise_method=noise_method,
+                                                   ntimes=1000)
 
         noise_2d = return_list[0]
 
@@ -14023,6 +14090,8 @@ class pipelineOps(object):
                                                                mask_x_upper,
                                                                mask_y_lower,
                                                                mask_y_upper,
+                                                               g_c_min,
+                                                               g_c_max,
                                                                redshift,
                                                                tol,
                                                                noise_method=noise_method)
@@ -14033,6 +14102,8 @@ class pipelineOps(object):
                                    out_dir,
                                    infile,
                                    threshold,
+                                   g_c_min,
+                                   g_c_max,
                                    line='oiii',
                                    noise_method='cube',
                                    **kwargs):
@@ -14059,8 +14130,6 @@ class pipelineOps(object):
         for entry in Table:
 
             obj_name = entry[0]
-
-            print 'OBJECT NAME %s' % obj_name
 
             cube = cubeOps(obj_name)
 
@@ -14118,12 +14187,15 @@ class pipelineOps(object):
             self.masked_voronoi_fitting(target_sn,
                                         out_dir,
                                         obj_name,
+                                        sky_cube,
                                         centre_x,
                                         centre_y,
                                         mask_x_lower,
                                         mask_x_upper,
                                         mask_y_lower,
                                         mask_y_upper,
+                                        g_c_min,
+                                        g_c_max,
                                         redshift,
                                         threshold,
                                         stack=stack_method,
@@ -17355,7 +17427,7 @@ class pipelineOps(object):
 
         # and define the function
 
-        func = 50*np.exp(-r**(1.0/n))
+        func = np.exp(-r**(1.0/n))
 
         return func
 
@@ -17405,9 +17477,9 @@ class pipelineOps(object):
 
         # set up the grid over which to evaluate the gaussian
 
-        xbin = np.arange(0, dim_x, 1)
+        xbin = np.arange(0, dim_x, 0.01)
 
-        ybin = np.arange(0, dim_y, 1)
+        ybin = np.arange(0, dim_y, 0.01)
 
         ybin, xbin = np.meshgrid(ybin, xbin)
 
@@ -17421,7 +17493,21 @@ class pipelineOps(object):
                                    center_x=center_x,
                                    center_y=center_y)
 
-        s_mod_eval = np.reshape(s_mod_eval_1d, (dim_x,dim_y))
+        s_mod_eval = np.reshape(s_mod_eval_1d, (dim_x * 100,dim_y * 100))
+
+
+#        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+#        im = ax.imshow(s_mod_eval,
+#                       cmap=plt.get_cmap('jet'),
+#                       interpolation='nearest')
+#        # add colourbar to each plot
+#        divider = make_axes_locatable(ax)
+#        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+#        plt.colorbar(im, cax=cax_new)
+#        # set the title
+#        ax.set_title('Sersic model')
+#        plt.show()
+#        plt.close('all')
 
         return s_mod_eval
 
@@ -17562,6 +17648,17 @@ class pipelineOps(object):
 
         return cube
 
+    def shrink(self,
+               data,
+               rows,
+               cols):
+        return np.nanmedian(np.nanmedian(data.reshape(rows,
+                                                      data.shape[0] / float(rows),
+                                                      cols,
+                                                      data.shape[1] / float(cols)),
+                                         axis=1),
+                            axis=2)
+
     def compute_beam_smear(self,
                            vel_data,
                            redshift,
@@ -17612,6 +17709,22 @@ class pipelineOps(object):
                                      center_x,
                                      center_y)
 
+        sersic_2d = self.shrink(sersic_2d, dim_x, dim_y)
+
+
+#        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+#        im = ax.imshow(sersic_2d,
+#                       cmap=plt.get_cmap('jet'),
+#                       interpolation='nearest')
+#        # add colourbar to each plot
+#        divider = make_axes_locatable(ax)
+#        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+#        plt.colorbar(im, cax=cax_new)
+#        # set the title
+#        ax.set_title('Sersic model')
+#        plt.show()
+#        plt.close('all')
+
         # initialise the overall smear array
         gauss_array = []
 
@@ -17621,9 +17734,13 @@ class pipelineOps(object):
 
         # loop around the shifted cube and blur
 
+        # print 'Smearing'
+
         for i in range(dim_x):
+            # print i
 
             for j in range(dim_y):
+                # print j
 
                 # initiate list to hold the contributions to each spaxel
                 temp_list = []
@@ -17745,7 +17862,7 @@ class pipelineOps(object):
 #        cax_new = divider.append_axes('right', size='10%', pad=0.05)
 #        plt.colorbar(im, cax=cax_new)
 #        plt.show()
-#        print np.nanmean(smear_array), np.nanmax(smear_array)
+        print np.nanmean(smear_array), np.nanmax(smear_array)
 
         return smear_array - sigma
 
@@ -17761,6 +17878,7 @@ class pipelineOps(object):
         make distributions of the v/sigma ratio, albeit limited by the
         small number statistics.
         """
+        from astropy.cosmology import WMAP9 as cosmo
 
         # read in the table of cube names
         Table = ascii.read(infile)
@@ -17771,16 +17889,28 @@ class pipelineOps(object):
         x_50 = []
         x_16 = []
         x_84 = []
+        vel_max = []
         sigma_o = []
         sigma_e = []
         error_min = []
         error_max = []
         gal_names = []
+        d_low = []
+        d_high = []
 
         # assign variables to the different items in the infile
         for entry in Table:
 
             obj_name = entry[0]
+
+            redshift = entry[1]
+
+            # look at the transverse scale at that redshift
+            # this will be used to convert the last data radius into
+            # a physical size and compare with the hubble radius
+            # note: should that be inclination corrected? 
+
+            scale = cosmo.kpc_proper_per_arcmin(redshift).value / 60.0
 
             print obj_name
 
@@ -17822,10 +17952,13 @@ class pipelineOps(object):
             x_50.append(ratio_list[1])
             x_16.append(ratio_list[3])
             x_84.append(ratio_list[2])
+            vel_max.append(ratio_list[8])
             sigma_o.append(ratio_list[4])
             sigma_e.append(ratio_list[5])
             error_min.append(ratio_list[6])
             error_max.append(ratio_list[7])
+            d_low.append(ratio_list[9])
+            d_high.append(ratio_list[10])
 
         x_real = np.array(x_real)
         x_50 = np.array(x_50)
@@ -17836,6 +17969,9 @@ class pipelineOps(object):
         error_min = np.array(error_min)
         error_max = np.array(error_max)
         error_v = (abs(error_min) + abs(error_max)) / 2.0
+        vel_max = np.array(vel_max)
+        d_low = abs(np.array(d_low) * scale)
+        d_high = np.array(d_high) * scale
 
         print np.nanmean(x_real)
 
@@ -17871,7 +18007,7 @@ class pipelineOps(object):
         ax.text(100, 100, r'$V_{max} / \sigma _{int}$ $=$ $1$', fontsize=22)
 
         ax.set_xlim([0, max(sigma_o) + 20])
-        ax.set_ylim([0, max(x_real * sigma_o) + 20])
+        ax.set_ylim([0, 150])
         plt.show()
 
         scatter_name = '/disk1/turner/DATA/v_over_sigma/' + 'scatter' + \
@@ -17971,7 +18107,10 @@ class pipelineOps(object):
                         'real_ratio',
                         'v50_ratio',
                         'v16_ratio',
-                        'v84_ratio']
+                        'v84_ratio',
+                        'max_v_real',
+                        'r_e_l',
+                        'r_e_r']
 
         with open(res_file, 'a') as f:
 
@@ -17981,34 +18120,43 @@ class pipelineOps(object):
 
             f.write('\n')
 
-            for a,b,c,d,e,fu,g,h,i,j in zip(gal_names,
-                                            x_real * sigma_o,
-                                            x_50 * sigma_o,
-                                            x_16 * sigma_o,
-                                            x_84 * sigma_o,
-                                            sigma_o,
-                                            x_real,
-                                            x_50,
-                                            x_16,
-                                            x_84):
+            for a,b,c,d,e,fu,g,h,i,j,k,l,m in zip(gal_names,
+                                                  x_real * sigma_o,
+                                                  x_50 * sigma_o,
+                                                  x_16 * sigma_o,
+                                                  x_84 * sigma_o,
+                                                  sigma_o,
+                                                  x_real,
+                                                  x_50,
+                                                  x_16,
+                                                  x_84,
+                                                  vel_max,
+                                                  d_low,
+                                                  d_high):
 
-                f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (a,
-                                                                      b,
-                                                                      c,
-                                                                      d,
-                                                                      e,
-                                                                      fu,
-                                                                      g,
-                                                                      h,
-                                                                      i,
-                                                                      j))
+                f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (a,
+                                                                                  b,
+                                                                                  c,
+                                                                                  d,
+                                                                                  e,
+                                                                                  fu,
+                                                                                  g,
+                                                                                  h,
+                                                                                  i,
+                                                                                  j,
+                                                                                  k,
+                                                                                  l,
+                                                                                  m))
 
-            f.write('Averages:\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (np.nanmean(x_real * sigma_o),
-                                                                       np.nanmean(x_50 * sigma_o),
-                                                                       np.nanmean(x_16 * sigma_o),
-                                                                       np.nanmean(x_84 * sigma_o),
-                                                                       np.nanmean(sigma_o),
-                                                                       np.nanmean(x_real),
-                                                                       np.nanmean(x_50),
-                                                                       np.nanmean(x_16),
-                                                                       np.nanmean(x_84)))
+            f.write('Averages:\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (np.nanmean(x_real * sigma_o),
+                                                                                   np.nanmean(x_50 * sigma_o),
+                                                                                   np.nanmean(x_16 * sigma_o),
+                                                                                   np.nanmean(x_84 * sigma_o),
+                                                                                   np.nanmean(sigma_o),
+                                                                                   np.nanmean(x_real),
+                                                                                   np.nanmean(x_50),
+                                                                                   np.nanmean(x_16),
+                                                                                   np.nanmean(x_84),
+                                                                                   np.nanmean(vel_max),
+                                                                                   np.nanmean(d_low),
+                                                                                   np.nanmean(d_high)))

@@ -748,6 +748,48 @@ class cubeOps(object):
 
         return mod
 
+    def moments(data,
+                circle=0,
+                rotate=1,
+                vheight=1,
+                estimator=np.ma.median,
+                **kwargs):
+    
+        """Returns (height, amplitude, x, y, width_x, width_y, rotation angle)
+        the gaussian parameters of a 2D distribution by calculating its
+        moments.  Depending on the input parameters, will only output 
+        a subset of the above.
+
+        If using masked arrays, pass estimator=np.ma.median
+        """
+        total = np.abs(data).sum()
+
+        Y, X = np.indices(data.shape) # python convention: reverse x,y np.indices
+        y = np.argmax((X*np.abs(data)).sum(axis=1)/total)
+        x = np.argmax((Y*np.abs(data)).sum(axis=0)/total)
+        col = data[int(y),:]
+
+        # FIRST moment, not second!
+        width_x = np.sqrt(np.abs((np.arange(col.size)-y)*col).sum()/np.abs(col).sum())
+        row = data[:, int(x)]
+        width_y = np.sqrt(np.abs((np.arange(row.size)-x)*row).sum()/np.abs(row).sum())
+        width = ( width_x + width_y ) / 2.
+        height = estimator(data.ravel())
+        amplitude = data.max()-height
+        mylist = [amplitude,x,y]
+        if np.isnan(width_y) or np.isnan(width_x) or np.isnan(height) or np.isnan(amplitude):
+            raise ValueError("something is nan")
+        if vheight==1:
+            mylist = [height] + mylist
+        if circle==0:
+            mylist = mylist + [width_x,width_y]
+            if rotate==1:
+                mylist = mylist + [0.] #rotation "moment" is just zero...
+                # also, circles don't rotate.
+        else:
+            mylist = mylist + [width]
+        return mylist
+
     def moments(self,
                 data):
 
@@ -776,6 +818,7 @@ class cubeOps(object):
         width_x = 2.0
         width_y = 2.0
 
+        print [height, center_x, center_y, width_x, width_y, pedastal]
         return [height, center_x, center_y, width_x, width_y, pedastal]
 
     def fitgaussian(self,

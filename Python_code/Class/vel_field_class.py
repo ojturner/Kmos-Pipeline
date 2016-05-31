@@ -1835,7 +1835,8 @@ class vel_field(object):
                      'distance': [x_50[min_ind],
                                   x_50[-max_ind]],
                      'vel_error': [real_error_values_50[min_ind],
-                                   real_error_values_50[-max_ind]]}
+                                   real_error_values_50[-max_ind]],
+                     'vel_max': [np.nanmax(abs(real_velocity_values_50 / np.sin(inc_50)))]}
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
@@ -2086,12 +2087,12 @@ class vel_field(object):
         re-binning back to the original dimensions
         """
 
-        xbin, ybin = self.grid_10()
+        xbin, ybin = self.grid()
 
         # setup list to house the velocity measurements
 
         vel_array = []
-             
+         
         # compute the model at each spaxel location
 
         for xpos, ypos in zip(xbin, ybin):
@@ -2099,8 +2100,8 @@ class vel_field(object):
             # run the disk function
 
             vel_array.append(self.disk_function_fixed(theta,
-                                                      xcen * 10,
-                                                      ycen * 10,
+                                                      xcen,
+                                                      ycen,
                                                       xpos,
                                                       ypos))
 
@@ -2110,28 +2111,91 @@ class vel_field(object):
 
         # reshape back to the chosen grid dimensions
 
-        vel_2d = vel_array.reshape((self.xpix * 10, self.ypix * 10))
+        vel_2d = vel_array.reshape((self.xpix, self.ypix))
+
+        # plot as a 2d array
+
+#        print 'Showing normal resolution velocity'
+#        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+#        im = ax.imshow(vel_2d,
+#                       cmap=plt.get_cmap('jet'),
+#                       interpolation='nearest')
+#        # add colourbar to each plot
+#        divider = make_axes_locatable(ax)
+#        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+#        plt.colorbar(im, cax=cax_new)
+#        # set the title
+#        ax.set_title('model velocity')
+#        plt.show()
+#        plt.close('all')
+
+        # vel_2d_blurred = psf.blur_by_psf(vel_2d, 0.5, 0.1)
+
+        return vel_2d
+
+    def compute_model_grid_fixed_100(self,
+                                     theta,
+                                     xcen,
+                                     ycen):
+
+        """
+        Def:
+        Use the grid function to construct a basis for the model.
+        Then apply the disk function to each spaxel in the basis
+        reshape back to 2d array and plot the model velocity.
+
+        Toying around with constructing the model at much higher spatial
+        resolution to properly capture the arctangent function, and then
+        re-binning back to the original dimensions
+        """
+
+        xbin, ybin = self.grid_100()
+
+        # setup list to house the velocity measurements
+
+        vel_array = []
+         
+        # compute the model at each spaxel location
+
+        for xpos, ypos in zip(xbin, ybin):
+
+            # run the disk function
+
+            vel_array.append(self.disk_function_fixed(theta,
+                                                      xcen * 100,
+                                                      ycen * 100,
+                                                      xpos,
+                                                      ypos))
+
+        # create numpy array from the vel_array list
+
+        vel_array = np.array(vel_array)
+
+        # reshape back to the chosen grid dimensions
+
+        vel_2d = vel_array.reshape((self.xpix * 100, self.ypix * 100))
 
         vel_2d = self.shrink(vel_2d, self.xpix, self.ypix)
 
         # plot as a 2d array
 
-        # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-        # im = ax.imshow(vel_2d,
-        #                cmap=plt.get_cmap('jet'),
-        #                interpolation='nearest')
-        # # add colourbar to each plot
-        # divider = make_axes_locatable(ax)
-        # cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        # plt.colorbar(im, cax=cax_new)
-        # # set the title
-        # ax.set_title('model velocity')
-        # plt.show()
-        # plt.close('all')
+#        print 'Showing high resolution velocity'
+#        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+#        im = ax.imshow(vel_2d,
+#                       cmap=plt.get_cmap('jet'),
+#                       interpolation='nearest')
+#        # add colourbar to each plot
+#        divider = make_axes_locatable(ax)
+#        cax_new = divider.append_axes('right', size='10%', pad=0.05)
+#        plt.colorbar(im, cax=cax_new)
+#        # set the title
+#        ax.set_title('model velocity')
+#        plt.show()
+#        plt.close('all')
 
-        vel_2d_blurred = psf.blur_by_psf(vel_2d, 0.5, 0.1)
+        # vel_2d_blurred = psf.blur_by_psf(vel_2d, 0.5, 0.1)
 
-        return vel_2d_blurred
+        return vel_2d
 
     def lnlike_fixed(self, 
                      theta,
@@ -3340,7 +3404,8 @@ class vel_field(object):
                      'distance': [x_50[min_ind],
                                   x_50[-max_ind]],
                      'vel_error': [real_error_values_50[min_ind],
-                                   real_error_values_50[-max_ind]]}
+                                   real_error_values_50[-max_ind]],
+                     'vel_max': [np.nanmax(abs(real_velocity_values_50 / np.sin(inc_50)))]}
 
         # plotting the model and extracted quantities
 
@@ -4711,7 +4776,8 @@ class vel_field(object):
                      'distance': [x_50[min_ind],
                                   x_50[-max_ind]],
                      'vel_error': [real_error_values_50[min_ind],
-                                   real_error_values_50[-max_ind]]}
+                                   real_error_values_50[-max_ind]],
+                     'vel_max': [np.nanmax(abs(real_velocity_values_50 / np.sin(inc_50)))]}
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
@@ -4931,6 +4997,11 @@ class vel_field(object):
         error_v_min = e_val['vel_error'][0]
         error_v_max = e_val['vel_error'][1]
 
+        max_v_value = e_val['vel_max'][0]
+
+        min_d_value = e_val['distance'][0]
+        max_d_value = e_val['distance'][1]
+
         # print real_v / sigma_o, mod_50_v / sigma_o, mod_84_v / sigma_o, mod_16_v / sigma_o
 
         return [real_v / sigma_o,
@@ -4940,7 +5011,11 @@ class vel_field(object):
                 sigma_o,
                 sigma_e,
                 error_v_min,
-                error_v_max]
+                error_v_max,
+                max_v_value,
+                min_d_value,
+                max_d_value]
+
 
 # genetic algorithm attempt
     
