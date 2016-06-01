@@ -4,6 +4,8 @@
 
 
 # import the relevant modules
+import scipy.optimize as opt
+import pylab as pyplt
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy import poly1d
@@ -15,7 +17,7 @@ from astropy.io import fits
 from astropy.modeling import models, fitting
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pylab import *
-
+from numpy import *
 
 class cubeOps(object):
     """
@@ -748,13 +750,14 @@ class cubeOps(object):
 
         return mod
 
-    def moments(data,
-                circle=0,
-                rotate=1,
-                vheight=1,
-                estimator=np.ma.median,
-                **kwargs):
-    
+    def moments_better(self,
+                       data,
+                       circle=0,
+                       rotate=1,
+                       vheight=1,
+                       estimator=np.ma.median,
+                       **kwargs):
+
         """Returns (height, amplitude, x, y, width_x, width_y, rotation angle)
         the gaussian parameters of a 2D distribution by calculating its
         moments.  Depending on the input parameters, will only output 
@@ -762,6 +765,7 @@ class cubeOps(object):
 
         If using masked arrays, pass estimator=np.ma.median
         """
+
         total = np.abs(data).sum()
 
         Y, X = np.indices(data.shape) # python convention: reverse x,y np.indices
@@ -789,6 +793,27 @@ class cubeOps(object):
         else:
             mylist = mylist + [width]
         return mylist
+
+    def twoD_Gaussian(self,
+                      (x, y),
+                      offset,
+                      amplitude,
+                      xo,
+                      yo,
+                      sigma_x,
+                      sigma_y,
+                      theta):
+
+        xo = float(xo)
+        yo = float(yo)    
+        a = (np.cos(theta)**2)/(2*sigma_x**2) + (np.sin(theta)**2)/(2*sigma_y**2)
+        b = -(np.sin(2*theta))/(4*sigma_x**2) + (np.sin(2*theta))/(4*sigma_y**2)
+        c = (np.sin(theta)**2)/(2*sigma_x**2) + (np.cos(theta)**2)/(2*sigma_y**2)
+        g = offset + amplitude*np.exp( - (a*((x-xo)**2) + 2*b*(x-xo)*(y-yo) 
+                                + c*((y-yo)**2)))
+
+        return g.ravel()
+
 
     def moments(self,
                 data):
@@ -927,20 +952,65 @@ class cubeOps(object):
         # range from which to get the image data now defined
         star_data = np.nanmedian(self.data[lower:upper], axis=0)
 
-        # from the star data fit the gaussian model
-        mod_fit, a, b = self.fitgaussian(star_data)
+        # mask out the nan values using np.ma
+        data_masked = np.ma.masked_invalid(star_data)
 
-        # flattening the indices of data.shape
-        x1 = np.ndarray.flatten(indices(self.imData.shape)[0])
-        print 'This is the x1 shape: %s' % x1.shape
+        # create the grid over which to evaluate the gaussian
+        y, x = np.indices(data_masked.shape)
 
-        # print 'The first independent variable: %s %s' % (x1, type(x1))
-        x2 = np.ndarray.flatten(indices(self.imData.shape)[1])
+        # find the moments of the data and use these as the initial
+        # guesses for the gaussian
 
-        # Set the params variable as the best fit attribute
-        params = mod_fit.best_values
+        list_of_moments = self.moments_better(data_masked[3:-3, 3:-3])
 
-        print 'THESE ARE THE WIDTHS %s %s' % (params['width_y'], params['width_x'])
+        # very important - have to set the nan values equal to the
+        # evaluated height parameter
+
+        data_masked[isnan(data_masked)] = list_of_moments[0]
+
+        # fit the model
+        popt, pcov = opt.curve_fit(self.twoD_Gaussian,
+                                   (x, y),
+                                   data_masked.ravel(),
+                                   p0=list_of_moments,
+                                   bounds=([-np.inf,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            -90],
+                                            [np.inf,
+                                             np.inf,
+                                             data_masked.shape[1],
+                                             data_masked.shape[0],
+                                             data_masked.shape[1],
+                                             data_masked.shape[0],
+                                             90]))
+
+        # evaluate the fitted model
+
+        data_fitted = self.twoD_Gaussian((x, y), *popt)
+
+        # reshape to original data size
+        data_fitted = data_fitted.reshape(data_masked.shape[0],
+                                          data_masked.shape[1])
+
+        # make dictionary with same parameters as before
+
+        params = {'pedastal' : popt[0],
+                  'height' : popt[1],
+                  'center_x' : popt[3],
+                  'center_y' : popt[2],
+                  'width_x' : popt[5],
+                  'width_y' : popt[4],
+                  'rotation' : popt[6]}
+
+        # divide by the evaluated amplitude to normalise
+        data_fitted = data_fitted / params['height']
+
+
+        # get the seeing
         sigma = 0.5 * (params['width_x'] + params['width_y'])
         FWHM = 2.3548 * sigma
 
@@ -952,37 +1022,16 @@ class cubeOps(object):
 
             print '[INFO]: The FWHM is: %s' % FWHM
 
-        # Create an instance of the gaussian for integrating
-        fit = self.gaussianLam(params['pedastal'],
-                               params['height'],
-                               params['center_x'],
-                               params['center_y'],
-                               params['width_x'],
-                               params['width_y'])
-
-        # Evaluate the gaussian with the best fit parameters
-        mod_eval = mod_fit.eval(x1=x1,
-                                x2=x2,
-                                center_x=mod_fit.best_values['center_x'],
-                                center_y=mod_fit.best_values['center_y'])
-
-        # Step 3 - reshape back to 2D array
-        gEval = np.reshape(mod_eval, self.imData.shape)
-
-        # This is the initial grid of values, but need to normalise to 1
-        # Integrate the gaussian using double quadrature
-        integral = scipy.integrate.dblquad(fit,
-                                           a=0,
-                                           b=self.imData.shape[1],
-                                           gfun=lambda x: 0,
-                                           hfun=lambda x: self.imData.shape[1])
-
         # Plot the image and the fit
         colFig, colAx = plt.subplots(1, 1, figsize=(14.0, 14.0))
 
         colCax = colAx.imshow(self.imData, interpolation='bicubic')
 
-        colAx.contour(gEval)
+        colAx.contour(x,
+                      y,
+                      data_fitted,
+                      8,
+                      colors='w')
 
         colFig.colorbar(colCax)
 
@@ -990,11 +1039,11 @@ class cubeOps(object):
 
         colFig.savefig(saveName)
 
-        plt.show()
+        # plt.show()
         plt.close('all')
 
         # return the FWHM and the masked profile
-        return params, (gEval / integral[0]), FWHM, self.offList
+        return params, data_fitted, FWHM, self.offList
 
     def plot_HK_sn_map(self,
                        redshift,
