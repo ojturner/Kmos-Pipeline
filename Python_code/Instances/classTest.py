@@ -75,8 +75,8 @@ v_field = vel_field('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_'
 #hobjframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
 #hskyframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-combine_input = '/disk2/turner/DATA/GOODS_K_P1_0.05/all_nights.txt'
-sci_dir = '/disk2/turner/DATA/GOODS_K_P1_0.05'
+combine_input = '/disk2/turner/DATA/GOODS_K_P1_comb_0.1/all_nights.txt'
+sci_dir = '/disk2/turner/DATA/GOODS_K_P1_comb_0.1'
 infile = '/disk1/turner/DATA/all_names_new.txt'
 combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals_names.txt'
 obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
@@ -110,20 +110,20 @@ guess_params_fixed = [1.00634848977, 5.76455157004, 1.11046782343, 68.9020485689
 
 # APPLYING MODEL MCMC # 
 
-#pipe_methods.multi_apply_mcmc_fixed('/disk1/turner/DATA/all_names_new.txt', 100, 500, 50, 0.6, 0.4)
+#pipe_methods.multi_apply_mcmc_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt', 200, 500, 50, 0.6, 0.4, pix_scale=0.1)
 
 # APPLYING VELOCITY FIELD COMPUTATION # 
 
-pipe_methods.multi_vel_field_stott('/disk2/turner/DATA/GOODS_K_P1_0.05/all_names_0.2.txt', 'oiii', 0.25, g_c_min=0.5, g_c_max=1.5, method='mean')
+#pipe_methods.multi_vel_field_stott('/disk1/turner/DATA/all_names_new.txt', 'oiii', 1.5, g_c_min=0.5, g_c_max=1.5, seeing=0.5, pix_scale=0.1, intrin_sigma=75, sersic_n=3.0, method='mean')
 
 # CREATING THE PLOT GRIDS # 
 
-#pipe_methods.multi_make_all_plots_fixed('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6)
+pipe_methods.multi_make_all_plots_no_image_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, seeing=0.1, pix_scale=0.1, smear=False)
 
 
 # V OVER SIGMA # 
 
-#pipe_methods.v_over_sigma_distribution('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, 'fixed', 'mean')
+pipe_methods.v_over_sigma_distribution('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, 'fixed', 'mean', seeing=0.5, pix_scale=0.1, smear=True)
 
 # VORONOI BINNING MAPS #
 
@@ -131,7 +131,7 @@ pipe_methods.multi_vel_field_stott('/disk2/turner/DATA/GOODS_K_P1_0.05/all_names
 
 # COMBINE BY NAME # 
 
-#pipe_methods.combine_by_name(sci_dir, combine_input, 0.1, 0.8, 10)
+#pipe_methods.combine_by_name(sci_dir, combine_input, 0.25, 0.8, 10)
 
 #data = v_field.compute_model_grid_fixed(guess_params_fixed, 24, 17)
 #fig, ax = plt.subplots(1, 1, figsize=(10, 10))

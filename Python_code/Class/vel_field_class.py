@@ -701,7 +701,10 @@ class vel_field(object):
 
 
     def compute_model_grid(self,
-                           theta):
+                           theta,
+                           seeing,
+                           pix_scale,
+                           smear=False):
 
         """
         Def:
@@ -734,41 +737,21 @@ class vel_field(object):
 
         vel_2d = vel_array.reshape((self.xpix, self.ypix))
 
-        # plot as a 2d array
-
-        # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-        # im = ax.imshow(vel_2d,
-        #                cmap=plt.get_cmap('jet'),
-        #                interpolation='nearest')
-        # # add colourbar to each plot
-        # divider = make_axes_locatable(ax)
-        # cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        # plt.colorbar(im, cax=cax_new)
-        # # set the title
-        # ax.set_title('model velocity')
-        # plt.show()
-        # plt.close('all')
-
         # computationally expensive
-        vel_2d_blurred = psf.blur_by_psf(vel_2d, 0.5, 0.1)
 
-        # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-        # im = ax.imshow(vel_2d_blurred,
-        #                cmap=plt.get_cmap('jet'),
-        #                interpolation='nearest')
-        # # add colourbar to each plot
-        # divider = make_axes_locatable(ax)
-        # cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        # plt.colorbar(im, cax=cax_new)
-        # # set the title
-        # ax.set_title('model velocity blurred')
-        # plt.show()
-        # plt.close('all')
+        if smear:
 
-        return vel_2d_blurred
+            vel_2d = psf.blur_by_psf(vel_2d,
+                                     seeing,
+                                     pix_scale)
+
+        return vel_2d
 
     def lnlike(self, 
-               theta):
+               theta,
+               seeing,
+               pix_scale,
+               smear=False):
         """
         Def: Return the log likelihood for the velocity field function.
         All that has to be done is to compute the model in a grid the same size
@@ -789,7 +772,17 @@ class vel_field(object):
 
         # compute the model grid
 
-        model = self.compute_model_grid(theta)
+        if smear:
+
+            model = self.compute_model_grid(theta,
+                                            seeing,
+                                            pix_scale,
+                                            smear=True)
+        else:
+
+            model = self.compute_model_grid(theta,
+                                            seeing,
+                                            pix_scale)
 
         # find the grid of inverse sigma values
 
@@ -816,7 +809,7 @@ class vel_field(object):
            5 < ycen < 30.0 and \
            0.0 < inc < np.pi / 2.0 and \
            0 < pa < 2 * np.pi and \
-           0 < rt < 10.0 and \
+           1.0 < rt < 5.0 and \
            0 < vasym < 350:
 
             return 0.0
@@ -824,7 +817,10 @@ class vel_field(object):
         return -np.inf
 
     def lnprob(self,
-               theta):
+               theta,
+               seeing,
+               pix_scale,
+               smear=False):
 
         lp = self.lnprior(theta)
 
@@ -832,13 +828,27 @@ class vel_field(object):
 
             return -np.inf
 
-        return lp + self.lnlike(theta)
+        if smear:
+
+            return lp + self.lnlike(theta,
+                                    seeing,
+                                    pix_scale,
+                                    smear=True)
+        else:
+            
+            return lp + self.lnlike(theta,
+                                    seeing,
+                                    pix_scale,
+                                    smear=False)
 
     def run_emcee(self,
                   theta,
                   nsteps,
                   nwalkers,
-                  burn_no):
+                  burn_no,
+                  seeing,
+                  pix_scale,
+                  smear=False):
 
         ndim = len(theta)
 
@@ -846,10 +856,14 @@ class vel_field(object):
 
         sampler = emcee.EnsembleSampler(nwalkers,
                                         ndim,
-                                        self.lnprob)
+                                        self.lnprob,
+                                        args=[seeing,
+                                              pix_scale,
+                                              smear])
 
         for i, (pos, lnp, state) in enumerate(sampler.sample(pos,
                                                              iterations=nsteps)):
+
 
             stdout.write("\rObject %s %.1f%% complete" % (self.gal_name[:-15],
                                                         100 * float(i + 1) / nsteps))
@@ -870,7 +884,7 @@ class vel_field(object):
 
         fig.savefig('%s_corner_plot.png' % self.fileName[:-5])
 
-        # plt.show()
+        plt.show()
 
         # print samples
         # going to save pickled versions of the chain and the lnprobability
@@ -985,7 +999,10 @@ class vel_field(object):
                                                                va_mcmc[2]))
 
 
-    def plot_comparison(self):
+    def plot_comparison(self,
+                        seeing,
+                        pix_scale,
+                        smear=False):
 
         """
         Def:
@@ -1013,13 +1030,45 @@ class vel_field(object):
 
         # compute the model grid with the specified parameters
 
-        model_max = self.compute_model_grid(theta_max)
+        if smear:
 
-        model_50 = self.compute_model_grid(theta_50)
+            model_max = self.compute_model_grid(theta_max,
+                                                seeing,
+                                                pix_scale,
+                                                smear=True)
 
-        model_16 = self.compute_model_grid(theta_16)
+            model_50 = self.compute_model_grid(theta_50,
+                                               seeing,
+                                               pix_scale,
+                                               smear=True)
 
-        model_84 = self.compute_model_grid(theta_84)
+            model_16 = self.compute_model_grid(theta_16,
+                                               seeing,
+                                               pix_scale,
+                                               smear=True)
+
+            model_84 = self.compute_model_grid(theta_84,
+                                               seeing,
+                                               pix_scale,
+                                               smear=True)
+
+        else:
+
+            model_max = self.compute_model_grid(theta_max,
+                                                seeing,
+                                                pix_scale)
+
+            model_50 = self.compute_model_grid(theta_50,
+                                               seeing,
+                                               pix_scale)
+
+            model_16 = self.compute_model_grid(theta_16,
+                                               seeing,
+                                               pix_scale)
+
+            model_84 = self.compute_model_grid(theta_84,
+                                               seeing,
+                                               pix_scale)
 
         # only want to see the evaluated model at the grid points
         # where the data is not nan. Loop round the data and create
@@ -1097,7 +1146,10 @@ class vel_field(object):
 
     def extract_in_apertures(self,
                              r_aper,
-                             d_aper):
+                             d_aper,
+                             seeing,
+                             pix_scale,
+                             smear=False):
 
         """
         Def: Extract the velocity field along the kinematic axis returned by the
@@ -1163,13 +1215,48 @@ class vel_field(object):
 
         # compute the model grid with the specified parameters
 
-        model_max = self.compute_model_grid(theta_max)
+        if smear:
 
-        model_50 = self.compute_model_grid(theta_50)
+            model_max = self.compute_model_grid(theta_max,
+                                                seeing,
+                                                pix_scale,
+                                                smear=True)
 
-        model_16 = self.compute_model_grid(theta_16)
+            model_50 = self.compute_model_grid(theta_50,
+                                               seeing,
+                                               pix_scale,
+                                               smear=True)
 
-        model_84 = self.compute_model_grid(theta_84)
+            model_16 = self.compute_model_grid(theta_16,
+                                               seeing,
+                                               pix_scale,
+                                               smear=True)
+
+            model_84 = self.compute_model_grid(theta_84,
+                                               seeing,
+                                               pix_scale,
+                                               smear=True)
+        else:
+
+            model_max = self.compute_model_grid(theta_max,
+                                                seeing,
+                                                pix_scale,
+                                                smear=False)
+
+            model_50 = self.compute_model_grid(theta_50,
+                                               seeing,
+                                               pix_scale,
+                                               smear=False)
+
+            model_16 = self.compute_model_grid(theta_16,
+                                               seeing,
+                                               pix_scale,
+                                               smear=False)
+
+            model_84 = self.compute_model_grid(theta_84,
+                                               seeing,
+                                               pix_scale,
+                                               smear=False)
 
         # initialise the list of aperture positions with the xcen and ycen
 
@@ -1636,7 +1723,7 @@ class vel_field(object):
                             d_aper * (len(x_max_array) - x_max_index - 1),
                             num=len(x_max_array))
 
-        x_max = x_max * 0.1
+        x_max = x_max * pix_scale
 
         # print 'This is x_max: %s' % x_max
 
@@ -1654,7 +1741,7 @@ class vel_field(object):
                             d_aper * (len(x_50_array) - x_50_index - 1),
                             num=len(x_50_array))
 
-        x_50 = x_50 * 0.1
+        x_50 = x_50 * pix_scale
 
         x_16_array = []
 
@@ -1670,7 +1757,7 @@ class vel_field(object):
                             d_aper * (len(x_16_array) - x_16_index - 1),
                             num=len(x_16_array))
 
-        x_16 = x_16 * 0.1
+        x_16 = x_16 * pix_scale
 
         x_84_array = []
 
@@ -1686,7 +1773,7 @@ class vel_field(object):
                             d_aper * (len(x_84_array) - x_84_index - 1),
                             num=len(x_84_array))
 
-        x_84 = x_84 * 0.1
+        x_84 = x_84 * pix_scale
 
         # positions array should now be populated with all of the apertures
 
@@ -1836,7 +1923,14 @@ class vel_field(object):
                                   x_50[-max_ind]],
                      'vel_error': [real_error_values_50[min_ind],
                                    real_error_values_50[-max_ind]],
-                     'vel_max': [np.nanmax(abs(real_velocity_values_50 / np.sin(inc_50)))]}
+                     'vel_max': [np.nanmax(abs(real_velocity_values_50 / np.sin(inc_50)))],
+                     'inclination' : inc_50,
+                     'mod_50_velocity' : mod_velocity_values_50 / np.sin(inc_50),
+                     'mod_50_positions' : x_50,
+                     'mod_16_velocity' : mod_velocity_values_16 / np.sin(inc_16),
+                     'mod_16_positions' : x_16,
+                     'mod_84_velocity' : mod_velocity_values_84 / np.sin(inc_84),
+                     'mod_84_positions' : x_84}
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
@@ -1929,25 +2023,25 @@ class vel_field(object):
 
         # return the data used in plotting for use elsewhere
 
-        return {'max': [x_max, 
+        return {'max': [x_max,
                         mod_velocity_values_max,
                         real_velocity_values_max,
                         real_error_values_max,
                         sig_values_max,
                         sig_error_values_max],
-                '50': [x_50, 
+                '50': [x_50,
                         mod_velocity_values_50,
                         real_velocity_values_50,
                         real_error_values_50,
                         sig_values_50,
                         sig_error_values_50],
-                '16': [x_16, 
+                '16': [x_16,
                         mod_velocity_values_16,
                         real_velocity_values_16,
                         real_error_values_16,
                         sig_values_16,
                         sig_error_values_16],
-                '84': [x_84, 
+                '84': [x_84,
                         mod_velocity_values_84,
                         real_velocity_values_84,
                         real_error_values_84,
@@ -2074,7 +2168,10 @@ class vel_field(object):
     def compute_model_grid_fixed(self,
                                  theta,
                                  xcen,
-                                 ycen):
+                                 ycen,
+                                 seeing,
+                                 pix_scale,
+                                 smear=False):
 
         """
         Def:
@@ -2113,23 +2210,11 @@ class vel_field(object):
 
         vel_2d = vel_array.reshape((self.xpix, self.ypix))
 
-        # plot as a 2d array
+        if smear:
 
-#        print 'Showing normal resolution velocity'
-#        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-#        im = ax.imshow(vel_2d,
-#                       cmap=plt.get_cmap('jet'),
-#                       interpolation='nearest')
-#        # add colourbar to each plot
-#        divider = make_axes_locatable(ax)
-#        cax_new = divider.append_axes('right', size='10%', pad=0.05)
-#        plt.colorbar(im, cax=cax_new)
-#        # set the title
-#        ax.set_title('model velocity')
-#        plt.show()
-#        plt.close('all')
-
-        # vel_2d_blurred = psf.blur_by_psf(vel_2d, 0.5, 0.1)
+            vel_2d = psf.blur_by_psf(vel_2d,
+                                     seeing,
+                                     pix_scale)
 
         return vel_2d
 
@@ -2200,7 +2285,10 @@ class vel_field(object):
     def lnlike_fixed(self, 
                      theta,
                      xcen,
-                     ycen):
+                     ycen,
+                     seeing,
+                     pix_scale,
+                     smear=False):
         """
         Def: Return the log likelihood for the velocity field function.
         All that has to be done is to compute the model in a grid the same size
@@ -2223,7 +2311,10 @@ class vel_field(object):
 
         model = self.compute_model_grid_fixed(theta,
                                               xcen,
-                                              ycen)
+                                              ycen,
+                                              seeing,
+                                              pix_scale,
+                                              smear)
 
         # find the grid of inverse sigma values
 
@@ -2248,7 +2339,7 @@ class vel_field(object):
 
         if 0.0 < inc < np.pi / 2.0 and \
            0 < pa < 2 * np.pi and \
-           0 < rt < 10.0 and \
+           1.0 < rt < 5.0 and \
            0 < vasym < 350:
 
             return 0.0
@@ -2258,7 +2349,10 @@ class vel_field(object):
     def lnprob_fixed(self,
                      theta,
                      xcen,
-                     ycen):
+                     ycen,
+                     seeing,
+                     pix_scale,
+                     smear=False):
 
         lp = self.lnprior_fixed(theta)
 
@@ -2268,7 +2362,10 @@ class vel_field(object):
 
         return lp + self.lnlike_fixed(theta,
                                       xcen,
-                                      ycen)
+                                      ycen,
+                                      seeing,
+                                      pix_scale,
+                                      smear)
 
     def run_emcee_fixed(self,
                         theta,
@@ -2276,7 +2373,10 @@ class vel_field(object):
                         ycen,
                         nsteps,
                         nwalkers,
-                        burn_no):
+                        burn_no,
+                        seeing,
+                        pix_scale,
+                        smear=False):
 
         ndim = len(theta)
 
@@ -2285,7 +2385,11 @@ class vel_field(object):
         sampler = emcee.EnsembleSampler(nwalkers,
                                         ndim,
                                         self.lnprob_fixed,
-                                        args=[xcen,ycen])
+                                        args=[xcen,
+                                              ycen,
+                                              seeing,
+                                              pix_scale,
+                                              smear])
 
         for i, (pos, lnp, state) in enumerate(sampler.sample(pos,
                                                              iterations=nsteps)):
@@ -2353,7 +2457,7 @@ class vel_field(object):
 
         if inc_middle - 0.26 < inc < inc_middle + 0.26 and \
            0 < pa < 2 * np.pi and \
-           0 < rt < 10.0 and \
+           1.0 < rt < 5.0 and \
            0 < vasym < 350:
 
             return 0.0
@@ -2364,7 +2468,10 @@ class vel_field(object):
                               theta,
                               xcen,
                               ycen,
-                              inc_middle):
+                              inc_middle,
+                              seeing,
+                              pix_scale,
+                              smear=False):
 
         lp = self.lnprior_fixed_inc_vary(theta,
                                          inc_middle)
@@ -2375,7 +2482,10 @@ class vel_field(object):
 
         return lp + self.lnlike_fixed(theta,
                                       xcen,
-                                      ycen)
+                                      ycen,
+                                      seeing,
+                                      pix_scale,
+                                      smear)
 
     def run_emcee_fixed_inc_vary(self,
                                  theta,
@@ -2384,7 +2494,10 @@ class vel_field(object):
                                  inc_middle,
                                  nsteps,
                                  nwalkers,
-                                 burn_no):
+                                 burn_no,
+                                 seeing,
+                                 pix_scale,
+                                 smear=False):
 
         ndim = len(theta)
 
@@ -2393,7 +2506,12 @@ class vel_field(object):
         sampler = emcee.EnsembleSampler(nwalkers,
                                         ndim,
                                         self.lnprob_fixed_inc_vary,
-                                        args=[xcen,ycen,inc_middle])
+                                        args=[xcen,
+                                              ycen,
+                                              inc_middle,
+                                              seeing,
+                                              pix_scale,
+                                              smear])
 
         for i, (pos, lnp, state) in enumerate(sampler.sample(pos,
                                                              iterations=nsteps)):
@@ -2532,6 +2650,9 @@ class vel_field(object):
     def plot_comparison_fixed(self,
                               xcen,
                               ycen,
+                              seeing,
+                              pix_scale,
+                              smear=False,
                               vary=False):
 
         """
@@ -2568,19 +2689,31 @@ class vel_field(object):
 
         model_max = self.compute_model_grid_fixed(theta_max,
                                                   xcen,
-                                                  ycen)
+                                                  ycen,
+                                                  seeing,
+                                                  pix_scale,
+                                                  smear)
 
         model_50 = self.compute_model_grid_fixed(theta_50,
                                                  xcen,
-                                                 ycen)
+                                                 ycen,
+                                                 seeing,
+                                                 pix_scale,
+                                                 smear)
 
         model_16 = self.compute_model_grid_fixed(theta_16,
                                                  xcen,
-                                                 ycen)
+                                                 ycen,
+                                                 seeing,
+                                                 pix_scale,
+                                                 smear)
 
         model_84 = self.compute_model_grid_fixed(theta_84,
                                                  xcen,
-                                                 ycen)
+                                                 ycen,
+                                                 seeing,
+                                                 pix_scale,
+                                                 smear)
 
         # only want to see the evaluated model at the grid points
         # where the data is not nan. Loop round the data and create
@@ -2667,6 +2800,9 @@ class vel_field(object):
                                    ycen,
                                    r_aper,
                                    d_aper,
+                                   seeing,
+                                   pix_scale,
+                                   smear=False,
                                    vary=False):
 
         """
@@ -2725,19 +2861,31 @@ class vel_field(object):
 
         model_max = self.compute_model_grid_fixed(theta_max,
                                                   xcen,
-                                                  ycen)
+                                                  ycen,
+                                                  seeing,
+                                                  pix_scale,
+                                                  smear)
 
         model_50 = self.compute_model_grid_fixed(theta_50,
                                                  xcen,
-                                                 ycen)
+                                                 ycen,
+                                                 seeing,
+                                                 pix_scale,
+                                                 smear)
 
         model_16 = self.compute_model_grid_fixed(theta_16,
                                                  xcen,
-                                                 ycen)
+                                                 ycen,
+                                                 seeing,
+                                                 pix_scale,
+                                                 smear)
 
         model_84 = self.compute_model_grid_fixed(theta_84,
                                                  xcen,
-                                                 ycen)
+                                                 ycen,
+                                                 seeing,
+                                                 pix_scale,
+                                                 smear)
 
         # initialise the list of aperture positions with the xcen and ycen
 
@@ -3204,7 +3352,7 @@ class vel_field(object):
                             d_aper * (len(x_max_array) - x_max_index - 1),
                             num=len(x_max_array))
 
-        x_max = x_max * 0.1
+        x_max = x_max * pix_scale
 
         # print 'This is x_max: %s' % x_max
 
@@ -3222,7 +3370,7 @@ class vel_field(object):
                             d_aper * (len(x_50_array) - x_50_index - 1),
                             num=len(x_50_array))
 
-        x_50 = x_50 * 0.1
+        x_50 = x_50 * pix_scale
 
         x_16_array = []
 
@@ -3238,7 +3386,7 @@ class vel_field(object):
                             d_aper * (len(x_16_array) - x_16_index - 1),
                             num=len(x_16_array))
 
-        x_16 = x_16 * 0.1
+        x_16 = x_16 * pix_scale
 
         x_84_array = []
 
@@ -3254,7 +3402,7 @@ class vel_field(object):
                             d_aper * (len(x_84_array) - x_84_index - 1),
                             num=len(x_84_array))
 
-        x_84 = x_84 * 0.1
+        x_84 = x_84 * pix_scale
 
         # positions array should now be populated with all of the apertures
 
@@ -3405,7 +3553,14 @@ class vel_field(object):
                                   x_50[-max_ind]],
                      'vel_error': [real_error_values_50[min_ind],
                                    real_error_values_50[-max_ind]],
-                     'vel_max': [np.nanmax(abs(real_velocity_values_50 / np.sin(inc_50)))]}
+                     'vel_max': [np.nanmax(abs(real_velocity_values_50 / np.sin(inc_50)))],
+                     'inclination' : inc_50,
+                     'mod_50_velocity' : mod_velocity_values_50 / np.sin(inc_50),
+                     'mod_50_positions' : x_50,
+                     'mod_16_velocity' : mod_velocity_values_16 / np.sin(inc_16),
+                     'mod_16_positions' : x_16,
+                     'mod_84_velocity' : mod_velocity_values_84 / np.sin(inc_84),
+                     'mod_84_positions' : x_84}
 
         # plotting the model and extracted quantities
 
@@ -3648,7 +3803,10 @@ class vel_field(object):
                                            theta,
                                            xcen,
                                            ycen,
-                                           inc):
+                                           inc,
+                                           seeing,
+                                           pix_scale,
+                                           smear=False):
 
         """
         Def:
@@ -3707,7 +3865,10 @@ class vel_field(object):
                                theta,
                                xcen,
                                ycen,
-                               inc):
+                               inc,
+                               seeing,
+                               pix_scale,
+                               smear=False):
         """
         Def: Return the log likelihood for the velocity field function.
         All that has to be done is to compute the model in a grid the same size
@@ -3731,7 +3892,10 @@ class vel_field(object):
         model = self.compute_model_grid_fixed_inc_fixed(theta,
                                                         xcen,
                                                         ycen,
-                                                        inc)
+                                                        inc,
+                                                        seeing,
+                                                        pix_scale,
+                                                        smear)
 
         # find the grid of inverse sigma values
 
@@ -3755,7 +3919,7 @@ class vel_field(object):
         pa, rt, vasym = theta
 
         if 0 < pa < 2 * np.pi and \
-           0 < rt < 10.0 and \
+           1.0 < rt < 5.0 and \
            0 < vasym < 350:
 
             return 0.0
@@ -3766,7 +3930,10 @@ class vel_field(object):
                                theta,
                                xcen,
                                ycen,
-                               inc):
+                               inc,
+                               seeing,
+                               pix_scale,
+                               smear=False):
 
         lp = self.lnprior_fixed_inc_fixed(theta)
 
@@ -3777,7 +3944,10 @@ class vel_field(object):
         return lp + self.lnlike_fixed_inc_fixed(theta,
                                                 xcen,
                                                 ycen,
-                                                inc)
+                                                inc,
+                                                seeing,
+                                                pix_scale,
+                                                smear)
 
     def run_emcee_fixed_inc_fixed(self,
                                   theta,
@@ -3786,7 +3956,10 @@ class vel_field(object):
                                   inc,
                                   nsteps,
                                   nwalkers,
-                                  burn_no):
+                                  burn_no,
+                                  seeing,
+                                  pix_scale,
+                                  smear=False):
 
         ndim = len(theta)
 
@@ -3795,7 +3968,12 @@ class vel_field(object):
         sampler = emcee.EnsembleSampler(nwalkers,
                                         ndim,
                                         self.lnprob_fixed_inc_fixed,
-                                        args=[xcen,ycen,inc])
+                                        args=[xcen,
+                                              ycen,
+                                              inc,
+                                              seeing,
+                                              pix_scale,
+                                              smear])
 
         for i, (pos, lnp, state) in enumerate(sampler.sample(pos,
                                                              iterations=nsteps)):
@@ -3921,7 +4099,10 @@ class vel_field(object):
     def plot_comparison_fixed_inc_fixed(self,
                                         xcen,
                                         ycen,
-                                        inc):
+                                        inc,
+                                        seeing,
+                                        pix_scale,
+                                        smear=False):
 
         """
         Def:
@@ -3952,22 +4133,34 @@ class vel_field(object):
         model_max = self.compute_model_grid_fixed_inc_fixed(theta_max,
                                                             xcen,
                                                             ycen,
-                                                            inc)
+                                                            inc,
+                                                            seeing,
+                                                            pix_scale,
+                                                            smear)
 
         model_50 = self.compute_model_grid_fixed_inc_fixed(theta_50,
                                                            xcen,
                                                            ycen,
-                                                           inc)
+                                                           inc,
+                                                           seeing,
+                                                           pix_scale,
+                                                           smear)
 
         model_16 = self.compute_model_grid_fixed_inc_fixed(theta_16,
                                                            xcen,
                                                            ycen,
-                                                           inc)
+                                                           inc,
+                                                           seeing,
+                                                           pix_scale,
+                                                           smear)
 
         model_84 = self.compute_model_grid_fixed_inc_fixed(theta_84,
                                                            xcen,
                                                            ycen,
-                                                           inc)
+                                                           inc,
+                                                           seeing,
+                                                           pix_scale,
+                                                           smear)
 
         # only want to see the evaluated model at the grid points
         # where the data is not nan. Loop round the data and create
@@ -4048,7 +4241,10 @@ class vel_field(object):
                                              ycen,
                                              inc,
                                              r_aper,
-                                             d_aper):
+                                             d_aper,
+                                             seeing,
+                                             pix_scale,
+                                             smear=False):
 
         """
         Def: Extract the velocity field along the kinematic axis returned by the
@@ -4095,22 +4291,34 @@ class vel_field(object):
         model_max = self.compute_model_grid_fixed_inc_fixed(theta_max,
                                                             xcen,
                                                             ycen,
-                                                            inc)
+                                                            inc,
+                                                            seeing,
+                                                            pix_scale,
+                                                            smear)
 
         model_50 = self.compute_model_grid_fixed_inc_fixed(theta_50,
                                                            xcen,
                                                            ycen,
-                                                           inc)
+                                                           inc,
+                                                           seeing,
+                                                           pix_scale,
+                                                           smear)
 
         model_16 = self.compute_model_grid_fixed_inc_fixed(theta_16,
                                                            xcen,
                                                            ycen,
-                                                           inc)
+                                                           inc,
+                                                           seeing,
+                                                           pix_scale,
+                                                           smear)
 
         model_84 = self.compute_model_grid_fixed_inc_fixed(theta_84,
                                                            xcen,
                                                            ycen,
-                                                           inc)
+                                                           inc,
+                                                           seeing,
+                                                           pix_scale,
+                                                           smear)
 
         # initialise the list of aperture positions with the xcen and ycen
 
@@ -4577,7 +4785,7 @@ class vel_field(object):
                             d_aper * (len(x_max_array) - x_max_index - 1),
                             num=len(x_max_array))
 
-        x_max = x_max * 0.1
+        x_max = x_max * pix_scale
 
         # print 'This is x_max: %s' % x_max
 
@@ -4595,7 +4803,7 @@ class vel_field(object):
                             d_aper * (len(x_50_array) - x_50_index - 1),
                             num=len(x_50_array))
 
-        x_50 = x_50 * 0.1
+        x_50 = x_50 * pix_scale
 
         x_16_array = []
 
@@ -4611,7 +4819,7 @@ class vel_field(object):
                             d_aper * (len(x_16_array) - x_16_index - 1),
                             num=len(x_16_array))
 
-        x_16 = x_16 * 0.1
+        x_16 = x_16 * pix_scale
 
         x_84_array = []
 
@@ -4627,7 +4835,7 @@ class vel_field(object):
                             d_aper * (len(x_84_array) - x_84_index - 1),
                             num=len(x_84_array))
 
-        x_84 = x_84 * 0.1
+        x_84 = x_84 * pix_scale
 
         # positions array should now be populated with all of the apertures
 
@@ -4777,7 +4985,14 @@ class vel_field(object):
                                   x_50[-max_ind]],
                      'vel_error': [real_error_values_50[min_ind],
                                    real_error_values_50[-max_ind]],
-                     'vel_max': [np.nanmax(abs(real_velocity_values_50 / np.sin(inc_50)))]}
+                     'vel_max': [np.nanmax(abs(real_velocity_values_50 / np.sin(inc)))],
+                     'inclination' : inc,
+                     'mod_50_velocity' : mod_velocity_values_50 / np.sin(inc),
+                     'mod_50_positions' : x_50,
+                     'mod_16_velocity' : mod_velocity_values_16 / np.sin(inc),
+                     'mod_16_positions' : x_16,
+                     'mod_84_velocity' : mod_velocity_values_84 / np.sin(inc),
+                     'mod_84_positions' : x_84}
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
 
@@ -4902,7 +5117,10 @@ class vel_field(object):
                      d_aper,
                      inc,
                      xcen,
-                     ycen):
+                     ycen,
+                     seeing,
+                     pix_scale,
+                     smear=False):
 
         """
         Def:
@@ -4952,31 +5170,86 @@ class vel_field(object):
 
         if i_option == 'free':
 
-            other, e_val = self.extract_in_apertures(r_aper, d_aper)
+            param_file = np.genfromtxt(self.param_file)
+
+            theta_50 = param_file[2][1:]
+
+            r_half = theta_50[4]
+
+            other, e_val = self.extract_in_apertures(r_aper,
+                                                     d_aper,
+                                                     seeing,
+                                                     pix_scale,
+                                                     smear)
 
         elif i_option == 'fixed':
+
+            param_file = np.genfromtxt(self.param_file_fixed)
+
+            theta_50 = param_file[2][1:]
+
+            r_half = theta_50[2]
 
             other, e_val = self.extract_in_apertures_fixed(xcen,
                                                            ycen,
                                                            r_aper,
                                                            d_aper,
+                                                           seeing,
+                                                           pix_scale,
+                                                           smear,
                                                            vary=False)
 
         elif i_option == 'fixed_vary':
 
+            param_file = np.genfromtxt(self.param_file_fixed_inc_vary)
+
+            theta_50 = param_file[2][1:]
+
+            r_half = theta_50[2]
+
             other, e_val = self.extract_in_apertures_fixed(xcen,
                                                            ycen,
                                                            r_aper,
                                                            d_aper,
+                                                           seeing,
+                                                           pix_scale,
+                                                           smear,
                                                            vary=True)
 
         elif i_option == 'fixed_fixed':
+
+            param_file = np.genfromtxt(self.param_file_fixed_inc_fixed)
+
+            theta_50 = param_file[2][1:]
+
+            r_half = theta_50[1]
 
             other, e_val = self.extract_in_apertures_fixed_inc_fixed(xcen,
                                                                      ycen,
                                                                      inc,
                                                                      r_aper,
-                                                                     d_aper)
+                                                                     d_aper,
+                                                                     seeing,
+                                                                     pix_scale,
+                                                                     smear)
+
+        print 'This is the half radius: %s' % r_half
+        print e_val['mod_50_positions']
+
+        r_22 = pix_scale * 2.2 * r_half
+
+        # extract the v_2.2 parameter from each of the model evaluations
+
+        v_22_idx = (np.abs(e_val['mod_50_positions'] - r_22)).argmin()
+        print len(e_val['mod_50_positions']), v_22_idx
+        v_22 = e_val['mod_50_velocity'][v_22_idx]
+
+        v_half_idx = (np.abs(e_val['mod_50_positions'] - r_half)).argmin()
+        print len(e_val['mod_50_positions']), v_half_idx
+        v_half = e_val['mod_50_velocity'][v_half_idx]
+
+
+
 
         mod_50_min = e_val['50'][0]
         mod_50_max = e_val['50'][1]
@@ -4999,6 +5272,8 @@ class vel_field(object):
 
         max_v_value = e_val['vel_max'][0]
 
+        print 'comparing v2.2 and vhalf %s %s %s %s' % (v_22, v_half, mod_50_v, max_v_value)
+
         min_d_value = e_val['distance'][0]
         max_d_value = e_val['distance'][1]
 
@@ -5014,7 +5289,8 @@ class vel_field(object):
                 error_v_max,
                 max_v_value,
                 min_d_value,
-                max_d_value]
+                max_d_value,
+                e_val['inclination']]
 
 
 # genetic algorithm attempt
@@ -5124,7 +5400,9 @@ class vel_field(object):
                 Chi-squared value - the fitness result
         """
 
-        model = self.compute_model_grid(individual)
+        model = self.compute_model_grid(individual,
+                                        seeing,
+                                        pix_scale)
 
         # find the grid of inverse sigma values
 

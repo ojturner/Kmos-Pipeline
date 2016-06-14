@@ -4681,7 +4681,7 @@ class pipelineOps(object):
 
                 # Now just execute the esorex recipe for this new file
                 os.system('esorex --output-dir=%s kmos_sci_red' % sci_dir
-                          + '  --pix_scale=0.05 --oscan=FALSE --sky_tweak=TRUE'
+                          + '  --pix_scale=0.1 --oscan=FALSE --sky_tweak=TRUE'
                           + '  --b_samples=2048 --edge_nan=TRUE sci_reduc_temp.sof')
 
                 # We have all the science products now
@@ -11625,6 +11625,10 @@ class pipelineOps(object):
                               threshold,
                               g_c_min,
                               g_c_max,
+                              seeing,
+                              pix_scale,
+                              intrin_sigma=80,
+                              sersic_n=2.0,
                               noise_method='cube',
                               **kwargs):
 
@@ -11654,7 +11658,7 @@ class pipelineOps(object):
 
             cube = cubeOps(obj_name)
 
-            redshift = entry[1]
+            redshift = float(entry[1])
 
             centre_x = entry[10]
 
@@ -11720,6 +11724,10 @@ class pipelineOps(object):
                                          mask_y_upper,
                                          g_c_min,
                                          g_c_max,
+                                         seeing,
+                                         pix_scale,
+                                         intrin_sigma,
+                                         sersic_n,
                                          tol=tolerance,
                                          method=stack_method,
                                          noise_method=noise_method)
@@ -11766,6 +11774,10 @@ class pipelineOps(object):
                                 mask_y_upper,
                                 g_c_min,
                                 g_c_max,
+                                seeing,
+                                pix_scale,
+                                intrin_sigma=80,
+                                sersic_n=2.0,
                                 tol=30,
                                 method='median',
                                 noise_method='cube',
@@ -12827,13 +12839,13 @@ class pipelineOps(object):
 
             beam_smeared_sigma = self.compute_beam_smear(mod_velocity,
                                                          redshift,
-                                                         65,
+                                                         intrin_sigma,
                                                          wave_array,
-                                                         2.0,
+                                                         sersic_n,
                                                          centre_x,
                                                          centre_y,
-                                                         0.6,
-                                                         0.1)
+                                                         seeing,
+                                                         pix_scale)
 
         else:
 
@@ -12841,13 +12853,13 @@ class pipelineOps(object):
 
             beam_smeared_sigma = self.compute_beam_smear(masked_vel_array,
                                                          redshift,
-                                                         65,
+                                                         intrin_sigma,
                                                          wave_array,
-                                                         2.0,
+                                                         sersic_n,
                                                          centre_x,
                                                          centre_y,
-                                                         0.6,
-                                                         0.1)
+                                                         seeing,
+                                                         pix_scale)
 
         # want to save the observed sigma, the resolution sigma,
         # the beam smeared sigma and the corrected intrinsic sigma
@@ -14030,6 +14042,10 @@ class pipelineOps(object):
                                g_c_max,
                                redshift,
                                threshold,
+                               seeing,
+                               pix_scale,
+                               intrin_sigma=80,
+                               sersic_n=2.0,
                                stack='median',
                                line='oiii',
                                tol=30,
@@ -14059,6 +14075,10 @@ class pipelineOps(object):
                                                    mask_y_upper,
                                                    g_c_min,
                                                    g_c_max,
+                                                   seeing,
+                                                   pix_scale,
+                                                   intrin_sigma,
+                                                   sersic_n,
                                                    tol=tol,
                                                    method=stack,
                                                    noise_method=noise_method,
@@ -14104,6 +14124,10 @@ class pipelineOps(object):
                                    threshold,
                                    g_c_min,
                                    g_c_max,
+                                   seeing,
+                                   pix_scale,
+                                   intrin_sigma=80,
+                                   sersic_n=2.0,
                                    line='oiii',
                                    noise_method='cube',
                                    **kwargs):
@@ -14198,6 +14222,10 @@ class pipelineOps(object):
                                         g_c_max,
                                         redshift,
                                         threshold,
+                                        seeing,
+                                        pix_scale,
+                                        intrin_sigma,
+                                        sersic_n,
                                         stack=stack_method,
                                         line='oiii',
                                         tol=tolerance,
@@ -14274,6 +14302,10 @@ class pipelineOps(object):
                               threshold,
                               g_c_min,
                               g_c_max,
+                              seeing,
+                              pix_scale,
+                              intrin_sigma=80,
+                              sersic_n=2.0,
                               noise_method='cube',
                               ntimes=1000,
                               **kwargs):
@@ -14366,6 +14398,10 @@ class pipelineOps(object):
                                                        mask_y_upper,
                                                        g_c_min,
                                                        g_c_max,
+                                                       seeing,
+                                                       pix_scale,
+                                                       intrin_sigma,
+                                                       sersic_n,
                                                        tol=tolerance,
                                                        method=stack_method,
                                                        noise_method='cube',
@@ -14390,6 +14426,10 @@ class pipelineOps(object):
                                                        mask_y_upper,
                                                        g_c_min,
                                                        g_c_max,
+                                                       seeing,
+                                                       pix_scale,
+                                                       intrin_sigma,
+                                                       sersic_n,
                                                        tol=tolerance,
                                                        method=stack_method,
                                                        noise_method='mask',
@@ -14567,8 +14607,11 @@ class pipelineOps(object):
                          nwalkers,
                          nsteps,
                          burn_no,
-                         raper,
-                         daper):
+                         r_aper,
+                         d_aper,
+                         seeing,
+                         pix_scale,
+                         smear=False):
 
         """
         Def: Convenience method for applying MCMC to build and compute
@@ -14582,8 +14625,8 @@ class pipelineOps(object):
                 nwalkers - number of walkers in the __metaclass__
                 nsteps - number of steps each walker takes
                 burn_no - how many steps to burn at the beginning
-                raper - aperture size for velocity field extraction
-                daper - distance between consecutive apertures in pixels
+                r_aper - aperture size for velocity field extraction
+                d_aper - distance between consecutive apertures in pixels
 
         Output:
                 obj_vel_field_1d_dispersion_plot.png
@@ -14660,20 +14703,31 @@ class pipelineOps(object):
             vel.run_emcee(guess_params,
                           nsteps,
                           nwalkers,
-                          burn_no)
+                          burn_no,
+                          seeing,
+                          pix_scale,
+                          smear)
 
-            vel.plot_comparison()
+            vel.plot_comparison(seeing,
+                                pix_scale,
+                                smear)
 
-            vel.extract_in_apertures(raper,
-                                     daper)
+            vel.extract_in_apertures(r_aper,
+                                     d_aper,
+                                     seeing,
+                                     pix_scale,
+                                     smear)
 
     def multi_apply_mcmc_fixed(self,
                                infile,
                                nwalkers,
                                nsteps,
                                burn_no,
-                               raper,
-                               daper):
+                               r_aper,
+                               d_aper,
+                               seeing,
+                               pix_scale,
+                               smear=False):
 
         """
         Def: Convenience method for applying MCMC to build and compute
@@ -14687,8 +14741,8 @@ class pipelineOps(object):
                 nwalkers - number of walkers in the __metaclass__
                 nsteps - number of steps each walker takes
                 burn_no - how many steps to burn at the beginning
-                raper - aperture size for velocity field extraction
-                daper - distance between consecutive apertures in pixels
+                r_aper - aperture size for velocity field extraction
+                d_aper - distance between consecutive apertures in pixels
 
         Output:
                 obj_vel_field_1d_dispersion_plot.png
@@ -14765,23 +14819,35 @@ class pipelineOps(object):
                                 ycen,
                                 nsteps,
                                 nwalkers,
-                                burn_no)
+                                burn_no,
+                                seeing,
+                                pix_scale,
+                                smear)
 
             vel.plot_comparison_fixed(xcen,
-                                      ycen)
+                                      ycen,
+                                      seeing,
+                                      pix_scale,
+                                      smear)
 
             vel.extract_in_apertures_fixed(xcen,
                                            ycen,
-                                           raper,
-                                           daper)
+                                           r_aper,
+                                           d_aper,
+                                           seeing,
+                                           pix_scale,
+                                           smear)
 
     def multi_apply_mcmc_fixed_inc_vary(self,
                                         infile,
                                         nwalkers,
                                         nsteps,
                                         burn_no,
-                                        raper,
-                                        daper):
+                                        r_aper,
+                                        d_aper,
+                                        seeing,
+                                        pix_scale,
+                                        smear=False):
 
         """
         Def: Convenience method for applying MCMC to build and compute
@@ -14795,8 +14861,8 @@ class pipelineOps(object):
                 nwalkers - number of walkers in the __metaclass__
                 nsteps - number of steps each walker takes
                 burn_no - how many steps to burn at the beginning
-                raper - aperture size for velocity field extraction
-                daper - distance between consecutive apertures in pixels
+                r_aper - aperture size for velocity field extraction
+                d_aper - distance between consecutive apertures in pixels
 
         Output:
                 obj_vel_field_1d_dispersion_plot.png
@@ -14874,25 +14940,37 @@ class pipelineOps(object):
                                          inc,
                                          nsteps,
                                          nwalkers,
-                                         burn_no)
+                                         burn_no,
+                                         seeing,
+                                         pix_scale,
+                                         smear)
 
             vel.plot_comparison_fixed(xcen,
                                       ycen,
+                                      seeing,
+                                      pix_scale,
+                                      smear,
                                       vary=True)
 
             vel.extract_in_apertures_fixed(xcen,
                                            ycen,
-                                           raper,
-                                           daper,
-                                           vary=True)
+                                           r_aper,
+                                           d_aper,
+                                           seeing,
+                                           pix_scale,
+                                           smear,
+                                           vary)
 
     def multi_apply_mcmc_fixed_inc_fixed(self,
                                          infile,
                                          nwalkers,
                                          nsteps,
                                          burn_no,
-                                         raper,
-                                         daper):
+                                         r_aper,
+                                         d_aper,
+                                         seeing,
+                                         pix_scale,
+                                         smear=False):
 
         """
         Def: Convenience method for applying MCMC to build and compute
@@ -14906,8 +14984,8 @@ class pipelineOps(object):
                 nwalkers - number of walkers in the __metaclass__
                 nsteps - number of steps each walker takes
                 burn_no - how many steps to burn at the beginning
-                raper - aperture size for velocity field extraction
-                daper - distance between consecutive apertures in pixels
+                r_aper - aperture size for velocity field extraction
+                d_aper - distance between consecutive apertures in pixels
 
         Output:
                 obj_vel_field_1d_dispersion_plot.png
@@ -14984,22 +15062,34 @@ class pipelineOps(object):
                                           inc,
                                           nsteps,
                                           nwalkers,
-                                          burn_no)
+                                          burn_no,
+                                          seeing,
+                                          pix_scale,
+                                          smear)
 
             vel.plot_comparison_fixed_inc_fixed(xcen,
                                                 ycen,
-                                                inc)
+                                                inc,
+                                                seeing,
+                                                pix_scale,
+                                                smear)
 
             vel.extract_in_apertures_fixed_inc_fixed(xcen,
                                                      ycen,
                                                      inc,
-                                                     raper,
-                                                     daper)
+                                                     r_aper,
+                                                     d_aper,
+                                                     seeing,
+                                                     pix_scale,
+                                                     smear)
 
     def make_all_plots_no_image(self,
                                 infile,
                                 r_aper,
-                                d_aper):
+                                d_aper,
+                                seeing,
+                                pix_scale,
+                                smear=False):
 
         """
         Def: Take all of the data from the stott velocity fields,
@@ -15071,7 +15161,10 @@ class pipelineOps(object):
 
         ypix = data_vel.shape[1]
 
-        data_model = vel.compute_model_grid(theta_50)
+        data_model = vel.compute_model_grid(theta_50,
+                                            seeing,
+                                            pix_scale,
+                                            smear)
 
         # truncate this to the data size
 
@@ -15097,7 +15190,11 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots, extract_values = vel.extract_in_apertures(r_aper, d_aper)
+        one_d_plots, extract_values = vel.extract_in_apertures(r_aper,
+                                                               d_aper,
+                                                               seeing,
+                                                               pix_scale,
+                                                               smear)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -15295,7 +15392,12 @@ class pipelineOps(object):
         fig.savefig('%s_grid.png' % infile[:-5])
 
     def make_all_plots(self,
-                       infile):
+                       infile,
+                       r_aper,
+                       d_aper,
+                       seeing,
+                       pix_scale,
+                       smear=False):
 
         """
         Def: Take all of the data from the stott velocity fields,
@@ -15418,7 +15520,10 @@ class pipelineOps(object):
 
         ypix = data_vel.shape[1]
 
-        data_model = vel.compute_model_grid(theta_50)
+        data_model = vel.compute_model_grid(theta_50,
+                                            seeing,
+                                            pix_scale,
+                                            smear)
 
         # truncate this to the data size
 
@@ -15444,7 +15549,11 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots, extract_values = vel.extract_in_apertures(0.8, 0.6)
+        one_d_plots, extract_values = vel.extract_in_apertures(r_aper,
+                                                               d_aper,
+                                                               seeing,
+                                                               pix_scale,
+                                                               smear)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -15682,7 +15791,11 @@ class pipelineOps(object):
 
         fig.savefig('%s_grid.png' % infile[:-5])
 
-    def multi_make_all_plots(self, infile):
+    def multi_make_all_plots(self,
+                             infile,
+                             seeing,
+                             pix_scale,
+                             smear=False):
 
         # read in the table of cube names
         Table = ascii.read(infile)
@@ -15692,12 +15805,18 @@ class pipelineOps(object):
 
             obj_name = entry[0]
 
-            self.make_all_plots(obj_name)
+            self.make_all_plots(obj_name,
+                                seeing,
+                                pix_scale,
+                                smear)
 
     def multi_make_all_plots_no_image(self,
                                       infile,
                                       r_aper,
-                                      d_aper):
+                                      d_aper,
+                                      seeing,
+                                      pix_scale,
+                                      smear=False):
 
         # read in the table of cube names
         Table = ascii.read(infile)
@@ -15709,14 +15828,20 @@ class pipelineOps(object):
 
             self.make_all_plots_no_image(obj_name,
                                          r_aper,
-                                         d_aper)
+                                         d_aper,
+                                         seeing,
+                                         pix_scale,
+                                         smear)
 
     def make_all_plots_no_image_fixed(self,
                                       xcen,
                                       ycen,
                                       infile,
-                                      raper,
-                                      daper,
+                                      r_aper,
+                                      d_aper,
+                                      seeing,
+                                      pix_scale,
+                                      smear=False,
                                       vary=False):
 
         """
@@ -15797,7 +15922,10 @@ class pipelineOps(object):
 
         data_model = vel.compute_model_grid_fixed(theta_50,
                                                   xcen,
-                                                  ycen)
+                                                  ycen,
+                                                  seeing,
+                                                  pix_scale,
+                                                  smear)
 
         # truncate this to the data size
 
@@ -15823,21 +15951,14 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        if vary:
-
-            one_d_plots, extract_values = vel.extract_in_apertures_fixed(xcen,
-                                                                         ycen,
-                                                                         raper,
-                                                                         daper,
-                                                                         vary=True)
-
-        else:
-
-            one_d_plots, extract_values = vel.extract_in_apertures_fixed(xcen,
-                                                                         ycen,
-                                                                         raper,
-                                                                         daper,
-                                                                         vary=False)
+        one_d_plots, extract_values = vel.extract_in_apertures_fixed(xcen,
+                                                                     ycen,
+                                                                     r_aper,
+                                                                     d_aper,
+                                                                     seeing,
+                                                                     pix_scale,
+                                                                     smear,
+                                                                     vary)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -16048,8 +16169,11 @@ class pipelineOps(object):
                              xcen,
                              ycen,
                              infile,
-                             raper,
-                             daper,
+                             r_aper,
+                             d_aper,
+                             seeing,
+                             pix_scale,
+                             smear=False,
                              vary=False):
 
         """
@@ -16181,7 +16305,10 @@ class pipelineOps(object):
 
         data_model = vel.compute_model_grid_fixed(theta_50,
                                                   xcen,
-                                                  ycen)
+                                                  ycen,
+                                                  seeing,
+                                                  pix_scale,
+                                                  smear)
 
         # truncate this to the data size
 
@@ -16207,20 +16334,14 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        if vary:
-
-            one_d_plots, extract_values = vel.extract_in_apertures_fixed(xcen,
-                                                                         ycen,
-                                                                         raper,
-                                                                         daper,
-                                                                         vary=True)
-
-        else:
-
-            one_d_plots, extract_values = vel.extract_in_apertures_fixed(xcen,
-                                                                         ycen,
-                                                                         raper,
-                                                                         daper)
+        one_d_plots, extract_values = vel.extract_in_apertures_fixed(xcen,
+                                                                     ycen,
+                                                                     r_aper,
+                                                                     d_aper,
+                                                                     seeing,
+                                                                     pix_scale,
+                                                                     smear,
+                                                                     vary)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -16466,8 +16587,11 @@ class pipelineOps(object):
 
     def multi_make_all_plots_fixed(self,
                                    infile,
-                                   raper,
-                                   daper,
+                                   r_aper,
+                                   d_aper,
+                                   seeing,
+                                   pix_scale,
+                                   smear=False,
                                    vary=False):
 
         # read in the table of cube names
@@ -16482,26 +16606,24 @@ class pipelineOps(object):
 
             ycen = entry[11]
 
-            if vary:
+            self.make_all_plots_fixed(xcen,
+                                      ycen,
+                                      obj_name,
+                                      r_aper,
+                                      d_aper,
+                                      seeing,
+                                      pix_scale,
+                                      smear,
+                                      vary)
 
-                self.make_all_plots_fixed(xcen,
-                                          ycen,
-                                          obj_name,
-                                          raper,
-                                          daper,
-                                          vary=True)
-            else:
-
-                self.make_all_plots_fixed(xcen,
-                                          ycen,
-                                          obj_name,
-                                          raper,
-                                          daper)
 
     def multi_make_all_plots_no_image_fixed(self,
                                             infile,
-                                            raper,
-                                            daper,
+                                            r_aper,
+                                            d_aper,
+                                            seeing,
+                                            pix_scale,
+                                            smear=False,
                                             vary=False):
 
         # read in the table of cube names
@@ -16516,30 +16638,27 @@ class pipelineOps(object):
 
             ycen = entry[11]
 
-            if vary:
+            self.make_all_plots_no_image_fixed(xcen,
+                                               ycen,
+                                               obj_name,
+                                               r_aper,
+                                               d_aper,
+                                               seing,
+                                               pix_scale,
+                                               smear=False,
+                                               vary=True)
 
-                self.make_all_plots_no_image_fixed(xcen,
-                                                   ycen,
-                                                   obj_name,
-                                                   raper,
-                                                   daper,
-                                                   vary=True)
-
-            else:
-
-                self.make_all_plots_no_image_fixed(xcen,
-                                                   ycen,
-                                                   obj_name,
-                                                   raper,
-                                                   daper)
 
     def make_all_plots_no_image_fixed_inc_fixed(self,
                                                 xcen,
                                                 ycen,
                                                 inc,
                                                 infile,
-                                                raper,
-                                                daper):
+                                                r_aper,
+                                                d_aper,
+                                                seeing,
+                                                pix_scale,
+                                                smear=False):
 
         """
         Def: Take all of the data from the stott velocity fields,
@@ -16615,7 +16734,10 @@ class pipelineOps(object):
         data_model = vel.compute_model_grid_fixed_inc_fixed(theta_50,
                                                             xcen,
                                                             ycen,
-                                                            inc)
+                                                            inc,
+                                                            seeing,
+                                                            pix_scale,
+                                                            smear)
 
         # truncate this to the data size
 
@@ -16644,8 +16766,11 @@ class pipelineOps(object):
         one_d_plots, extract_values = vel.extract_in_apertures_fixed_inc_fixed(xcen,
                                                                                ycen,
                                                                                inc,
-                                                                               raper,
-                                                                               daper)
+                                                                               r_aper,
+                                                                               d_aper,
+                                                                               seeing,
+                                                                               pix_scale,
+                                                                               smear)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -16852,8 +16977,11 @@ class pipelineOps(object):
                                        ycen,
                                        inc,
                                        infile,
-                                       raper,
-                                       daper):
+                                       r_aper,
+                                       d_aper,
+                                       seeing,
+                                       pix_scale,
+                                       smear=False):
 
         """
         Def: Take all of the data from the stott velocity fields,
@@ -16980,7 +17108,10 @@ class pipelineOps(object):
         data_model = vel.compute_model_grid_fixed_inc_fixed(theta_50,
                                                             xcen,
                                                             ycen,
-                                                            inc)
+                                                            inc,
+                                                            seeing,
+                                                            pix_scale,
+                                                            smear)
 
         # truncate this to the data size
 
@@ -17009,8 +17140,11 @@ class pipelineOps(object):
         one_d_plots, extract_values = vel.extract_in_apertures_fixed_inc_fixed(xcen,
                                                                                ycen,
                                                                                inc,
-                                                                               raper,
-                                                                               daper)
+                                                                               r_aper,
+                                                                               d_aper,
+                                                                               seeing,
+                                                                               pix_scale,
+                                                                               smear)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -17250,8 +17384,11 @@ class pipelineOps(object):
 
     def multi_make_all_plots_fixed_inc_fixed(self,
                                              infile,
-                                             raper,
-                                             daper):
+                                             r_aper,
+                                             d_aper,
+                                             seeing,
+                                             pix_scale,
+                                             smear=False):
 
         # read in the table of cube names
         Table = ascii.read(infile)
@@ -17271,13 +17408,19 @@ class pipelineOps(object):
                                                 ycen,
                                                 inc,
                                                 obj_name,
-                                                raper,
-                                                daper)
+                                                r_aper,
+                                                d_aper,
+                                                seeing,
+                                                pix_scale,
+                                                smear)
 
     def multi_make_all_plots_no_image_fixed_inc_fixed(self,
                                                       infile,
-                                                      raper,
-                                                      daper):
+                                                      r_aper,
+                                                      d_aper,
+                                                      seeing,
+                                                      pix_scale,
+                                                      smear=False):
 
         # read in the table of cube names
         Table = ascii.read(infile)
@@ -17297,8 +17440,11 @@ class pipelineOps(object):
                                                          ycen,
                                                          inc,
                                                          obj_name,
-                                                         raper,
-                                                         daper)
+                                                         r_aper,
+                                                         d_aper,
+                                                         seeing,
+                                                         pix_scale,
+                                                         smear)
 
     # experiment with modelling seeing conditions
 
@@ -17871,7 +18017,10 @@ class pipelineOps(object):
                                   r_aper,
                                   d_aper,
                                   i_option,
-                                  sig_option):
+                                  sig_option,
+                                  seeing,
+                                  pix_scale,
+                                  smear=False):
 
         """
         Def:
@@ -17897,13 +18046,14 @@ class pipelineOps(object):
         gal_names = []
         d_low = []
         d_high = []
+        inclination = []
 
         # assign variables to the different items in the infile
         for entry in Table:
 
             obj_name = entry[0]
 
-            redshift = entry[1]
+            redshift = float(entry[1])
 
             # look at the transverse scale at that redshift
             # this will be used to convert the last data radius into
@@ -17946,7 +18096,10 @@ class pipelineOps(object):
                                               d_aper,
                                               inc,
                                               xcen,
-                                              ycen)
+                                              ycen,
+                                              seeing,
+                                              pix_scale,
+                                              smear)
 
             x_real.append(ratio_list[0])
             x_50.append(ratio_list[1])
@@ -17959,6 +18112,7 @@ class pipelineOps(object):
             error_max.append(ratio_list[7])
             d_low.append(ratio_list[9])
             d_high.append(ratio_list[10])
+            inclination.append(ratio_list[11])
 
         x_real = np.array(x_real)
         x_50 = np.array(x_50)
@@ -17972,6 +18126,7 @@ class pipelineOps(object):
         vel_max = np.array(vel_max)
         d_low = abs(np.array(d_low) * scale)
         d_high = np.array(d_high) * scale
+        inclination = np.array(inclination)
 
         print np.nanmean(x_real)
 
@@ -18109,8 +18264,11 @@ class pipelineOps(object):
                         'v16_ratio',
                         'v84_ratio',
                         'max_v_real',
+                        'error_min',
+                        'error_max',
                         'r_e_l',
-                        'r_e_r']
+                        'r_e_r',
+                        'inc']
 
         with open(res_file, 'a') as f:
 
@@ -18120,7 +18278,7 @@ class pipelineOps(object):
 
             f.write('\n')
 
-            for a,b,c,d,e,fu,g,h,i,j,k,l,m in zip(gal_names,
+            for a,b,c,d,e,fu,g,h,i,j,k,l,m,n,o,p in zip(gal_names,
                                                   x_real * sigma_o,
                                                   x_50 * sigma_o,
                                                   x_16 * sigma_o,
@@ -18131,10 +18289,13 @@ class pipelineOps(object):
                                                   x_16,
                                                   x_84,
                                                   vel_max,
+                                                  error_min,
+                                                  error_max,
                                                   d_low,
-                                                  d_high):
+                                                  d_high,
+                                                  inclination):
 
-                f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (a,
+                f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (a,
                                                                                   b,
                                                                                   c,
                                                                                   d,
@@ -18146,17 +18307,23 @@ class pipelineOps(object):
                                                                                   j,
                                                                                   k,
                                                                                   l,
-                                                                                  m))
+                                                                                  m,
+                                                                                  n,
+                                                                                  o,
+                                                                                  p))
 
-            f.write('Averages:\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (np.nanmean(x_real * sigma_o),
-                                                                                   np.nanmean(x_50 * sigma_o),
-                                                                                   np.nanmean(x_16 * sigma_o),
-                                                                                   np.nanmean(x_84 * sigma_o),
-                                                                                   np.nanmean(sigma_o),
-                                                                                   np.nanmean(x_real),
-                                                                                   np.nanmean(x_50),
-                                                                                   np.nanmean(x_16),
-                                                                                   np.nanmean(x_84),
-                                                                                   np.nanmean(vel_max),
-                                                                                   np.nanmean(d_low),
-                                                                                   np.nanmean(d_high)))
+            f.write('Averages:\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (np.nanmean(x_real * sigma_o),
+                                                                                       np.nanmean(x_50 * sigma_o),
+                                                                                       np.nanmean(x_16 * sigma_o),
+                                                                                       np.nanmean(x_84 * sigma_o),
+                                                                                       np.nanmean(sigma_o),
+                                                                                       np.nanmean(x_real),
+                                                                                       np.nanmean(x_50),
+                                                                                       np.nanmean(x_16),
+                                                                                       np.nanmean(x_84),
+                                                                                       np.nanmean(vel_max),
+                                                                                       np.nanmean(error_min),
+                                                                                       np.nanmean(error_max),
+                                                                                       np.nanmean(d_low),
+                                                                                       np.nanmean(d_high),
+                                                                                       np.nanmean(inclination)))

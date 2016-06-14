@@ -949,29 +949,39 @@ class cubeOps(object):
 
             upper = 1800
 
+        clip_value = 3
+
         # range from which to get the image data now defined
         star_data = np.nanmedian(self.data[lower:upper], axis=0)
 
         # mask out the nan values using np.ma
         data_masked = np.ma.masked_invalid(star_data)
 
+        # indices of the full array
+        y_full, x_full = np.indices(data_masked.shape)
+
+        # now bring in the sides of data_masked
+        data_masked_cut = data_masked[clip_value:-clip_value,
+                                      clip_value:-clip_value]
+
         # create the grid over which to evaluate the gaussian
-        y, x = np.indices(data_masked.shape)
+        y, x = np.indices(data_masked_cut.shape)
 
         # find the moments of the data and use these as the initial
         # guesses for the gaussian
 
-        list_of_moments = self.moments_better(data_masked[3:-3, 3:-3])
+        list_of_moments = self.moments_better(data_masked_cut)
+
 
         # very important - have to set the nan values equal to the
         # evaluated height parameter
 
-        data_masked[isnan(data_masked)] = list_of_moments[0]
+        data_masked_cut[isnan(data_masked_cut)] = list_of_moments[0]
 
         # fit the model
         popt, pcov = opt.curve_fit(self.twoD_Gaussian,
                                    (x, y),
-                                   data_masked.ravel(),
+                                   data_masked_cut.ravel(),
                                    p0=list_of_moments,
                                    bounds=([-np.inf,
                                             0,
@@ -982,15 +992,20 @@ class cubeOps(object):
                                             -90],
                                             [np.inf,
                                              np.inf,
-                                             data_masked.shape[1],
-                                             data_masked.shape[0],
-                                             data_masked.shape[1],
-                                             data_masked.shape[0],
+                                             data_masked_cut.shape[1],
+                                             data_masked_cut.shape[0],
+                                             data_masked_cut.shape[1],
+                                             data_masked_cut.shape[0],
                                              90]))
+
+        # alter the gaussian centroid positions by the number of
+        # cut pixels at the beginning
+        popt[2] = popt[2] + clip_value
+        popt[3] = popt[3] + clip_value
 
         # evaluate the fitted model
 
-        data_fitted = self.twoD_Gaussian((x, y), *popt)
+        data_fitted = self.twoD_Gaussian((x_full, y_full), *popt)
 
         # reshape to original data size
         data_fitted = data_fitted.reshape(data_masked.shape[0],
@@ -1027,8 +1042,8 @@ class cubeOps(object):
 
         colCax = colAx.imshow(self.imData, interpolation='bicubic')
 
-        colAx.contour(x,
-                      y,
+        colAx.contour(x_full,
+                      y_full,
                       data_fitted,
                       8,
                       colors='w')
