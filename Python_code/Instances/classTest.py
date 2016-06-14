@@ -118,7 +118,7 @@ guess_params_fixed = [1.00634848977, 5.76455157004, 1.11046782343, 68.9020485689
 
 # CREATING THE PLOT GRIDS # 
 
-pipe_methods.multi_make_all_plots_no_image_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, seeing=0.1, pix_scale=0.1, smear=False)
+#pipe_methods.multi_make_all_plots_no_image_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, seeing=0.4, pix_scale=0.1, smear=True)
 
 
 # V OVER SIGMA # 

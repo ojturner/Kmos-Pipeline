@@ -3842,24 +3842,13 @@ class vel_field(object):
 
         vel_2d = vel_array.reshape((self.xpix, self.ypix))
 
-        # plot as a 2d array
+        if smear:
 
-        #fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-        #im = ax.imshow(vel_2d,
-        #               cmap=plt.get_cmap('jet'),
-        #               interpolation='nearest')
-        # add colourbar to each plot
-        #divider = make_axes_locatable(ax)
-        #cax_new = divider.append_axes('right', size='10%', pad=0.05)
-        #plt.colorbar(im, cax=cax_new)
-        # set the title
-        #ax.set_title('model velocity')
-        # plt.show()
-        plt.close('all')
+            vel_2d = psf.blur_by_psf(vel_2d,
+                                     seeing,
+                                     pix_scale)
 
-        vel_2d_blurred = psf.blur_by_psf(vel_2d, 0.5, 0.1)
-
-        return vel_2d_blurred
+        return vel_2d
 
     def lnlike_fixed_inc_fixed(self, 
                                theta,
