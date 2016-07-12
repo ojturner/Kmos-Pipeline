@@ -2,11 +2,13 @@ import os
 import sys
 # add the class file to the PYTHONPATH
 sys.path.append('/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Class')
-
+sys.path.append('/disk1/turner/PhD'
+                + '/KMOS/Analysis_Pipeline/Python_code/functions')
 # import the relevant modules
 
 import numpy as np
 import matplotlib.pyplot as plt
+import psf_blurring as psf
 from astropy.io import fits
 
 # import the classes
@@ -93,7 +95,7 @@ vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_
 vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
 guess_params = [18.4515843627, 17.7671445415, 1.10786694516, 5.76470601635, 1.09264956556, 165.2541589594]
-guess_params_fixed = [1.00634848977, 5.76455157004, 1.11046782343, 68.9020485689]
+guess_params_fixed = [1.04999129056,  5.80554889021,   0.106855839229,  165.2463520223]
 
 # COMPUTE THE BEAM SMEAR #
 
@@ -110,20 +112,20 @@ guess_params_fixed = [1.00634848977, 5.76455157004, 1.11046782343, 68.9020485689
 
 # APPLYING MODEL MCMC # 
 
-#pipe_methods.multi_apply_mcmc_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt', 200, 500, 50, 0.6, 0.4, pix_scale=0.1)
+#pipe_methods.multi_apply_mcmc_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt', 200, 500, 50, 0.8, 0.6, seeing=0.5, pix_scale=0.1, psf_factor=1, smear=True)
 
 # APPLYING VELOCITY FIELD COMPUTATION # 
 
-#pipe_methods.multi_vel_field_stott('/disk1/turner/DATA/all_names_new.txt', 'oiii', 1.5, g_c_min=0.5, g_c_max=1.5, seeing=0.5, pix_scale=0.1, intrin_sigma=75, sersic_n=3.0, method='mean')
+#pipe_methods.multi_vel_field_stott('/disk1/turner/DATA/all_names_new.txt', 'oiii', 3.0, g_c_min=0.5, g_c_max=1.5, seeing=0.5, pix_scale=0.1, intrin_sigma=75, sersic_n=3.0, method='mean')
 
 # CREATING THE PLOT GRIDS # 
 
-#pipe_methods.multi_make_all_plots_no_image_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, seeing=0.4, pix_scale=0.1, smear=True)
+#pipe_methods.multi_make_all_plots_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, seeing=0.4, pix_scale=0.1, smear=False)
 
 
 # V OVER SIGMA # 
 
-pipe_methods.v_over_sigma_distribution('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, 'fixed', 'mean', seeing=0.5, pix_scale=0.1, smear=True)
+#pipe_methods.v_over_sigma_distribution('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, 'fixed_fixed', 'mean', seeing=0.5, pix_scale=0.1, smear=False)
 
 # VORONOI BINNING MAPS #
 
@@ -133,7 +135,28 @@ pipe_methods.v_over_sigma_distribution('/disk1/turner/DATA/all_names_new.txt', 0
 
 #pipe_methods.combine_by_name(sci_dir, combine_input, 0.25, 0.8, 10)
 
-#data = v_field.compute_model_grid_fixed(guess_params_fixed, 24, 17)
+# PLOT PROPERTIES # 
+
+#pipe_methods.plot_properties('/disk1/turner/DATA/v_over_sigma/master_goods_2.txt')
+
+data = v_field.compute_model_grid_fixed(guess_params_fixed, 24, 17, seeing=0.6, pix_scale=0.1, psf_factor=1,smear=False)
+#psf.compute_velocity_smear(data,
+#                           3.0,
+#                           24,
+#                           17,
+#                           0.5,
+#                           0.1,
+#                           psf_factor=1,
+#                           sersic_factor=10)
+psf.cube_blur(data,
+              3.21418,
+              cube.wave_array,
+              24,
+              17,
+              0.5,
+              0.1,
+              1,
+              1)
 #fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 #ax.imshow(v_field.vel_data)
 #plt.show()
@@ -145,7 +168,7 @@ pipe_methods.v_over_sigma_distribution('/disk1/turner/DATA/all_names_new.txt', 0
 #data[13:15, 16] = 7
 #data[12,12] = 9
 #data[4,3] = 7
-#pipe_methods.blur_by_psf(data, 0.5, 0.1)
+#pipe_methods.blur_by_psf(data, 0.45, 0.1, psf_factor=1)
 #pipe_methods.psf_grid(30, 30, 15, 15, 0.7, 0.1)
 #pipe_methods.make_all_plots_no_image('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/combine_sci_reconstructed_s_sa22b-md25.fits')
 #pipe_methods.make_all_plots('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_goods_p1_0.8_10_better/Science/combine_sci_reconstructed_b012141_012208.fits')

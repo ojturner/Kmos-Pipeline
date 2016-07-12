@@ -655,19 +655,20 @@ class vel_field(object):
 
         return np.array(xbin) * 1.0, np.array(ybin) * 1.0
 
-    def grid_10(self):
+    def grid_factor(self,
+                    res_factor):
 
         """
         Def: return an empty grid with 10 times spatial resolution of
         the velocity data
         """
 
-        # create a 1D arrays of length dim_x * dim_y containing the 
+        # create a 1D arrays of length dim_x * dim_y containing the
         # spaxel coordinates
 
-        xbin = np.arange(0, self.xpix * 10, 1)
+        xbin = np.arange(0, self.xpix * res_factor, 1)
 
-        ybin = np.arange(0, self.ypix * 10, 1)
+        ybin = np.arange(0, self.ypix * res_factor, 1)
 
         ybin, xbin = np.meshgrid(ybin, xbin)
 
@@ -676,34 +677,12 @@ class vel_field(object):
         ybin = np.ravel(ybin)
 
         return np.array(xbin) * 1.0, np.array(ybin) * 1.0
-
-    def grid_100(self):
-
-        """
-        Def: return an empty grid with 100 times spatial resolution of
-        the velocity data
-        """
-
-        # create a 1D arrays of length dim_x * dim_y containing the 
-        # spaxel coordinates
-
-        xbin = np.arange(0, self.xpix * 100, 1)
-
-        ybin = np.arange(0, self.ypix * 100, 1)
-
-        ybin, xbin = np.meshgrid(ybin, xbin)
-
-        xbin = np.ravel(xbin)
-
-        ybin = np.ravel(ybin)
-
-        return np.array(xbin) * 1.0, np.array(ybin) * 1.0
-
 
     def compute_model_grid(self,
                            theta,
                            seeing,
                            pix_scale,
+                           psf_factor,
                            smear=False):
 
         """
@@ -743,7 +722,8 @@ class vel_field(object):
 
             vel_2d = psf.blur_by_psf(vel_2d,
                                      seeing,
-                                     pix_scale)
+                                     pix_scale,
+                                     psf_factor)
 
         return vel_2d
 
@@ -751,6 +731,7 @@ class vel_field(object):
                theta,
                seeing,
                pix_scale,
+               psf_factor,
                smear=False):
         """
         Def: Return the log likelihood for the velocity field function.
@@ -777,12 +758,14 @@ class vel_field(object):
             model = self.compute_model_grid(theta,
                                             seeing,
                                             pix_scale,
+                                            psf_factor,
                                             smear=True)
         else:
 
             model = self.compute_model_grid(theta,
                                             seeing,
-                                            pix_scale)
+                                            pix_scale,
+                                            psf_factor)
 
         # find the grid of inverse sigma values
 
@@ -820,6 +803,7 @@ class vel_field(object):
                theta,
                seeing,
                pix_scale,
+               psf_factor,
                smear=False):
 
         lp = self.lnprior(theta)
@@ -828,18 +812,11 @@ class vel_field(object):
 
             return -np.inf
 
-        if smear:
-
-            return lp + self.lnlike(theta,
-                                    seeing,
-                                    pix_scale,
-                                    smear=True)
-        else:
-            
-            return lp + self.lnlike(theta,
-                                    seeing,
-                                    pix_scale,
-                                    smear=False)
+        return lp + self.lnlike(theta,
+                                seeing,
+                                pix_scale,
+                                psf_factor,
+                                smear)
 
     def run_emcee(self,
                   theta,
@@ -848,6 +825,7 @@ class vel_field(object):
                   burn_no,
                   seeing,
                   pix_scale,
+                  psf_factor,
                   smear=False):
 
         ndim = len(theta)
@@ -859,6 +837,7 @@ class vel_field(object):
                                         self.lnprob,
                                         args=[seeing,
                                               pix_scale,
+                                              psf_factor,
                                               smear])
 
         for i, (pos, lnp, state) in enumerate(sampler.sample(pos,
@@ -1002,6 +981,7 @@ class vel_field(object):
     def plot_comparison(self,
                         seeing,
                         pix_scale,
+                        psf_factor,
                         smear=False):
 
         """
@@ -1030,45 +1010,30 @@ class vel_field(object):
 
         # compute the model grid with the specified parameters
 
-        if smear:
 
-            model_max = self.compute_model_grid(theta_max,
-                                                seeing,
-                                                pix_scale,
-                                                smear=True)
+        model_max = self.compute_model_grid(theta_max,
+                                            seeing,
+                                            pix_scale,
+                                            psf_factor,
+                                            smear)
 
-            model_50 = self.compute_model_grid(theta_50,
-                                               seeing,
-                                               pix_scale,
-                                               smear=True)
+        model_50 = self.compute_model_grid(theta_50,
+                                           seeing,
+                                           pix_scale,
+                                           psf_factor,
+                                           smear)
 
-            model_16 = self.compute_model_grid(theta_16,
-                                               seeing,
-                                               pix_scale,
-                                               smear=True)
+        model_16 = self.compute_model_grid(theta_16,
+                                           seeing,
+                                           pix_scale,
+                                           psf_factor,
+                                           smear)
 
-            model_84 = self.compute_model_grid(theta_84,
-                                               seeing,
-                                               pix_scale,
-                                               smear=True)
-
-        else:
-
-            model_max = self.compute_model_grid(theta_max,
-                                                seeing,
-                                                pix_scale)
-
-            model_50 = self.compute_model_grid(theta_50,
-                                               seeing,
-                                               pix_scale)
-
-            model_16 = self.compute_model_grid(theta_16,
-                                               seeing,
-                                               pix_scale)
-
-            model_84 = self.compute_model_grid(theta_84,
-                                               seeing,
-                                               pix_scale)
+        model_84 = self.compute_model_grid(theta_84,
+                                           seeing,
+                                           pix_scale,
+                                           psf_factor,
+                                           smear)
 
         # only want to see the evaluated model at the grid points
         # where the data is not nan. Loop round the data and create
@@ -1149,6 +1114,7 @@ class vel_field(object):
                              d_aper,
                              seeing,
                              pix_scale,
+                             psf_factor,
                              smear=False):
 
         """
@@ -1215,48 +1181,29 @@ class vel_field(object):
 
         # compute the model grid with the specified parameters
 
-        if smear:
+        model_max = self.compute_model_grid(theta_max,
+                                            seeing,
+                                            pix_scale,
+                                            psf_factor,
+                                            smear)
 
-            model_max = self.compute_model_grid(theta_max,
-                                                seeing,
-                                                pix_scale,
-                                                smear=True)
+        model_50 = self.compute_model_grid(theta_50,
+                                           seeing,
+                                           pix_scale,
+                                           psf_factor,
+                                           smear)
 
-            model_50 = self.compute_model_grid(theta_50,
-                                               seeing,
-                                               pix_scale,
-                                               smear=True)
+        model_16 = self.compute_model_grid(theta_16,
+                                           seeing,
+                                           pix_scale,
+                                           psf_factor,
+                                           smear)
 
-            model_16 = self.compute_model_grid(theta_16,
-                                               seeing,
-                                               pix_scale,
-                                               smear=True)
-
-            model_84 = self.compute_model_grid(theta_84,
-                                               seeing,
-                                               pix_scale,
-                                               smear=True)
-        else:
-
-            model_max = self.compute_model_grid(theta_max,
-                                                seeing,
-                                                pix_scale,
-                                                smear=False)
-
-            model_50 = self.compute_model_grid(theta_50,
-                                               seeing,
-                                               pix_scale,
-                                               smear=False)
-
-            model_16 = self.compute_model_grid(theta_16,
-                                               seeing,
-                                               pix_scale,
-                                               smear=False)
-
-            model_84 = self.compute_model_grid(theta_84,
-                                               seeing,
-                                               pix_scale,
-                                               smear=False)
+        model_84 = self.compute_model_grid(theta_84,
+                                           seeing,
+                                           pix_scale,
+                                           psf_factor,
+                                           smear)
 
         # initialise the list of aperture positions with the xcen and ycen
 
@@ -2171,6 +2118,7 @@ class vel_field(object):
                                  ycen,
                                  seeing,
                                  pix_scale,
+                                 psf_factor,
                                  smear=False):
 
         """
@@ -2189,7 +2137,7 @@ class vel_field(object):
         # setup list to house the velocity measurements
 
         vel_array = []
-         
+
         # compute the model at each spaxel location
 
         for xpos, ypos in zip(xbin, ybin):
@@ -2214,7 +2162,8 @@ class vel_field(object):
 
             vel_2d = psf.blur_by_psf(vel_2d,
                                      seeing,
-                                     pix_scale)
+                                     pix_scale,
+                                     psf_factor)
 
         return vel_2d
 
@@ -2288,6 +2237,7 @@ class vel_field(object):
                      ycen,
                      seeing,
                      pix_scale,
+                     psf_factor,
                      smear=False):
         """
         Def: Return the log likelihood for the velocity field function.
@@ -2314,6 +2264,7 @@ class vel_field(object):
                                               ycen,
                                               seeing,
                                               pix_scale,
+                                              psf_factor,
                                               smear)
 
         # find the grid of inverse sigma values
@@ -2352,6 +2303,7 @@ class vel_field(object):
                      ycen,
                      seeing,
                      pix_scale,
+                     psf_factor,
                      smear=False):
 
         lp = self.lnprior_fixed(theta)
@@ -2365,6 +2317,7 @@ class vel_field(object):
                                       ycen,
                                       seeing,
                                       pix_scale,
+                                      psf_factor,
                                       smear)
 
     def run_emcee_fixed(self,
@@ -2376,6 +2329,7 @@ class vel_field(object):
                         burn_no,
                         seeing,
                         pix_scale,
+                        psf_factor,
                         smear=False):
 
         ndim = len(theta)
@@ -2389,6 +2343,7 @@ class vel_field(object):
                                               ycen,
                                               seeing,
                                               pix_scale,
+                                              psf_factor,
                                               smear])
 
         for i, (pos, lnp, state) in enumerate(sampler.sample(pos,
@@ -2471,6 +2426,7 @@ class vel_field(object):
                               inc_middle,
                               seeing,
                               pix_scale,
+                              psf_factor,
                               smear=False):
 
         lp = self.lnprior_fixed_inc_vary(theta,
@@ -2485,6 +2441,7 @@ class vel_field(object):
                                       ycen,
                                       seeing,
                                       pix_scale,
+                                      psf_factor,
                                       smear)
 
     def run_emcee_fixed_inc_vary(self,
@@ -2497,6 +2454,7 @@ class vel_field(object):
                                  burn_no,
                                  seeing,
                                  pix_scale,
+                                 psf_factor,
                                  smear=False):
 
         ndim = len(theta)
@@ -2511,6 +2469,7 @@ class vel_field(object):
                                               inc_middle,
                                               seeing,
                                               pix_scale,
+                                              psf_factor,
                                               smear])
 
         for i, (pos, lnp, state) in enumerate(sampler.sample(pos,
@@ -2652,6 +2611,7 @@ class vel_field(object):
                               ycen,
                               seeing,
                               pix_scale,
+                              psf_factor,
                               smear=False,
                               vary=False):
 
@@ -2692,6 +2652,7 @@ class vel_field(object):
                                                   ycen,
                                                   seeing,
                                                   pix_scale,
+                                                  psf_factor,
                                                   smear)
 
         model_50 = self.compute_model_grid_fixed(theta_50,
@@ -2699,6 +2660,7 @@ class vel_field(object):
                                                  ycen,
                                                  seeing,
                                                  pix_scale,
+                                                 psf_factor,
                                                  smear)
 
         model_16 = self.compute_model_grid_fixed(theta_16,
@@ -2706,6 +2668,7 @@ class vel_field(object):
                                                  ycen,
                                                  seeing,
                                                  pix_scale,
+                                                 psf_factor,
                                                  smear)
 
         model_84 = self.compute_model_grid_fixed(theta_84,
@@ -2713,6 +2676,7 @@ class vel_field(object):
                                                  ycen,
                                                  seeing,
                                                  pix_scale,
+                                                 psf_factor,
                                                  smear)
 
         # only want to see the evaluated model at the grid points
@@ -2802,6 +2766,7 @@ class vel_field(object):
                                    d_aper,
                                    seeing,
                                    pix_scale,
+                                   psf_factor,
                                    smear=False,
                                    vary=False):
 
@@ -2864,6 +2829,7 @@ class vel_field(object):
                                                   ycen,
                                                   seeing,
                                                   pix_scale,
+                                                  psf_factor,
                                                   smear)
 
         model_50 = self.compute_model_grid_fixed(theta_50,
@@ -2871,6 +2837,7 @@ class vel_field(object):
                                                  ycen,
                                                  seeing,
                                                  pix_scale,
+                                                 psf_factor,
                                                  smear)
 
         model_16 = self.compute_model_grid_fixed(theta_16,
@@ -2878,6 +2845,7 @@ class vel_field(object):
                                                  ycen,
                                                  seeing,
                                                  pix_scale,
+                                                 psf_factor,
                                                  smear)
 
         model_84 = self.compute_model_grid_fixed(theta_84,
@@ -2885,6 +2853,7 @@ class vel_field(object):
                                                  ycen,
                                                  seeing,
                                                  pix_scale,
+                                                 psf_factor,
                                                  smear)
 
         # initialise the list of aperture positions with the xcen and ycen
@@ -3806,6 +3775,7 @@ class vel_field(object):
                                            inc,
                                            seeing,
                                            pix_scale,
+                                           psf_factor,
                                            smear=False):
 
         """
@@ -3815,7 +3785,7 @@ class vel_field(object):
         reshape back to 2d array and plot the model velocity
         """
 
-        xbin, ybin = self.grid()
+        xbin, ybin = self.grid_factor(2)
 
         # setup list to house the velocity measurements
 
@@ -3828,8 +3798,8 @@ class vel_field(object):
             # run the disk function
 
             vel_array.append(self.disk_function_fixed_inc_fixed(theta,
-                                                                xcen,
-                                                                ycen,
+                                                                xcen * 2,
+                                                                ycen * 2,
                                                                 inc,
                                                                 xpos,
                                                                 ypos))
@@ -3840,13 +3810,17 @@ class vel_field(object):
 
         # reshape back to the chosen grid dimensions
 
-        vel_2d = vel_array.reshape((self.xpix, self.ypix))
+        vel_2d = vel_array.reshape((self.xpix * 2, self.ypix * 2))
+
+        vel_2d = psf.bin_by_factor(vel_2d,
+                                   2)
 
         if smear:
 
             vel_2d = psf.blur_by_psf(vel_2d,
                                      seeing,
-                                     pix_scale)
+                                     pix_scale,
+                                     psf_factor)
 
         return vel_2d
 
@@ -3857,6 +3831,7 @@ class vel_field(object):
                                inc,
                                seeing,
                                pix_scale,
+                               psf_factor,
                                smear=False):
         """
         Def: Return the log likelihood for the velocity field function.
@@ -3884,6 +3859,7 @@ class vel_field(object):
                                                         inc,
                                                         seeing,
                                                         pix_scale,
+                                                        psf_factor,
                                                         smear)
 
         # find the grid of inverse sigma values
@@ -3922,6 +3898,7 @@ class vel_field(object):
                                inc,
                                seeing,
                                pix_scale,
+                               psf_factor,
                                smear=False):
 
         lp = self.lnprior_fixed_inc_fixed(theta)
@@ -3936,6 +3913,7 @@ class vel_field(object):
                                                 inc,
                                                 seeing,
                                                 pix_scale,
+                                                psf_factor,
                                                 smear)
 
     def run_emcee_fixed_inc_fixed(self,
@@ -3948,6 +3926,7 @@ class vel_field(object):
                                   burn_no,
                                   seeing,
                                   pix_scale,
+                                  psf_factor,
                                   smear=False):
 
         ndim = len(theta)
@@ -3962,6 +3941,7 @@ class vel_field(object):
                                               inc,
                                               seeing,
                                               pix_scale,
+                                              psf_factor,
                                               smear])
 
         for i, (pos, lnp, state) in enumerate(sampler.sample(pos,
@@ -4091,6 +4071,7 @@ class vel_field(object):
                                         inc,
                                         seeing,
                                         pix_scale,
+                                        psf_factor,
                                         smear=False):
 
         """
@@ -4125,6 +4106,7 @@ class vel_field(object):
                                                             inc,
                                                             seeing,
                                                             pix_scale,
+                                                            psf_factor,
                                                             smear)
 
         model_50 = self.compute_model_grid_fixed_inc_fixed(theta_50,
@@ -4133,6 +4115,7 @@ class vel_field(object):
                                                            inc,
                                                            seeing,
                                                            pix_scale,
+                                                           psf_factor,
                                                            smear)
 
         model_16 = self.compute_model_grid_fixed_inc_fixed(theta_16,
@@ -4141,6 +4124,7 @@ class vel_field(object):
                                                            inc,
                                                            seeing,
                                                            pix_scale,
+                                                           psf_factor,
                                                            smear)
 
         model_84 = self.compute_model_grid_fixed_inc_fixed(theta_84,
@@ -4149,6 +4133,7 @@ class vel_field(object):
                                                            inc,
                                                            seeing,
                                                            pix_scale,
+                                                           psf_factor,
                                                            smear)
 
         # only want to see the evaluated model at the grid points
@@ -4233,6 +4218,7 @@ class vel_field(object):
                                              d_aper,
                                              seeing,
                                              pix_scale,
+                                             psf_factor,
                                              smear=False):
 
         """
@@ -4283,6 +4269,7 @@ class vel_field(object):
                                                             inc,
                                                             seeing,
                                                             pix_scale,
+                                                            psf_factor,
                                                             smear)
 
         model_50 = self.compute_model_grid_fixed_inc_fixed(theta_50,
@@ -4291,6 +4278,7 @@ class vel_field(object):
                                                            inc,
                                                            seeing,
                                                            pix_scale,
+                                                           psf_factor,
                                                            smear)
 
         model_16 = self.compute_model_grid_fixed_inc_fixed(theta_16,
@@ -4299,6 +4287,7 @@ class vel_field(object):
                                                            inc,
                                                            seeing,
                                                            pix_scale,
+                                                           psf_factor,
                                                            smear)
 
         model_84 = self.compute_model_grid_fixed_inc_fixed(theta_84,
@@ -4307,6 +4296,7 @@ class vel_field(object):
                                                            inc,
                                                            seeing,
                                                            pix_scale,
+                                                           psf_factor,
                                                            smear)
 
         # initialise the list of aperture positions with the xcen and ycen
@@ -5109,6 +5099,7 @@ class vel_field(object):
                      ycen,
                      seeing,
                      pix_scale,
+                     psf_factor,
                      smear=False):
 
         """
@@ -5162,13 +5153,18 @@ class vel_field(object):
             param_file = np.genfromtxt(self.param_file)
 
             theta_50 = param_file[2][1:]
+            theta_16 = param_file[3][1:]
+            theta_84 = param_file[4][1:]
 
-            r_half = theta_50[4]
+            r_half_50 = theta_50[4]
+            r_half_16 = theta_16[4]
+            r_half_84 = theta_84[4]
 
             other, e_val = self.extract_in_apertures(r_aper,
                                                      d_aper,
                                                      seeing,
                                                      pix_scale,
+                                                     psf_factor,
                                                      smear)
 
         elif i_option == 'fixed':
@@ -5176,8 +5172,12 @@ class vel_field(object):
             param_file = np.genfromtxt(self.param_file_fixed)
 
             theta_50 = param_file[2][1:]
+            theta_16 = param_file[3][1:]
+            theta_84 = param_file[4][1:]
 
-            r_half = theta_50[2]
+            r_half_50 = theta_50[2]
+            r_half_16 = theta_16[2]
+            r_half_84 = theta_84[2]
 
             other, e_val = self.extract_in_apertures_fixed(xcen,
                                                            ycen,
@@ -5185,6 +5185,7 @@ class vel_field(object):
                                                            d_aper,
                                                            seeing,
                                                            pix_scale,
+                                                           psf_factor,
                                                            smear,
                                                            vary=False)
 
@@ -5193,8 +5194,12 @@ class vel_field(object):
             param_file = np.genfromtxt(self.param_file_fixed_inc_vary)
 
             theta_50 = param_file[2][1:]
+            theta_16 = param_file[3][1:]
+            theta_84 = param_file[4][1:]
 
-            r_half = theta_50[2]
+            r_half_50 = theta_50[2]
+            r_half_16 = theta_16[2]
+            r_half_84 = theta_84[2]
 
             other, e_val = self.extract_in_apertures_fixed(xcen,
                                                            ycen,
@@ -5202,6 +5207,7 @@ class vel_field(object):
                                                            d_aper,
                                                            seeing,
                                                            pix_scale,
+                                                           psf_factor,
                                                            smear,
                                                            vary=True)
 
@@ -5210,8 +5216,12 @@ class vel_field(object):
             param_file = np.genfromtxt(self.param_file_fixed_inc_fixed)
 
             theta_50 = param_file[2][1:]
+            theta_16 = param_file[3][1:]
+            theta_84 = param_file[4][1:]
 
-            r_half = theta_50[1]
+            r_half_50 = theta_50[1]
+            r_half_16 = theta_16[1]
+            r_half_84 = theta_84[1]
 
             other, e_val = self.extract_in_apertures_fixed_inc_fixed(xcen,
                                                                      ycen,
@@ -5220,25 +5230,75 @@ class vel_field(object):
                                                                      d_aper,
                                                                      seeing,
                                                                      pix_scale,
+                                                                     psf_factor,
                                                                      smear)
 
-        print 'This is the half radius: %s' % r_half
-        print e_val['mod_50_positions']
+        # evaluate the v2.2 parameter for each of the models
+        # need to check if 2.2*r_half is greater than the positive
+        # and negative range of positions
 
-        r_22 = pix_scale * 2.2 * r_half
+        # r_22_50
 
-        # extract the v_2.2 parameter from each of the model evaluations
+        r_22_50 = pix_scale * 2.2 * r_half_50
 
-        v_22_idx = (np.abs(e_val['mod_50_positions'] - r_22)).argmin()
-        print len(e_val['mod_50_positions']), v_22_idx
-        v_22 = e_val['mod_50_velocity'][v_22_idx]
+        pos_bigger = r_22_50 > e_val['mod_50_positions'][-1]
+        neg_bigger = -1.*r_22_50 < e_val['mod_50_positions'][0]
 
-        v_half_idx = (np.abs(e_val['mod_50_positions'] - r_half)).argmin()
-        print len(e_val['mod_50_positions']), v_half_idx
-        v_half = e_val['mod_50_velocity'][v_half_idx]
+        if pos_bigger and neg_bigger:
 
+            v_22_50 = abs(e_val['mod_50_velocity'][0])
 
+        elif pos_bigger and not(neg_bigger):
 
+            v_22_idx_50 = (np.abs(r_22_50 - e_val['mod_50_positions'])).argmin()
+            v_22_50 = abs(e_val['mod_50_velocity'][v_22_idx_50])
+
+        elif (not(pos_bigger) and neg_bigger) or (not(pos_bigger) and not(neg_bigger)):
+
+            v_22_idx_50 = (np.abs(e_val['mod_50_positions'] - r_22_50)).argmin()
+            v_22_50 = abs(e_val['mod_50_velocity'][v_22_idx_50])
+
+        # r_22_16
+
+        r_22_16 = pix_scale * 2.2 * r_half_16
+
+        pos_bigger = r_22_16 > e_val['mod_16_positions'][-1]
+        neg_bigger = -1.*r_22_16 < e_val['mod_16_positions'][0]
+
+        if pos_bigger and neg_bigger:
+
+            v_22_16 = abs(e_val['mod_16_velocity'][0])
+
+        elif pos_bigger and not(neg_bigger):
+
+            v_22_idx_16 = (np.abs(r_22_16 - e_val['mod_16_positions'])).argmin()
+            v_22_16 = abs(e_val['mod_16_velocity'][v_22_idx_16])
+
+        elif (not(pos_bigger) and neg_bigger) or (not(pos_bigger) and not(neg_bigger)):
+
+            v_22_idx_16 = (np.abs(e_val['mod_16_positions'] - r_22_16)).argmin()
+            v_22_16 = abs(e_val['mod_16_velocity'][v_22_idx_16])
+
+        # r_22_84
+
+        r_22_84 = pix_scale * 2.2 * r_half_84
+
+        pos_bigger = r_22_84 > e_val['mod_84_positions'][-1]
+        neg_bigger = -1.*r_22_84 < e_val['mod_84_positions'][0]
+
+        if pos_bigger and neg_bigger:
+
+            v_22_84 = abs(e_val['mod_84_velocity'][0])
+
+        elif pos_bigger and not(neg_bigger):
+
+            v_22_idx_84 = (np.abs(r_22_84 - e_val['mod_84_positions'])).argmin()
+            v_22_84 = abs(e_val['mod_84_velocity'][v_22_idx_84])
+
+        elif (not(pos_bigger) and neg_bigger) or (not(pos_bigger) and not(neg_bigger)):
+
+            v_22_idx_84 = (np.abs(e_val['mod_84_positions'] - r_22_84)).argmin()
+            v_22_84 = abs(e_val['mod_84_velocity'][v_22_idx_84])
 
         mod_50_min = e_val['50'][0]
         mod_50_max = e_val['50'][1]
@@ -5261,12 +5321,8 @@ class vel_field(object):
 
         max_v_value = e_val['vel_max'][0]
 
-        print 'comparing v2.2 and vhalf %s %s %s %s' % (v_22, v_half, mod_50_v, max_v_value)
-
         min_d_value = e_val['distance'][0]
         max_d_value = e_val['distance'][1]
-
-        # print real_v / sigma_o, mod_50_v / sigma_o, mod_84_v / sigma_o, mod_16_v / sigma_o
 
         return [real_v / sigma_o,
                 mod_50_v / sigma_o,
@@ -5279,7 +5335,13 @@ class vel_field(object):
                 max_v_value,
                 min_d_value,
                 max_d_value,
-                e_val['inclination']]
+                e_val['inclination'],
+                r_half_16,
+                r_half_50,
+                r_half_84,
+                v_22_16,
+                v_22_50,
+                v_22_84]
 
 
 # genetic algorithm attempt
@@ -5375,7 +5437,8 @@ class vel_field(object):
                                 va) for x in xrange(count)]
 
     def fitness(self,
-                individual):
+                individual,
+                psf_factor):
 
         """
         Def:
@@ -5391,7 +5454,8 @@ class vel_field(object):
 
         model = self.compute_model_grid(individual,
                                         seeing,
-                                        pix_scale)
+                                        pix_scale,
+                                        psf_factor)
 
         # find the grid of inverse sigma values
 

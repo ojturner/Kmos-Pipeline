@@ -11627,6 +11627,7 @@ class pipelineOps(object):
                               g_c_max,
                               seeing,
                               pix_scale,
+                              psf_factor,
                               intrin_sigma=80,
                               sersic_n=2.0,
                               noise_method='cube',
@@ -11726,6 +11727,7 @@ class pipelineOps(object):
                                          g_c_max,
                                          seeing,
                                          pix_scale,
+                                         psf_factor,
                                          intrin_sigma,
                                          sersic_n,
                                          tol=tolerance,
@@ -11776,6 +11778,7 @@ class pipelineOps(object):
                                 g_c_max,
                                 seeing,
                                 pix_scale,
+                                psf_factor,
                                 intrin_sigma=80,
                                 sersic_n=2.0,
                                 tol=30,
@@ -12845,7 +12848,8 @@ class pipelineOps(object):
                                                          centre_x,
                                                          centre_y,
                                                          seeing,
-                                                         pix_scale)
+                                                         pix_scale,
+                                                         psf_factor)
 
         else:
 
@@ -12859,7 +12863,8 @@ class pipelineOps(object):
                                                          centre_x,
                                                          centre_y,
                                                          seeing,
-                                                         pix_scale)
+                                                         pix_scale,
+                                                         psf_factor)
 
         # want to save the observed sigma, the resolution sigma,
         # the beam smeared sigma and the corrected intrinsic sigma
@@ -14044,6 +14049,7 @@ class pipelineOps(object):
                                threshold,
                                seeing,
                                pix_scale,
+                               psf_factor,
                                intrin_sigma=80,
                                sersic_n=2.0,
                                stack='median',
@@ -14077,6 +14083,7 @@ class pipelineOps(object):
                                                    g_c_max,
                                                    seeing,
                                                    pix_scale,
+                                                   psf_factor,
                                                    intrin_sigma,
                                                    sersic_n,
                                                    tol=tol,
@@ -14126,6 +14133,7 @@ class pipelineOps(object):
                                    g_c_max,
                                    seeing,
                                    pix_scale,
+                                   psf_factor,
                                    intrin_sigma=80,
                                    sersic_n=2.0,
                                    line='oiii',
@@ -14224,6 +14232,7 @@ class pipelineOps(object):
                                         threshold,
                                         seeing,
                                         pix_scale,
+                                        psf_factor,
                                         intrin_sigma,
                                         sersic_n,
                                         stack=stack_method,
@@ -14304,6 +14313,7 @@ class pipelineOps(object):
                               g_c_max,
                               seeing,
                               pix_scale,
+                              psf_factor,
                               intrin_sigma=80,
                               sersic_n=2.0,
                               noise_method='cube',
@@ -14400,6 +14410,7 @@ class pipelineOps(object):
                                                        g_c_max,
                                                        seeing,
                                                        pix_scale,
+                                                       psf_factor,
                                                        intrin_sigma,
                                                        sersic_n,
                                                        tol=tolerance,
@@ -14428,6 +14439,7 @@ class pipelineOps(object):
                                                        g_c_max,
                                                        seeing,
                                                        pix_scale,
+                                                       psf_factor,
                                                        intrin_sigma,
                                                        sersic_n,
                                                        tol=tolerance,
@@ -14611,6 +14623,7 @@ class pipelineOps(object):
                          d_aper,
                          seeing,
                          pix_scale,
+                         psf_factor,
                          smear=False):
 
         """
@@ -14706,16 +14719,19 @@ class pipelineOps(object):
                           burn_no,
                           seeing,
                           pix_scale,
+                          psf_factor,
                           smear)
 
             vel.plot_comparison(seeing,
                                 pix_scale,
+                                psf_factor,
                                 smear)
 
             vel.extract_in_apertures(r_aper,
                                      d_aper,
                                      seeing,
                                      pix_scale,
+                                     psf_factor,
                                      smear)
 
     def multi_apply_mcmc_fixed(self,
@@ -14727,6 +14743,7 @@ class pipelineOps(object):
                                d_aper,
                                seeing,
                                pix_scale,
+                               psf_factor,
                                smear=False):
 
         """
@@ -14822,12 +14839,14 @@ class pipelineOps(object):
                                 burn_no,
                                 seeing,
                                 pix_scale,
+                                psf_factor,
                                 smear)
 
             vel.plot_comparison_fixed(xcen,
                                       ycen,
                                       seeing,
                                       pix_scale,
+                                      psf_factor,
                                       smear)
 
             vel.extract_in_apertures_fixed(xcen,
@@ -14836,6 +14855,7 @@ class pipelineOps(object):
                                            d_aper,
                                            seeing,
                                            pix_scale,
+                                           psf_factor,
                                            smear)
 
     def multi_apply_mcmc_fixed_inc_vary(self,
@@ -14847,6 +14867,7 @@ class pipelineOps(object):
                                         d_aper,
                                         seeing,
                                         pix_scale,
+                                        psf_factor,
                                         smear=False):
 
         """
@@ -14943,12 +14964,14 @@ class pipelineOps(object):
                                          burn_no,
                                          seeing,
                                          pix_scale,
+                                         psf_factor,
                                          smear)
 
             vel.plot_comparison_fixed(xcen,
                                       ycen,
                                       seeing,
                                       pix_scale,
+                                      psf_factor,
                                       smear,
                                       vary=True)
 
@@ -14958,6 +14981,7 @@ class pipelineOps(object):
                                            d_aper,
                                            seeing,
                                            pix_scale,
+                                           psf_factor,
                                            smear,
                                            vary)
 
@@ -14970,6 +14994,7 @@ class pipelineOps(object):
                                          d_aper,
                                          seeing,
                                          pix_scale,
+                                         psf_factor,
                                          smear=False):
 
         """
@@ -15065,6 +15090,7 @@ class pipelineOps(object):
                                           burn_no,
                                           seeing,
                                           pix_scale,
+                                          psf_factor,
                                           smear)
 
             vel.plot_comparison_fixed_inc_fixed(xcen,
@@ -15072,6 +15098,7 @@ class pipelineOps(object):
                                                 inc,
                                                 seeing,
                                                 pix_scale,
+                                                psf_factor,
                                                 smear)
 
             vel.extract_in_apertures_fixed_inc_fixed(xcen,
@@ -15081,6 +15108,7 @@ class pipelineOps(object):
                                                      d_aper,
                                                      seeing,
                                                      pix_scale,
+                                                     psf_factor,
                                                      smear)
 
     def make_all_plots_no_image(self,
@@ -15089,6 +15117,7 @@ class pipelineOps(object):
                                 d_aper,
                                 seeing,
                                 pix_scale,
+                                psf_factor,
                                 smear=False):
 
         """
@@ -15164,6 +15193,7 @@ class pipelineOps(object):
         data_model = vel.compute_model_grid(theta_50,
                                             seeing,
                                             pix_scale,
+                                            psf_factor,
                                             smear)
 
         # truncate this to the data size
@@ -15194,6 +15224,7 @@ class pipelineOps(object):
                                                                d_aper,
                                                                seeing,
                                                                pix_scale,
+                                                               psf_factor,
                                                                smear)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
@@ -15397,6 +15428,7 @@ class pipelineOps(object):
                        d_aper,
                        seeing,
                        pix_scale,
+                       psf_factor,
                        smear=False):
 
         """
@@ -15523,6 +15555,7 @@ class pipelineOps(object):
         data_model = vel.compute_model_grid(theta_50,
                                             seeing,
                                             pix_scale,
+                                            psf_factor,
                                             smear)
 
         # truncate this to the data size
@@ -15553,6 +15586,7 @@ class pipelineOps(object):
                                                                d_aper,
                                                                seeing,
                                                                pix_scale,
+                                                               psf_factor,
                                                                smear)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
@@ -15795,6 +15829,7 @@ class pipelineOps(object):
                              infile,
                              seeing,
                              pix_scale,
+                             psf_factor,
                              smear=False):
 
         # read in the table of cube names
@@ -15808,6 +15843,7 @@ class pipelineOps(object):
             self.make_all_plots(obj_name,
                                 seeing,
                                 pix_scale,
+                                psf_factor,
                                 smear)
 
     def multi_make_all_plots_no_image(self,
@@ -15816,6 +15852,7 @@ class pipelineOps(object):
                                       d_aper,
                                       seeing,
                                       pix_scale,
+                                      psf_factor,
                                       smear=False):
 
         # read in the table of cube names
@@ -15831,6 +15868,7 @@ class pipelineOps(object):
                                          d_aper,
                                          seeing,
                                          pix_scale,
+                                         psf_factor,
                                          smear)
 
     def make_all_plots_no_image_fixed(self,
@@ -15841,6 +15879,7 @@ class pipelineOps(object):
                                       d_aper,
                                       seeing,
                                       pix_scale,
+                                      psf_factor,
                                       smear=False,
                                       vary=False):
 
@@ -15925,6 +15964,7 @@ class pipelineOps(object):
                                                   ycen,
                                                   seeing,
                                                   pix_scale,
+                                                  psf_factor,
                                                   smear)
 
         # truncate this to the data size
@@ -15957,6 +15997,7 @@ class pipelineOps(object):
                                                                      d_aper,
                                                                      seeing,
                                                                      pix_scale,
+                                                                     psf_factor,
                                                                      smear,
                                                                      vary)
 
@@ -16173,6 +16214,7 @@ class pipelineOps(object):
                              d_aper,
                              seeing,
                              pix_scale,
+                             psf_factor,
                              smear=False,
                              vary=False):
 
@@ -16308,6 +16350,7 @@ class pipelineOps(object):
                                                   ycen,
                                                   seeing,
                                                   pix_scale,
+                                                  psf_factor,
                                                   smear)
 
         # truncate this to the data size
@@ -16340,6 +16383,7 @@ class pipelineOps(object):
                                                                      d_aper,
                                                                      seeing,
                                                                      pix_scale,
+                                                                     psf_factor,
                                                                      smear,
                                                                      vary)
 
@@ -16591,6 +16635,7 @@ class pipelineOps(object):
                                    d_aper,
                                    seeing,
                                    pix_scale,
+                                   psf_factor,
                                    smear=False,
                                    vary=False):
 
@@ -16613,6 +16658,7 @@ class pipelineOps(object):
                                       d_aper,
                                       seeing,
                                       pix_scale,
+                                      psf_factor,
                                       smear,
                                       vary)
 
@@ -16623,6 +16669,7 @@ class pipelineOps(object):
                                             d_aper,
                                             seeing,
                                             pix_scale,
+                                            psf_factor,
                                             smear=False,
                                             vary=False):
 
@@ -16645,6 +16692,7 @@ class pipelineOps(object):
                                                d_aper,
                                                seing,
                                                pix_scale,
+                                               psf_factor,
                                                smear=False,
                                                vary=True)
 
@@ -16658,6 +16706,7 @@ class pipelineOps(object):
                                                 d_aper,
                                                 seeing,
                                                 pix_scale,
+                                                psf_factor,
                                                 smear=False):
 
         """
@@ -16737,6 +16786,7 @@ class pipelineOps(object):
                                                             inc,
                                                             seeing,
                                                             pix_scale,
+                                                            psf_factor,
                                                             smear)
 
         # truncate this to the data size
@@ -16770,6 +16820,7 @@ class pipelineOps(object):
                                                                                d_aper,
                                                                                seeing,
                                                                                pix_scale,
+                                                                               psf_factor,
                                                                                smear)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
@@ -16842,7 +16893,7 @@ class pipelineOps(object):
 
 
         # set the title
-        ax[0].set_title('Velocity from data')
+        ax[0].set_title('Flux from data')
 
         im = ax[1].imshow(m_data_vel,
                           vmin=vel_min,
@@ -16971,6 +17022,8 @@ class pipelineOps(object):
 
         fig.savefig('%s_grid_fixed_inc_fixed.png' % infile[:-5])
 
+        plt.close('all')
+
 
     def make_all_plots_fixed_inc_fixed(self,
                                        xcen,
@@ -16981,6 +17034,7 @@ class pipelineOps(object):
                                        d_aper,
                                        seeing,
                                        pix_scale,
+                                       psf_factor,
                                        smear=False):
 
         """
@@ -17111,6 +17165,7 @@ class pipelineOps(object):
                                                             inc,
                                                             seeing,
                                                             pix_scale,
+                                                            psf_factor,
                                                             smear)
 
         # truncate this to the data size
@@ -17144,6 +17199,7 @@ class pipelineOps(object):
                                                                                d_aper,
                                                                                seeing,
                                                                                pix_scale,
+                                                                               psf_factor,
                                                                                smear)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
@@ -17382,12 +17438,94 @@ class pipelineOps(object):
 
         fig.savefig('%s_grid_fixed_inc_fixed.png' % infile[:-5])
 
+        plt.close('all')
+
+        fig, ax = plt.subplots(1, 1, figsize=(10,10))
+
+        ax.plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine')
+        ax.plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2)
+
+        ax.imshow(m_data_mod,
+                  vmin=vel_min,
+                  vmax=vel_max,
+                  interpolation='nearest',
+                  cmap=cmap)
+
+        print y_h_low, y_h_high
+
+        plt.show()
+
+        plt.close('all')
+
+        fig, ax = plt.subplots(1, 1, figsize=(10,10))
+
+        ax.plot(x_max,
+                   mod_velocity_values_max,
+                   color='red',
+                   label='max_model')
+
+        ax.errorbar(x_max,
+                       real_velocity_values_max,
+                       yerr=real_error_values_max,
+                       fmt='o',
+                       color='red',
+                       label='max_data')
+
+        ax.plot(x_50,
+                   mod_velocity_values_50,
+                   color='blue',
+                   label='50_model')
+
+        ax.errorbar(x_50,
+                       real_velocity_values_50,
+                       yerr=real_error_values_50,
+                       fmt='o',
+                       color='blue',
+                       label='50_data')
+
+        ax.plot(x_16,
+                   mod_velocity_values_16,
+                   color='orange',
+                   linestyle='--',
+                   label='16_model')
+
+        ax.plot(x_84,
+                   mod_velocity_values_84,
+                   color='purple',
+                   linestyle='--',
+                   label='84_model')
+
+        ax.set_xlim(-1.5, 1.5)
+
+        # ax.legend(prop={'size':5}, loc=1)
+
+        ax.set_title('Model and Real Velocity')
+
+        # ax.set_ylabel('velocity (kms$^{-1}$)')
+
+        ax.set_xlabel('arcsec')
+
+        ax.axhline(0, color='silver', ls='-.')
+        ax.axvline(0, color='silver', ls='-.')
+        #ax.axhline(va, color='silver', ls='--')
+        #ax.axhline(-1.*va, color='silver', ls='--')
+
+        plt.show()
+
+        plt.close('all')
+
     def multi_make_all_plots_fixed_inc_fixed(self,
                                              infile,
                                              r_aper,
                                              d_aper,
                                              seeing,
                                              pix_scale,
+                                             psf_factor,
                                              smear=False):
 
         # read in the table of cube names
@@ -17412,6 +17550,7 @@ class pipelineOps(object):
                                                 d_aper,
                                                 seeing,
                                                 pix_scale,
+                                                psf_factor,
                                                 smear)
 
     def multi_make_all_plots_no_image_fixed_inc_fixed(self,
@@ -17420,6 +17559,7 @@ class pipelineOps(object):
                                                       d_aper,
                                                       seeing,
                                                       pix_scale,
+                                                      psf_factor,
                                                       smear=False):
 
         # read in the table of cube names
@@ -17444,6 +17584,7 @@ class pipelineOps(object):
                                                          d_aper,
                                                          seeing,
                                                          pix_scale,
+                                                         psf_factor,
                                                          smear)
 
     # experiment with modelling seeing conditions
@@ -17491,7 +17632,8 @@ class pipelineOps(object):
                  center_x,
                  center_y,
                  seeing,
-                 pix_scale):
+                 pix_scale,
+                 psf_factor):
 
         """
         Def:
@@ -17519,9 +17661,9 @@ class pipelineOps(object):
 
         # set up the grid over which to evaluate the gaussian
 
-        xbin = np.arange(0, dim_x, 1)
+        xbin = np.arange(0, dim_x, 1 / float(psf_factor))
 
-        ybin = np.arange(0, dim_y, 1)
+        ybin = np.arange(0, dim_y, 1 / float(psf_factor))
 
         ybin, xbin = np.meshgrid(ybin, xbin)
 
@@ -17539,9 +17681,36 @@ class pipelineOps(object):
                                    center_y=center_y,
                                    width=width)
 
-        g_mod_eval = np.reshape(g_mod_eval_1d, (dim_x,dim_y))
+        g_mod_eval = np.reshape(g_mod_eval_1d, (dim_x * psf_factor,
+                                                dim_y * psf_factor))
 
-        return g_mod_eval
+        return self.bin_by_factor(g_mod_eval,
+                                  psf_factor)
+
+    def bin_by_factor(self,
+                      data,
+                      res_factor):
+
+        """
+        Def: Bin up a 2D grid of points by a factor of ten
+        for using with the higher resolution velocity map
+        and beam smearing corrections
+
+        Inputs:
+               res_factor - make it an integer
+               data - the data for binning
+        """
+
+        res_factor = float(res_factor)
+        # define the x dimension of the data
+        x_dim = data.shape[0] / res_factor
+        y_dim = data.shape[1] / res_factor
+
+        data_view = data.reshape(x_dim, res_factor, y_dim, res_factor)
+
+        final_data = data_view.mean(axis=3).mean(axis=1)
+
+        return final_data
 
     def sersic_2d(self,
                   x1,
@@ -17660,7 +17829,8 @@ class pipelineOps(object):
     def blur_by_psf(self,
                     data,
                     seeing,
-                    pix_scale):
+                    pix_scale,
+                    psf_factor):
 
         """
         Def:
@@ -17680,10 +17850,6 @@ class pipelineOps(object):
         """
 
         print np.sum(data)
-        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-        ax.imshow(data)
-        plt.show()
-        plt.close('all')
 
         dim_x = data.shape[0]
 
@@ -17702,7 +17868,8 @@ class pipelineOps(object):
                                                i,
                                                j,
                                                seeing,
-                                               pix_scale)
+                                               pix_scale,
+                                               psf_factor)
 
                 final_flux.append(temp_flux_grid * seeing_profile)
 
@@ -17720,7 +17887,7 @@ class pipelineOps(object):
         Def:
         Evaluate a gaussian function with the wavelength array as the
         argument and centre computed using the known redshifted centre of
-        [OIII] augmented by the velocity value.
+        [OIII] offset by the velocity value.
         Return a datacube of dimensions (wave_array, vel_data.shape) with the
         shifted [OIII] line profiles (which are at this point all the same
         flux values).
@@ -17814,7 +17981,8 @@ class pipelineOps(object):
                            center_x,
                            center_y,
                            seeing,
-                           pix_scale):
+                           pix_scale,
+                           psf_factor):
 
         """
         Def:
@@ -17906,7 +18074,8 @@ class pipelineOps(object):
                                                    i,
                                                    j,
                                                    seeing,
-                                                   pix_scale)
+                                                   pix_scale,
+                                                   psf_factor)
 
                     # compute the factor with which to ammend the
                     # cube gaussian array
@@ -17941,7 +18110,8 @@ class pipelineOps(object):
                                                                new_i,
                                                                new_j,
                                                                seeing,
-                                                               pix_scale)
+                                                               pix_scale,
+                                                               psf_factor)
 
                                 # factor evaluated at old spatial location in
                                 # seeing profile but new spatial location in
@@ -18020,6 +18190,7 @@ class pipelineOps(object):
                                   sig_option,
                                   seeing,
                                   pix_scale,
+                                  psf_factor,
                                   smear=False):
 
         """
@@ -18047,6 +18218,12 @@ class pipelineOps(object):
         d_low = []
         d_high = []
         inclination = []
+        r_half_16 = []
+        r_half_50 = []
+        r_half_84 = []
+        v_22_16 = []
+        v_22_50 = []
+        v_22_84 = []
 
         # assign variables to the different items in the infile
         for entry in Table:
@@ -18099,6 +18276,7 @@ class pipelineOps(object):
                                               ycen,
                                               seeing,
                                               pix_scale,
+                                              psf_factor,
                                               smear)
 
             x_real.append(ratio_list[0])
@@ -18113,6 +18291,12 @@ class pipelineOps(object):
             d_low.append(ratio_list[9])
             d_high.append(ratio_list[10])
             inclination.append(ratio_list[11])
+            r_half_16.append(ratio_list[12] * pix_scale)
+            r_half_50.append(ratio_list[13] * pix_scale)
+            r_half_84.append(ratio_list[14] * pix_scale)
+            v_22_16.append(ratio_list[15])
+            v_22_50.append(ratio_list[16])
+            v_22_84.append(ratio_list[17])
 
         x_real = np.array(x_real)
         x_50 = np.array(x_50)
@@ -18127,15 +18311,22 @@ class pipelineOps(object):
         d_low = abs(np.array(d_low) * scale)
         d_high = np.array(d_high) * scale
         inclination = np.array(inclination)
+        r_half_16 = np.array(r_half_16) * scale
+        r_half_50 = np.array(r_half_50) * scale
+        r_half_84 = np.array(r_half_84) * scale
+        v_22_16 = np.array(v_22_16) 
+        v_22_50 = np.array(v_22_50)
+        v_22_84 = np.array(v_22_84)
 
-        print np.nanmean(x_real)
+
+
 
         colors_scatter = cycle(cm.rainbow(np.linspace(0, 1, len(sigma_o))))
 
-        fig, ax = plt.subplots(1, 1, figsize=(14, 14))
+        fig, ax = plt.subplots(1, 1, figsize=(14, 12))
 
         for vel, sig, name, sig_e, vel_e in \
-                zip(x_real * sigma_o, sigma_o, gal_names, sigma_e, error_v):
+                zip(v_22_50, sigma_o, gal_names, sigma_e, error_v):
 
             ax.errorbar(sig,
                         vel,
@@ -18143,26 +18334,30 @@ class pipelineOps(object):
                         xerr=sig_e,
                         marker='^',
                         alpha=.6,
-                        color=next(colors_scatter),
+                        color='blue',
                         label=name)
 
         # ax.legend(loc='upper left', prop={'size':6})
-        ax.plot([0.1, 100],[0.1, 100], ls='--', color='black')
+        ax.plot([0.1, 90],[0.1, 90], ls='--', color='black')
         ax.set_xlabel(r'$\sigma _{int}$ $kms^{-1}$', fontsize=24)
 
         ax.set_ylabel(r'$V _{max}$ $kms^{-1}$', fontsize=24)
 
-        ax.set_title('Maximum Velocity vs. Intrinsic Dispersion',
-                     fontsize=28)
+        #ax.set_title('Maximum Velocity vs. Intrinsic Dispersion',
+        #             fontsize=28)
 
         ax.tick_params(axis='both',
                        which='major',
-                       labelsize=15)
+                       labelsize=20)
 
-        ax.text(100, 100, r'$V_{max} / \sigma _{int}$ $=$ $1$', fontsize=22)
+        ax.xaxis.labelpad = -60
+        ax.yaxis.labelpad = -80
+
+
+        ax.text(90, 90, r'$V_{max} / \sigma _{int}$ $=$ $1$', fontsize=22)
 
         ax.set_xlim([0, max(sigma_o) + 20])
-        ax.set_ylim([0, 150])
+        ax.set_ylim([0, 170])
         plt.show()
 
         scatter_name = '/disk1/turner/DATA/v_over_sigma/' + 'scatter' + \
@@ -18268,7 +18463,13 @@ class pipelineOps(object):
                         'error_max',
                         'r_e_l',
                         'r_e_r',
-                        'inc']
+                        'inc',
+                        'r_0.5_16',
+                        'r_0.5_50',
+                        'r_0.5_84',
+                        'v_2.2_16',
+                        'v_2.2_50',
+                        'v_2.2_84']
 
         with open(res_file, 'a') as f:
 
@@ -18278,52 +18479,192 @@ class pipelineOps(object):
 
             f.write('\n')
 
-            for a,b,c,d,e,fu,g,h,i,j,k,l,m,n,o,p in zip(gal_names,
-                                                  x_real * sigma_o,
-                                                  x_50 * sigma_o,
-                                                  x_16 * sigma_o,
-                                                  x_84 * sigma_o,
-                                                  sigma_o,
-                                                  x_real,
-                                                  x_50,
-                                                  x_16,
-                                                  x_84,
-                                                  vel_max,
-                                                  error_min,
-                                                  error_max,
-                                                  d_low,
-                                                  d_high,
-                                                  inclination):
+            for a,b,c,d,e,fu,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v in zip(gal_names,
+                                                                    x_real * sigma_o,
+                                                                    x_50 * sigma_o,
+                                                                    x_16 * sigma_o,
+                                                                    x_84 * sigma_o,
+                                                                    sigma_o,
+                                                                    x_real,
+                                                                    x_50,
+                                                                    x_16,
+                                                                    x_84,
+                                                                    vel_max,
+                                                                    error_min,
+                                                                    error_max,
+                                                                    d_low,
+                                                                    d_high,
+                                                                    inclination,
+                                                                    r_half_16,
+                                                                    r_half_50,
+                                                                    r_half_84,
+                                                                    v_22_16,
+                                                                    v_22_50,
+                                                                    v_22_84):
 
-                f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (a,
-                                                                                  b,
-                                                                                  c,
-                                                                                  d,
-                                                                                  e,
-                                                                                  fu,
-                                                                                  g,
-                                                                                  h,
-                                                                                  i,
-                                                                                  j,
-                                                                                  k,
-                                                                                  l,
-                                                                                  m,
-                                                                                  n,
-                                                                                  o,
-                                                                                  p))
+                f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n' % (a,
+                                                                                                                        b,
+                                                                                                                        c,
+                                                                                                                        d,
+                                                                                                                        e,
+                                                                                                                        fu,
+                                                                                                                        g,
+                                                                                                                        h,
+                                                                                                                        i,
+                                                                                                                        j,
+                                                                                                                        k,
+                                                                                                                        l,
+                                                                                                                        m,
+                                                                                                                        n,
+                                                                                                                        o,
+                                                                                                                        p,
+                                                                                                                        q,
+                                                                                                                        r,
+                                                                                                                        s,
+                                                                                                                        t,
+                                                                                                                        u,
+                                                                                                                        v))
 
-            f.write('Averages:\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (np.nanmean(x_real * sigma_o),
-                                                                                       np.nanmean(x_50 * sigma_o),
-                                                                                       np.nanmean(x_16 * sigma_o),
-                                                                                       np.nanmean(x_84 * sigma_o),
-                                                                                       np.nanmean(sigma_o),
-                                                                                       np.nanmean(x_real),
-                                                                                       np.nanmean(x_50),
-                                                                                       np.nanmean(x_16),
-                                                                                       np.nanmean(x_84),
-                                                                                       np.nanmean(vel_max),
-                                                                                       np.nanmean(error_min),
-                                                                                       np.nanmean(error_max),
-                                                                                       np.nanmean(d_low),
-                                                                                       np.nanmean(d_high),
-                                                                                       np.nanmean(inclination)))
+            f.write('Averages:\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (np.nanmean(x_real * sigma_o),
+                                                                                                                       np.nanmean(x_50 * sigma_o),
+                                                                                                                       np.nanmean(x_16 * sigma_o),
+                                                                                                                       np.nanmean(x_84 * sigma_o),
+                                                                                                                       np.nanmean(sigma_o),
+                                                                                                                       np.nanmean(x_real),
+                                                                                                                       np.nanmean(x_50),
+                                                                                                                       np.nanmean(x_16),
+                                                                                                                       np.nanmean(x_84),
+                                                                                                                       np.nanmean(vel_max),
+                                                                                                                       np.nanmean(error_min),
+                                                                                                                       np.nanmean(error_max),
+                                                                                                                       np.nanmean(d_low),
+                                                                                                                       np.nanmean(d_high),
+                                                                                                                       np.nanmean(inclination),
+                                                                                                                       np.nanmean(r_half_16),
+                                                                                                                       np.nanmean(r_half_50),
+                                                                                                                       np.nanmean(r_half_84),
+                                                                                                                       np.nanmean(v_22_16),
+                                                                                                                       np.nanmean(v_22_50),
+                                                                                                                       np.nanmean(v_22_84)))
+
+    def plot_properties(self,
+                        catalogue):
+
+        # plotting mass and redshift right now
+        # will add in SFR when this is available
+        # also want to have different plots for the
+        # GOODS and SSA samples overlaid on the same axis
+
+        table = ascii.read(catalogue)
+
+        mass = table['mass']
+
+        redshift = table['redshift']
+
+        k = table['k_mag']
+
+        # plot the distribution and median of both 
+        # of these properties for the given catalogue
+
+        from matplotlib import rc
+        rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+        ## for Palatino and other serif fonts use:
+        #rc('font',**{'family':'serif','serif':['Palatino']})
+        rc('text', usetex=True)
+
+        fig, ax = plt.subplots(3, 1, figsize=(6, 18))
+
+        n, bins, patches = ax[0].hist(mass,
+                                      histtype='step',
+                                      label='GOODS-S')
+
+        ax[0].set_ylim(0, max(n) + 1)
+
+        ax[0].set_xlabel(r'\textbf{$log_{10} \Big(\frac{M}{M_{\odot}}\Big)$}',
+                         fontsize=20)
+
+        ax[0].tick_params(axis='both',
+                          which='major',
+                          labelsize=13)
+
+        ax[0].legend(loc='upper right',
+                     prop={'size':14},
+                     frameon=False)
+
+        med_mass = np.nanmedian(mass)
+
+        ax[0].text(10.8, 6,
+                   r'$\big< M_{*} \big> = %.2f$' % med_mass,
+                   fontsize=16)
+
+        ax[0].plot([med_mass, med_mass],
+                   [0, max(n) + 1],
+                   linestyle='--',
+                   color='black')
+
+        n, bins, patches = ax[1].hist(redshift,
+                                      histtype='step',
+                                      label='GOODS-S')
+
+        ax[1].set_ylim(0, max(n) + 1)
+
+        ax[1].set_xlabel(r'z',
+                         fontsize=20)
+
+        ax[1].tick_params(axis='both',
+                          which='major',
+                          labelsize=13)
+
+        ax[1].legend(loc='upper right',
+                     prop={'size':14},
+                     frameon=False)
+
+        med_z = np.nanmedian(redshift)
+
+        ax[1].text(3.55, 4,
+                   r'$\big< z \big> = %.2f$' % med_z,
+                   fontsize=16)
+
+        ax[1].plot([med_z, med_z],
+                   [0, max(n) + 1],
+                   linestyle='--',
+                   color='black')
+
+        n, bins, patches = ax[2].hist(k,
+                                      histtype='step',
+                                      label='GOODS-S')
+
+        ax[2].set_ylim(0, max(n) + 1)
+
+        ax[2].set_xlabel(r'$K_{AB}$',
+                         fontsize=20)
+
+        ax[2].tick_params(axis='both',
+                          which='major',
+                          labelsize=13)
+
+
+        ax[2].legend(loc='upper right',
+                     prop={'size':14},
+                     frameon=False)
+
+
+
+        med_k = np.nanmedian(k)
+
+        ax[2].text(22.5, 5,
+                   r'$\big< K_{AB} \big> = %.2f$' % med_k,
+                   fontsize=16)
+
+        ax[2].plot([med_k, med_k],
+                   [0, max(n) + 1],
+                   linestyle='--',
+                   color='black')
+
+        fig.tight_layout()
+        ax[0].minorticks_on()
+        ax[1].minorticks_on()
+        ax[2].minorticks_on()
+        plt.show()
+        fig.savefig('/disk1/turner/DATA/paper_plots/paper_distributions.png')
+
