@@ -95,7 +95,9 @@ vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_
 vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
 guess_params = [18.4515843627, 17.7671445415, 1.10786694516, 5.76470601635, 1.09264956556, 165.2541589594]
-guess_params_fixed = [1.04999129056,  5.80554889021,   0.106855839229,  165.2463520223]
+guess_params_fixed = [1.04999129056,  5.80554889021,   0.106855839229,  65.2463520223]
+guess_params_fixed_inc_fixed = [5.80554889021,   0.106855839229,  65.2463520223]
+
 
 # COMPUTE THE BEAM SMEAR #
 
@@ -112,7 +114,20 @@ guess_params_fixed = [1.04999129056,  5.80554889021,   0.106855839229,  165.2463
 
 # APPLYING MODEL MCMC # 
 
-#pipe_methods.multi_apply_mcmc_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt', 200, 500, 50, 0.8, 0.6, seeing=0.5, pix_scale=0.1, psf_factor=1, smear=True)
+#pipe_methods.multi_apply_mcmc_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt',
+#                                              nwalkers=8,
+#                                              nsteps=7,
+#                                              burn_no=0,
+#                                              r_aper=0.8,
+#                                              d_aper=0.6,
+#                                              seeing=0.5,
+#                                              sersic_n=2.0,
+#                                              sigma=60,
+#                                              pix_scale=0.1,
+#                                              psf_factor=1,
+#                                              sersic_factor=1,
+#                                              m_factor=1,
+#                                              smear=True)
 
 # APPLYING VELOCITY FIELD COMPUTATION # 
 
@@ -139,7 +154,20 @@ guess_params_fixed = [1.04999129056,  5.80554889021,   0.106855839229,  165.2463
 
 #pipe_methods.plot_properties('/disk1/turner/DATA/v_over_sigma/master_goods_2.txt')
 
-data = v_field.compute_model_grid_fixed(guess_params_fixed, 24, 17, seeing=0.6, pix_scale=0.1, psf_factor=1,smear=False)
+data = v_field.compute_model_grid_fixed_inc_fixed(theta=guess_params_fixed_inc_fixed,
+                                                  inc=1.1,
+                                                  redshift=3.21418,
+                                                  wave_array=cube.wave_array, 
+                                                  xcen=24,
+                                                  ycen=17,
+                                                  seeing=0.5,
+                                                  sersic_n=2.0,
+                                                  sigma=60,
+                                                  pix_scale=0.1,
+                                                  psf_factor=1,
+                                                  sersic_factor=1,
+                                                  m_factor=1,
+                                                  smear=False)
 #psf.compute_velocity_smear(data,
 #                           3.0,
 #                           24,

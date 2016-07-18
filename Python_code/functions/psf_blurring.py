@@ -29,8 +29,8 @@ from sys import stdout
 # Create a gaussian function for use with lmfit
 def gaussian(x1,
              x2,
-             center_x,
-             center_y,
+             xcen,
+             ycen,
              width):
     """
     Def: Return a two dimensional gaussian function
@@ -40,7 +40,7 @@ def gaussian(x1,
     width = float(width)
 
     norm = 1.0 / (2 * np.pi * width**2)
-    num = (center_x - x1)**2 + (center_y - x2)**2
+    num = (xcen - x1)**2 + (ycen - x2)**2
     den = 2 * width**2
 
     # Specify the gaussian function here
@@ -52,8 +52,8 @@ def gauss2dMod():
 
     mod = Model(gaussian,
                 independent_vars=['x1', 'x2'],
-                param_names=['center_x',
-                             'center_y',
+                param_names=['xcen',
+                             'ycen',
                              'width'],
                 missing='drop')
 
@@ -65,8 +65,8 @@ def gauss2dMod():
 def sersic_2d(x1,
               x2,
               n,
-              center_x,
-              center_y):
+              xcen,
+              ycen):
 
     """
     Def:
@@ -76,8 +76,8 @@ def sersic_2d(x1,
     Input:
             x1,x2 - dependent parameters (x, y)
             n - the sersic index
-            center_x - center point in x direction
-            center_y - center point in y direction
+            xcen - center point in x direction
+            ycen - center point in y direction
 
     Output:
             return the function
@@ -87,7 +87,7 @@ def sersic_2d(x1,
 
     # first set the distance from the center
 
-    r = np.sqrt((center_x - x1)**2 + (center_y - x2)**2)
+    r = np.sqrt((xcen - x1)**2 + (ycen - x2)**2)
 
     # and define the function
 
@@ -104,8 +104,8 @@ def sersic_2d_mod():
     mod = Model(sersic_2d,
                 independent_vars=['x1', 'x2'],
                 param_names=['n',
-                             'center_x',
-                             'center_y'],
+                             'xcen',
+                             'ycen'],
                 missing='drop')
 
     return mod
@@ -113,8 +113,8 @@ def sersic_2d_mod():
 def sersic_grid(dim_x,
                 dim_y,
                 n,
-                center_x,
-                center_y,
+                xcen,
+                ycen,
                 sersic_factor):
 
     """
@@ -127,8 +127,8 @@ def sersic_grid(dim_x,
     dim_y - dimensions of the grid in columns
     n - sersic index
     res_factor - factor by which to increase resolution
-    center_x - center of sersic in x direction
-    center_y - center of sersic in y direction
+    xcen - center of sersic in x direction
+    ycen - center of sersic in y direction
 
     Output:
     normalised sersic profile centred at chosen location, which can be
@@ -156,8 +156,8 @@ def sersic_grid(dim_x,
     s_mod_eval_1d = s_mod.eval(x1=xbin,
                                x2=ybin,
                                n=n,
-                               center_x=center_x,
-                               center_y=center_y)
+                               xcen=xcen,
+                               ycen=ycen)
 
     s_mod_eval = np.reshape(s_mod_eval_1d, (dim_x * sersic_factor,
                                             dim_y * sersic_factor))
@@ -180,8 +180,8 @@ def sersic_grid(dim_x,
 
 def psf_grid(dim_x,
              dim_y,
-             center_x,
-             center_y,
+             xcen,
+             ycen,
              seeing,
              pix_scale,
              psf_factor):
@@ -195,8 +195,8 @@ def psf_grid(dim_x,
     dim_x - dimensions of the grid in rows
     dim_y - dimensions of the grid in columns
     height - amplitude of the gaussian
-    center_x - center of gaussian in x direction
-    center_y - center of gaussian in y direction
+    xcen - center of gaussian in x direction
+    ycen - center of gaussian in y direction
     seeing - given in arcseconds
     pix_scale - given in arcseconds, dimension of individual pixel
 
@@ -228,8 +228,8 @@ def psf_grid(dim_x,
 
     g_mod_eval_1d = g_mod.eval(x1=xbin,
                                x2=ybin,
-                               center_x=center_x,
-                               center_y=center_y,
+                               xcen=xcen,
+                               ycen=ycen,
                                width=width)
 
     g_mod_eval = np.reshape(g_mod_eval_1d, (dim_x * float(psf_factor),
@@ -406,8 +406,8 @@ def construct_shifted_cube(vel_data,
 def cube_blur(vel_data,
               redshift,
               wave_array,
-              center_x,
-              center_y,
+              xcen,
+              ycen,
               seeing,
               pix_scale,
               psf_factor,
@@ -454,8 +454,8 @@ def cube_blur(vel_data,
     sersic_profile = sersic_grid(dim_x,
                                  dim_y,
                                  sersic_n,
-                                 center_x,
-                                 center_y,
+                                 xcen,
+                                 ycen,
                                  sersic_factor)
 
     # initialise array to house all of the shifted cubes
@@ -543,22 +543,22 @@ def cube_blur(vel_data,
 #                                                                                                             psf_factor,
 #                                                                                                             sersic_factor))
 #    plt.close('all')
-#    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-#    im = ax.imshow(shifted_velocities,
-#                   cmap=plt.get_cmap('jet'),
-#                   interpolation='nearest')
-#    # add colourbar to each plot
-#    divider = make_axes_locatable(ax)
-#    cax_new = divider.append_axes('right', size='10%', pad=0.05)
-#    plt.colorbar(im, cax=cax_new)
-#    # set the title
-#    ax.set_title('Shifted Velocities')
-#    plt.show()
-#    fig.savefig('/disk1/turner/DATA/experiments/smeared_sigma%s_sersic%s_seeing%s_psf%s_sersic%s.png' % (sigma,
-#                                                                                                             sersic_n,
-#                                                                                                             seeing,
-#                                                                                                             psf_factor,
-#                                                                                                             sersic_factor))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+    im = ax.imshow(shifted_velocities,
+                   cmap=plt.get_cmap('jet'),
+                   interpolation='nearest')
+    # add colourbar to each plot
+    divider = make_axes_locatable(ax)
+    cax_new = divider.append_axes('right', size='10%', pad=0.05)
+    plt.colorbar(im, cax=cax_new)
+    # set the title
+    ax.set_title('Shifted Velocities')
+    plt.show()
+    fig.savefig('/disk1/turner/DATA/experiments/smeared_sigma%s_sersic%s_seeing%s_psf%s_sersic%s.png' % (sigma,
+                                                                                                             sersic_n,
+                                                                                                             seeing,
+                                                                                                             psf_factor,
+                                                                                                             sersic_factor))
 #    plt.close('all')
 #    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 #    im = ax.imshow(shifted_sigma,
@@ -622,8 +622,8 @@ def gauss_fit(fit_wl,
 
 def compute_velocity_smear(vel_data,
                            sersic_n,
-                           center_x,
-                           center_y,
+                           xcen,
+                           ycen,
                            seeing,
                            pix_scale,
                            psf_factor,
@@ -639,8 +639,8 @@ def compute_velocity_smear(vel_data,
     Input:
             vel_data - 2D velocity field
             sersic_n - sersic index of the light profile
-            center_x - sersic center in the x-direction
-            center_y - sersic center in the y-direction
+            xcen - sersic center in the x-direction
+            ycen - sersic center in the y-direction
             seeing - the atmospheric seeing conditions
             pix_scale - the pixel scale of the observations
             res_factor - the factor boost to resolution measurements
@@ -658,8 +658,8 @@ def compute_velocity_smear(vel_data,
     sersic_2d = sersic_grid(dim_x,
                             dim_y,
                             sersic_n,
-                            center_x,
-                            center_y,
+                            xcen,
+                            ycen,
                             sersic_factor)
 
 #    fig, ax = plt.subplots(1, 1, figsize=(10, 10))

@@ -680,9 +680,17 @@ class vel_field(object):
 
     def compute_model_grid(self,
                            theta,
+                           redshift,
+                           wave_array,
+                           xcen,
+                           ycen,
                            seeing,
+                           sersic_n,
+                           sigma,
                            pix_scale,
                            psf_factor,
+                           sersic_factor,
+                           m_factor,
                            smear=False):
 
         """
@@ -692,7 +700,7 @@ class vel_field(object):
         reshape back to 2d array and plot the model velocity
         """
 
-        xbin, ybin = self.grid()
+        xbin, ybin = self.grid_factor(m_factor)
 
         # setup list to house the velocity measurements
 
@@ -705,8 +713,8 @@ class vel_field(object):
             # run the disk function
 
             vel_array.append(self.disk_function(theta,
-                                                xpos,
-                                                ypos))
+                                                xpos * m_factor,
+                                                ypos * m_factor))
 
         # create numpy array from the vel_array list
 
@@ -714,16 +722,29 @@ class vel_field(object):
 
         # reshape back to the chosen grid dimensions
 
-        vel_2d = vel_array.reshape((self.xpix, self.ypix))
+        vel_2d = vel_array.reshape((self.xpix * m_factor,
+                                    self.ypix * m_factor))
+
+        if float(m_factor) != 1.0:
+
+            vel_2d = psf.bin_by_factor(vel_2d,
+                                       m_factor) 
 
         # computationally expensive
 
         if smear:
 
-            vel_2d = psf.blur_by_psf(vel_2d,
-                                     seeing,
-                                     pix_scale,
-                                     psf_factor)
+            vel_2d = psf.cube_blur(vel_2d,
+                                   redshift,
+                                   wave_array,
+                                   xcen,
+                                   ycen,
+                                   seeing,
+                                   pix_scale,
+                                   psf_factor,
+                                   sersic_factor,
+                                   sigma,
+                                   sersic_n)
 
         return vel_2d
 
@@ -3770,12 +3791,18 @@ class vel_field(object):
 
     def compute_model_grid_fixed_inc_fixed(self,
                                            theta,
+                                           inc,
+                                           redshift,
+                                           wave_array,
                                            xcen,
                                            ycen,
-                                           inc,
                                            seeing,
+                                           sersic_n,
+                                           sigma,
                                            pix_scale,
                                            psf_factor,
+                                           sersic_factor,
+                                           m_factor,
                                            smear=False):
 
         """
@@ -3785,7 +3812,7 @@ class vel_field(object):
         reshape back to 2d array and plot the model velocity
         """
 
-        xbin, ybin = self.grid_factor(2)
+        xbin, ybin = self.grid_factor(m_factor)
 
         # setup list to house the velocity measurements
 
@@ -3798,8 +3825,8 @@ class vel_field(object):
             # run the disk function
 
             vel_array.append(self.disk_function_fixed_inc_fixed(theta,
-                                                                xcen * 2,
-                                                                ycen * 2,
+                                                                xcen * m_factor,
+                                                                ycen * m_factor,
                                                                 inc,
                                                                 xpos,
                                                                 ypos))
@@ -3810,28 +3837,44 @@ class vel_field(object):
 
         # reshape back to the chosen grid dimensions
 
-        vel_2d = vel_array.reshape((self.xpix * 2, self.ypix * 2))
+        vel_2d = vel_array.reshape((self.xpix * m_factor,
+                                    self.ypix * m_factor))
 
-        vel_2d = psf.bin_by_factor(vel_2d,
-                                   2)
+        if float(m_factor) != 1.0:
+
+            vel_2d = psf.bin_by_factor(vel_2d,
+                                       m_factor)
 
         if smear:
 
-            vel_2d = psf.blur_by_psf(vel_2d,
-                                     seeing,
-                                     pix_scale,
-                                     psf_factor)
+            vel_2d = psf.cube_blur(vel_2d,
+                                   redshift,
+                                   wave_array,
+                                   xcen,
+                                   ycen,
+                                   seeing,
+                                   pix_scale,
+                                   psf_factor,
+                                   sersic_factor,
+                                   sigma,
+                                   sersic_n)
 
         return vel_2d
 
     def lnlike_fixed_inc_fixed(self, 
                                theta,
+                               inc,
+                               redshift,
+                               wave_array,
                                xcen,
                                ycen,
-                               inc,
                                seeing,
+                               sersic_n,
+                               sigma,
                                pix_scale,
                                psf_factor,
+                               sersic_factor,
+                               m_factor,
                                smear=False):
         """
         Def: Return the log likelihood for the velocity field function.
@@ -3854,12 +3897,18 @@ class vel_field(object):
         # compute the model grid
 
         model = self.compute_model_grid_fixed_inc_fixed(theta,
+                                                        inc,
+                                                        redshift,
+                                                        wave_array,
                                                         xcen,
                                                         ycen,
-                                                        inc,
                                                         seeing,
+                                                        sersic_n,
+                                                        sigma,
                                                         pix_scale,
                                                         psf_factor,
+                                                        sersic_factor,
+                                                        m_factor,
                                                         smear)
 
         # find the grid of inverse sigma values
@@ -3893,12 +3942,18 @@ class vel_field(object):
 
     def lnprob_fixed_inc_fixed(self,
                                theta,
+                               inc,
+                               redshift,
+                               wave_array,
                                xcen,
                                ycen,
-                               inc,
                                seeing,
+                               sersic_n,
+                               sigma,
                                pix_scale,
                                psf_factor,
+                               sersic_factor,
+                               m_factor,
                                smear=False):
 
         lp = self.lnprior_fixed_inc_fixed(theta)
@@ -3908,25 +3963,37 @@ class vel_field(object):
             return -np.inf
 
         return lp + self.lnlike_fixed_inc_fixed(theta,
+                                                inc,
+                                                redshift,
+                                                wave_array,
                                                 xcen,
                                                 ycen,
-                                                inc,
                                                 seeing,
+                                                sersic_n,
+                                                sigma,
                                                 pix_scale,
                                                 psf_factor,
+                                                sersic_factor,
+                                                m_factor,
                                                 smear)
 
     def run_emcee_fixed_inc_fixed(self,
                                   theta,
+                                  inc,
+                                  redshift,
+                                  wave_array,
                                   xcen,
                                   ycen,
-                                  inc,
                                   nsteps,
                                   nwalkers,
                                   burn_no,
                                   seeing,
+                                  sersic_n,
+                                  sigma,
                                   pix_scale,
                                   psf_factor,
+                                  sersic_factor,
+                                  m_factor,
                                   smear=False):
 
         ndim = len(theta)
@@ -3936,12 +4003,18 @@ class vel_field(object):
         sampler = emcee.EnsembleSampler(nwalkers,
                                         ndim,
                                         self.lnprob_fixed_inc_fixed,
-                                        args=[xcen,
+                                        args=[inc,
+                                              redshift,
+                                              wave_array,
+                                              xcen,
                                               ycen,
-                                              inc,
                                               seeing,
+                                              sersic_n,
+                                              sigma,
                                               pix_scale,
                                               psf_factor,
+                                              sersic_factor,
+                                              m_factor,
                                               smear])
 
         for i, (pos, lnp, state) in enumerate(sampler.sample(pos,
@@ -4066,12 +4139,18 @@ class vel_field(object):
 
 
     def plot_comparison_fixed_inc_fixed(self,
+                                        inc,
+                                        redshift,
+                                        wave_array,
                                         xcen,
                                         ycen,
-                                        inc,
                                         seeing,
+                                        sersic_n,
+                                        sigma,
                                         pix_scale,
                                         psf_factor,
+                                        sersic_factor,
+                                        m_factor,
                                         smear=False):
 
         """
@@ -4101,40 +4180,64 @@ class vel_field(object):
         # compute the model grid with the specified parameters
 
         model_max = self.compute_model_grid_fixed_inc_fixed(theta_max,
+                                                            inc,
+                                                            redshift,
+                                                            wave_array,
                                                             xcen,
                                                             ycen,
-                                                            inc,
                                                             seeing,
+                                                            sersic_n,
+                                                            sigma,
                                                             pix_scale,
                                                             psf_factor,
+                                                            sersic_factor,
+                                                            m_factor,
                                                             smear)
 
         model_50 = self.compute_model_grid_fixed_inc_fixed(theta_50,
+                                                           inc,
+                                                           redshift,
+                                                           wave_array,
                                                            xcen,
                                                            ycen,
-                                                           inc,
                                                            seeing,
+                                                           sersic_n,
+                                                           sigma,
                                                            pix_scale,
                                                            psf_factor,
+                                                           sersic_factor,
+                                                           m_factor,
                                                            smear)
 
         model_16 = self.compute_model_grid_fixed_inc_fixed(theta_16,
-                                                           xcen,
-                                                           ycen,
-                                                           inc,
-                                                           seeing,
-                                                           pix_scale,
-                                                           psf_factor,
-                                                           smear)
+                                                            inc,
+                                                            redshift,
+                                                            wave_array,
+                                                            xcen,
+                                                            ycen,
+                                                            seeing,
+                                                            sersic_n,
+                                                            sigma,
+                                                            pix_scale,
+                                                            psf_factor,
+                                                            sersic_factor,
+                                                            m_factor,
+                                                            smear)
 
         model_84 = self.compute_model_grid_fixed_inc_fixed(theta_84,
-                                                           xcen,
-                                                           ycen,
-                                                           inc,
-                                                           seeing,
-                                                           pix_scale,
-                                                           psf_factor,
-                                                           smear)
+                                                            inc,
+                                                            redshift,
+                                                            wave_array,
+                                                            xcen,
+                                                            ycen,
+                                                            seeing,
+                                                            sersic_n,
+                                                            sigma,
+                                                            pix_scale,
+                                                            psf_factor,
+                                                            sersic_factor,
+                                                            m_factor,
+                                                            smear)
 
         # only want to see the evaluated model at the grid points
         # where the data is not nan. Loop round the data and create
@@ -4211,14 +4314,20 @@ class vel_field(object):
         plt.close('all')
 
     def extract_in_apertures_fixed_inc_fixed(self,
+                                             inc,
+                                             redshift,
+                                             wave_array,
                                              xcen,
                                              ycen,
-                                             inc,
                                              r_aper,
                                              d_aper,
                                              seeing,
+                                             sersic_n,
+                                             sigma,
                                              pix_scale,
                                              psf_factor,
+                                             sersic_factor,
+                                             m_factor,
                                              smear=False):
 
         """
@@ -4264,40 +4373,64 @@ class vel_field(object):
         # compute the model grid with the specified parameters
 
         model_max = self.compute_model_grid_fixed_inc_fixed(theta_max,
+                                                            inc,
+                                                            redshift,
+                                                            wave_array,
                                                             xcen,
                                                             ycen,
-                                                            inc,
                                                             seeing,
+                                                            sersic_n,
+                                                            sigma,
                                                             pix_scale,
                                                             psf_factor,
+                                                            sersic_factor,
+                                                            m_factor,
                                                             smear)
 
         model_50 = self.compute_model_grid_fixed_inc_fixed(theta_50,
+                                                           inc,
+                                                           redshift,
+                                                           wave_array,
                                                            xcen,
                                                            ycen,
-                                                           inc,
                                                            seeing,
+                                                           sersic_n,
+                                                           sigma,
                                                            pix_scale,
                                                            psf_factor,
+                                                           sersic_factor,
+                                                           m_factor,
                                                            smear)
 
         model_16 = self.compute_model_grid_fixed_inc_fixed(theta_16,
-                                                           xcen,
-                                                           ycen,
-                                                           inc,
-                                                           seeing,
-                                                           pix_scale,
-                                                           psf_factor,
-                                                           smear)
+                                                            inc,
+                                                            redshift,
+                                                            wave_array,
+                                                            xcen,
+                                                            ycen,
+                                                            seeing,
+                                                            sersic_n,
+                                                            sigma,
+                                                            pix_scale,
+                                                            psf_factor,
+                                                            sersic_factor,
+                                                            m_factor,
+                                                            smear)
 
         model_84 = self.compute_model_grid_fixed_inc_fixed(theta_84,
-                                                           xcen,
-                                                           ycen,
-                                                           inc,
-                                                           seeing,
-                                                           pix_scale,
-                                                           psf_factor,
-                                                           smear)
+                                                            inc,
+                                                            redshift,
+                                                            wave_array,
+                                                            xcen,
+                                                            ycen,
+                                                            seeing,
+                                                            sersic_n,
+                                                            sigma,
+                                                            pix_scale,
+                                                            psf_factor,
+                                                            sersic_factor,
+                                                            m_factor,
+                                                            smear)
 
         # initialise the list of aperture positions with the xcen and ycen
 
@@ -5090,16 +5223,22 @@ class vel_field(object):
                         sig_error_values_84]}, extract_d
 
     def v_over_sigma(self,
+                     inc,
+                     redshift,
+                     wave_array,
+                     xcen,
+                     ycen,
                      i_option,
                      sig_option,
                      r_aper,
                      d_aper,
-                     inc,
-                     xcen,
-                     ycen,
                      seeing,
+                     sersic_n,
+                     sigma,
                      pix_scale,
                      psf_factor,
+                     sersic_factor,
+                     m_factor,
                      smear=False):
 
         """
@@ -5223,14 +5362,20 @@ class vel_field(object):
             r_half_16 = theta_16[1]
             r_half_84 = theta_84[1]
 
-            other, e_val = self.extract_in_apertures_fixed_inc_fixed(xcen,
+            other, e_val = self.extract_in_apertures_fixed_inc_fixed(inc,
+                                                                     redshift,
+                                                                     wave_array,
+                                                                     xcen,
                                                                      ycen,
-                                                                     inc,
                                                                      r_aper,
                                                                      d_aper,
                                                                      seeing,
+                                                                     sersic_n,
+                                                                     sigma,
                                                                      pix_scale,
                                                                      psf_factor,
+                                                                     sersic_factor,
+                                                                     m_factor,
                                                                      smear)
 
         # evaluate the v2.2 parameter for each of the models

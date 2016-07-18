@@ -14993,8 +14993,12 @@ class pipelineOps(object):
                                          r_aper,
                                          d_aper,
                                          seeing,
+                                         sersic_n,
+                                         sigma,
                                          pix_scale,
                                          psf_factor,
+                                         sersic_factor,
+                                         m_factor,
                                          smear=False):
 
         """
@@ -15033,6 +15037,12 @@ class pipelineOps(object):
         for entry in Table:
 
             obj_name = entry[0][:-5] + '_vel_field.fits'
+
+            c_name = entry[0]
+
+            cube = cubeOps(c_name)
+
+            wave_array = cube.wave_array
 
             redshift = entry[1]
 
@@ -15082,33 +15092,51 @@ class pipelineOps(object):
                                                                  nsteps)
 
             vel.run_emcee_fixed_inc_fixed(guess_params,
+                                          inc,
+                                          redshift,
+                                          wave_array,
                                           xcen,
                                           ycen,
-                                          inc,
                                           nsteps,
                                           nwalkers,
                                           burn_no,
                                           seeing,
+                                          sersic_n,
+                                          sigma,
                                           pix_scale,
                                           psf_factor,
+                                          sersic_factor,
+                                          m_factor,
                                           smear)
 
-            vel.plot_comparison_fixed_inc_fixed(xcen,
+            vel.plot_comparison_fixed_inc_fixed(inc,
+                                                redshift,
+                                                wave_array,
+                                                xcen,
                                                 ycen,
-                                                inc,
                                                 seeing,
+                                                sersic_n,
+                                                sigma,
                                                 pix_scale,
                                                 psf_factor,
+                                                sersic_factor,
+                                                m_factor,
                                                 smear)
 
-            vel.extract_in_apertures_fixed_inc_fixed(xcen,
+            vel.extract_in_apertures_fixed_inc_fixed(inc,
+                                                     redshift,
+                                                     wave_array,
+                                                     xcen,
                                                      ycen,
-                                                     inc,
                                                      r_aper,
                                                      d_aper,
                                                      seeing,
+                                                     sersic_n,
+                                                     sigma,
                                                      pix_scale,
                                                      psf_factor,
+                                                     sersic_factor,
+                                                     m_factor,
                                                      smear)
 
     def make_all_plots_no_image(self,
@@ -16698,15 +16726,21 @@ class pipelineOps(object):
 
 
     def make_all_plots_no_image_fixed_inc_fixed(self,
+                                                inc,
+                                                redshift,
+                                                wave_array,
                                                 xcen,
                                                 ycen,
-                                                inc,
                                                 infile,
                                                 r_aper,
                                                 d_aper,
                                                 seeing,
+                                                sersic_n,
+                                                sigma,
                                                 pix_scale,
                                                 psf_factor,
+                                                sersic_factor,
+                                                m_factor,
                                                 smear=False):
 
         """
@@ -16781,12 +16815,18 @@ class pipelineOps(object):
         ypix = data_vel.shape[1]
 
         data_model = vel.compute_model_grid_fixed_inc_fixed(theta_50,
+                                                            inc,
+                                                            redshift,
+                                                            wave_array,
                                                             xcen,
                                                             ycen,
-                                                            inc,
                                                             seeing,
+                                                            sersic_n,
+                                                            sigma,
                                                             pix_scale,
                                                             psf_factor,
+                                                            sersic_factor,
+                                                            m_factor,
                                                             smear)
 
         # truncate this to the data size
@@ -16813,15 +16853,21 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots, extract_values = vel.extract_in_apertures_fixed_inc_fixed(xcen,
-                                                                               ycen,
-                                                                               inc,
-                                                                               r_aper,
-                                                                               d_aper,
-                                                                               seeing,
-                                                                               pix_scale,
-                                                                               psf_factor,
-                                                                               smear)
+        one_d_plots, extract_values = vel.extract_in_apertures_fixed_inc_fixed(inc,
+                                                                             redshift,
+                                                                             wave_array,
+                                                                             xcen,
+                                                                             ycen,
+                                                                             r_aper,
+                                                                             d_aper,
+                                                                             seeing,
+                                                                             sersic_n,
+                                                                             sigma,
+                                                                             pix_scale,
+                                                                             psf_factor,
+                                                                             sersic_factor,
+                                                                             m_factor,
+                                                                             smear)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -17026,15 +17072,21 @@ class pipelineOps(object):
 
 
     def make_all_plots_fixed_inc_fixed(self,
+                                       inc,
+                                       redshift,
+                                       wave_array,
                                        xcen,
                                        ycen,
-                                       inc,
                                        infile,
                                        r_aper,
                                        d_aper,
                                        seeing,
+                                       sersic_n,
+                                       sigma,
                                        pix_scale,
                                        psf_factor,
+                                       sersic_factor,
+                                       m_factor,
                                        smear=False):
 
         """
@@ -17160,13 +17212,19 @@ class pipelineOps(object):
         ypix = data_vel.shape[1]
 
         data_model = vel.compute_model_grid_fixed_inc_fixed(theta_50,
-                                                            xcen,
-                                                            ycen,
-                                                            inc,
-                                                            seeing,
-                                                            pix_scale,
-                                                            psf_factor,
-                                                            smear)
+                                                           inc,
+                                                           redshift,
+                                                           wave_array,
+                                                           xcen,
+                                                           ycen,
+                                                           seeing,
+                                                           sersic_n,
+                                                           sigma,
+                                                           pix_scale,
+                                                           psf_factor,
+                                                           sersic_factor,
+                                                           m_factor,
+                                                           smear)
 
         # truncate this to the data size
 
@@ -17192,15 +17250,21 @@ class pipelineOps(object):
 
         data_sig = table_sig[0].data
 
-        one_d_plots, extract_values = vel.extract_in_apertures_fixed_inc_fixed(xcen,
-                                                                               ycen,
-                                                                               inc,
-                                                                               r_aper,
-                                                                               d_aper,
-                                                                               seeing,
-                                                                               pix_scale,
-                                                                               psf_factor,
-                                                                               smear)
+        one_d_plots, extract_values = vel.extract_in_apertures_fixed_inc_fixed(inc,
+                                                                             redshift,
+                                                                             wave_array,
+                                                                             xcen,
+                                                                             ycen,
+                                                                             r_aper,
+                                                                             d_aper,
+                                                                             seeing,
+                                                                             sersic_n,
+                                                                             sigma,
+                                                                             pix_scale,
+                                                                             psf_factor,
+                                                                             sersic_factor,
+                                                                             m_factor,
+                                                                             smear)
 
         x_max, mod_velocity_values_max, real_velocity_values_max, \
             real_error_values_max, sig_values_max, sig_error_values_max \
@@ -17524,8 +17588,12 @@ class pipelineOps(object):
                                              r_aper,
                                              d_aper,
                                              seeing,
+                                             sersic_n,
+                                             sigma,
                                              pix_scale,
                                              psf_factor,
+                                             sersic_factor,
+                                             m_factor,
                                              smear=False):
 
         # read in the table of cube names
@@ -17536,21 +17604,33 @@ class pipelineOps(object):
 
             obj_name = entry[0]
 
+            cube = cubeOps(obj_name)
+
+            wave_array = cube.wave_array
+
+            redshift = entry[1]
+
             xcen = entry[10]
 
             ycen = entry[11]
 
             inc = entry[12]
 
-            self.make_all_plots_fixed_inc_fixed(xcen,
+            self.make_all_plots_fixed_inc_fixed(inc,
+                                                redshift,
+                                                wave_array,
+                                                xcen,
                                                 ycen,
-                                                inc,
-                                                obj_name,
+                                                infile,
                                                 r_aper,
                                                 d_aper,
                                                 seeing,
+                                                sersic_n,
+                                                sigma,
                                                 pix_scale,
                                                 psf_factor,
+                                                sersic_factor,
+                                                m_factor,
                                                 smear)
 
     def multi_make_all_plots_no_image_fixed_inc_fixed(self,
@@ -17558,8 +17638,12 @@ class pipelineOps(object):
                                                       r_aper,
                                                       d_aper,
                                                       seeing,
+                                                      sersic_n,
+                                                      sigma,
                                                       pix_scale,
                                                       psf_factor,
+                                                      sersic_factor,
+                                                      m_factor,
                                                       smear=False):
 
         # read in the table of cube names
@@ -17570,21 +17654,33 @@ class pipelineOps(object):
 
             obj_name = entry[0]
 
+            cube = cubeOps(obj_name)
+
+            wave_array = cube.wave_array
+
+            redshift = entry[1]
+
             xcen = entry[10]
 
             ycen = entry[11]
 
             inc = entry[12]
 
-            self.make_all_plots_no_image_fixed_inc_fixed(xcen,
+            self.make_all_plots_no_image_fixed_inc_fixed(inc,
+                                                         redshift,
+                                                         wave_array,
+                                                         xcen,
                                                          ycen,
-                                                         inc,
-                                                         obj_name,
+                                                         infile,
                                                          r_aper,
                                                          d_aper,
                                                          seeing,
+                                                         sersic_n,
+                                                         sigma,
                                                          pix_scale,
                                                          psf_factor,
+                                                         sersic_factor,
+                                                         m_factor,
                                                          smear)
 
     # experiment with modelling seeing conditions
@@ -18189,8 +18285,12 @@ class pipelineOps(object):
                                   i_option,
                                   sig_option,
                                   seeing,
+                                  sersic_n,
+                                  sigma,
                                   pix_scale,
                                   psf_factor,
+                                  sersic_factor,
+                                  m_factor,
                                   smear=False):
 
         """
@@ -18232,6 +18332,10 @@ class pipelineOps(object):
 
             redshift = float(entry[1])
 
+            cube = cubeOps(obj_name)
+
+            wave_array = cube.wave_array
+
             # look at the transverse scale at that redshift
             # this will be used to convert the last data radius into
             # a physical size and compare with the hubble radius
@@ -18267,17 +18371,23 @@ class pipelineOps(object):
                                 xcen,
                                 ycen)
 
-            ratio_list = v_field.v_over_sigma(i_option,
-                                              sig_option,
-                                              r_aper,
-                                              d_aper,
-                                              inc,
-                                              xcen,
-                                              ycen,
-                                              seeing,
-                                              pix_scale,
-                                              psf_factor,
-                                              smear)
+            ratio_list = v_field.v_over_sigma(inc,
+                                             redshift,
+                                             wave_array,
+                                             xcen,
+                                             ycen,
+                                             i_option,
+                                             sig_option,
+                                             r_aper,
+                                             d_aper,
+                                             seeing,
+                                             sersic_n,
+                                             sigma,
+                                             pix_scale,
+                                             psf_factor,
+                                             sersic_factor,
+                                             m_factor,
+                                             smear)
 
             x_real.append(ratio_list[0])
             x_50.append(ratio_list[1])
