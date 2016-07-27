@@ -300,7 +300,7 @@ def blur_by_psf(data,
 
             final_flux.append(temp_flux_grid * seeing_profile)
 
-    final_flux = np.sum(final_flux, axis=0)
+    final_flux = np.nansum(final_flux, axis=0)
 
 #    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 #    im = ax.imshow(final_flux,
@@ -315,7 +315,6 @@ def blur_by_psf(data,
 #    plt.show()
 #    plt.close('all')
 
-    print np.nansum(abs(final_flux))
     return final_flux
 
 def construct_shifted_cube(vel_data,

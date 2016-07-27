@@ -972,7 +972,6 @@ class cubeOps(object):
 
         list_of_moments = self.moments_better(data_masked_cut)
 
-
         # very important - have to set the nan values equal to the
         # evaluated height parameter
 
@@ -989,14 +988,14 @@ class cubeOps(object):
                                             0,
                                             0,
                                             0,
-                                            -90],
+                                            -np.pi/2.0],
                                             [np.inf,
                                              np.inf,
                                              data_masked_cut.shape[1],
                                              data_masked_cut.shape[0],
                                              data_masked_cut.shape[1],
                                              data_masked_cut.shape[0],
-                                             90]))
+                                             np.pi/2.0]))
 
         # alter the gaussian centroid positions by the number of
         # cut pixels at the beginning

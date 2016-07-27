@@ -29,6 +29,7 @@ from matplotlib.ticker import MaxNLocator
 from scipy.spatial import distance
 from copy import copy
 from photutils import CircularAperture
+from photutils import EllipticalAperture
 from photutils import aperture_photometry
 from sys import stdout
 import scipy.optimize as op

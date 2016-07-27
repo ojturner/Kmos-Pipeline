@@ -24,7 +24,7 @@ from vel_field_class import vel_field
 
 # Create an instance of the class
 pipe_methods = pipelineOps()
-cube = cubeOps('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/combine_sci_reconstructed_bs008543.fits')
+cube = cubeOps('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_goods_p1_0.8_10_better/Science/combine_sci_reconstructed_bs008543.fits')
 v_field = vel_field('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_'
                      + 'goods_p1_0.8_10_better/Science/combine_sci_reconstru'
                      + 'cted_bs006516_vel_field.fits', 24, 17)
@@ -77,22 +77,22 @@ v_field = vel_field('/disk1/turner/DATA/new_comb_calibrated/uncalibrated_'
 #hobjframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:05:24.218_Corrected_11_spline3_Shifted.fits'
 #hskyframe = '/disk1/turner/PhD/KMOS/KMOS_DATA/NGCLEE/H-band/raw_frames/KMOS.2014-08-03T00:03:33.904.fits'
 
-combine_input = '/disk2/turner/DATA/GOODS_K_P1_comb_0.1/all_nights.txt'
-sci_dir = '/disk2/turner/DATA/GOODS_K_P1_comb_0.1'
-infile = '/disk1/turner/DATA/all_names_new.txt'
-combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals_names.txt'
-obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
+#combine_input = '/disk2/turner/DATA/GOODS_K_P1_comb_0.1/all_nights.txt'
+#sci_dir = '/disk2/turner/DATA/GOODS_K_P1_comb_0.1'
+#infile = '/disk1/turner/DATA/all_names_new.txt'
+#combNames = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/Instances/gals_names.txt'
+#obj_names = '/disk1/turner/DATA/NGC55/YJ/Calibrations/shifted_object_names.txt'
 
-cal_dir = '/disk1/turner/DATA/esther_tester/Calibrations'
-gal_dir = '/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science'
+cal_dir = '/Volumes/SAMSUNG/uni_backup/turner/DATA/esther_tester/Calibrations'
+gal_dir = '/Volumes/SAMSUNG/uni_backup/turner/DATA/SSA_HK_P2_comb_0.8_15/Science'
 sky_cube_gal = gal_dir + '/combine_sci_reconstructed_arm3_sky.fits'
 obj_cube_gal = gal_dir + '/combine_sci_reconstructed_s_sa22b-md25.fits'
 std_cube_gal = gal_dir + '/combine_sci_reconstructed_c_stars_7656.fits'
-raw_file = '/disk1/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS344_0018_Corrected.fits'
-badpixel_dark_new = '/disk1/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
+raw_file = '/Volumes/SAMSUNG/uni_backup/turner/DATA/Gals1/K/obs_09/raw_frames/Corrected/KMOS_SPEC_OBS344_0018_Corrected.fits'
+badpixel_dark_new = '/Volumes/SAMSUNG/uni_backup/turner/DATA/NGC55/15_2014/Calibrations/badpixel_dark_Added.fits'
 object_spectrum = gal_dir + '/combine_sci_reconstructed_n_c47_spectrum.fits'
-vor_infile = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_voronoi_test.txt'
-vor_output = '/disk1/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
+vor_infile = '/Volumes/SAMSUNG/uni_backup/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/kmos_voronoi_test.txt'
+vor_output = '/Volumes/SAMSUNG/uni_backup/turner/PhD/KMOS/Analysis_Pipeline/Python_code/voronoi/voronoi_2d_binning_output.txt'
 
 guess_params = [18.4515843627, 17.7671445415, 1.10786694516, 5.76470601635, 1.09264956556, 165.2541589594]
 guess_params_fixed = [1.04999129056,  5.80554889021,   0.106855839229,  65.2463520223]
@@ -115,9 +115,9 @@ guess_params_fixed_inc_fixed = [5.80554889021,   0.106855839229,  65.2463520223]
 # APPLYING MODEL MCMC # 
 
 #pipe_methods.multi_apply_mcmc_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt',
-#                                              nwalkers=8,
-#                                              nsteps=7,
-#                                              burn_no=0,
+#                                              nwalkers=200,
+#                                              nsteps=500,
+#                                              burn_no=50,
 #                                              r_aper=0.8,
 #                                              d_aper=0.6,
 #                                              seeing=0.5,
@@ -127,7 +127,7 @@ guess_params_fixed_inc_fixed = [5.80554889021,   0.106855839229,  65.2463520223]
 #                                              psf_factor=1,
 #                                              sersic_factor=1,
 #                                              m_factor=1,
-#                                              smear=True)
+#                                              smear=False)
 
 # APPLYING VELOCITY FIELD COMPUTATION # 
 
@@ -135,8 +135,17 @@ guess_params_fixed_inc_fixed = [5.80554889021,   0.106855839229,  65.2463520223]
 
 # CREATING THE PLOT GRIDS # 
 
-#pipe_methods.multi_make_all_plots_fixed_inc_fixed('/disk1/turner/DATA/all_names_new.txt', 0.8, 0.6, seeing=0.4, pix_scale=0.1, smear=False)
-
+pipe_methods.multi_make_all_plots_fixed_inc_fixed(infile='/disk1/turner/DATA/all_names_new.txt',
+                                                  r_aper=0.8,
+                                                  d_aper=0.6,
+                                                  seeing=0.2,
+                                                  sersic_n=2.0,
+                                                  sigma=60,
+                                                  pix_scale=0.1,
+                                                  psf_factor=1.0,
+                                                  sersic_factor=1.0,
+                                                  m_factor=1.0,
+                                                  smear=False)
 
 # V OVER SIGMA # 
 
@@ -154,20 +163,20 @@ guess_params_fixed_inc_fixed = [5.80554889021,   0.106855839229,  65.2463520223]
 
 #pipe_methods.plot_properties('/disk1/turner/DATA/v_over_sigma/master_goods_2.txt')
 
-data = v_field.compute_model_grid_fixed_inc_fixed(theta=guess_params_fixed_inc_fixed,
-                                                  inc=1.1,
-                                                  redshift=3.21418,
-                                                  wave_array=cube.wave_array, 
-                                                  xcen=24,
-                                                  ycen=17,
-                                                  seeing=0.5,
-                                                  sersic_n=2.0,
-                                                  sigma=60,
-                                                  pix_scale=0.1,
-                                                  psf_factor=1,
-                                                  sersic_factor=1,
-                                                  m_factor=1,
-                                                  smear=False)
+#data = v_field.compute_model_grid_fixed_inc_fixed(theta=guess_params_fixed_inc_fixed,
+#                                                  inc=1.1,
+#                                                  redshift=3.21418,
+#                                                  wave_array=cube.wave_array, 
+#                                                  xcen=24,
+#                                                  ycen=17,
+#                                                  seeing=0.5,
+#                                                  sersic_n=2.0,
+#                                                  sigma=60,
+#                                                  pix_scale=0.1,
+#                                                  psf_factor=1,
+#                                                  sersic_factor=1,
+#                                                  m_factor=1,
+#                                                  smear=False)
 #psf.compute_velocity_smear(data,
 #                           3.0,
 #                           24,
@@ -176,15 +185,15 @@ data = v_field.compute_model_grid_fixed_inc_fixed(theta=guess_params_fixed_inc_f
 #                           0.1,
 #                           psf_factor=1,
 #                           sersic_factor=10)
-psf.cube_blur(data,
-              3.21418,
-              cube.wave_array,
-              24,
-              17,
-              0.5,
-              0.1,
-              1,
-              1)
+#psf.cube_blur(data,
+#              3.21418,
+#              cube.wave_array,
+#              24,
+#              17,
+#              0.5,
+#              0.1,
+#              1,
+#              1)
 #fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 #ax.imshow(v_field.vel_data)
 #plt.show()
@@ -244,7 +253,7 @@ psf.cube_blur(data,
 #pipe_methods.telluric_correct('IZ', cal_dir)
 #field_instance.fit_kinematic_pa(plot=True, debug=False)
 #pipe_methods.multi_plot_all_maps('/disk1/turner/DATA/SSA_HK_P2_comb_calibrated_1E16/all_names.txt', binning=False, xbin=1, ybin=1, interp='sum')
-#pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P1_comb_0.8_10/Science/goods_k_p1_spec_data.txt')
+#pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/uncalibrated_goods_p1_0.8_10_better/Science/goods_k_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P1_comb_0.8_10/Science/ssa22_p1_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/GOODS_K_P2_comb_0.8_10/Science/goods_k_p2_spec_data.txt')
 #pipe_methods.multi_plot_OIII_vel_map('/disk1/turner/DATA/SSA_HK_P2_comb_0.8_15/Science/ssa22_p2_spec_data.txt')

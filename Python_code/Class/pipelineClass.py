@@ -26,10 +26,24 @@ from matplotlib.ticker import MaxNLocator
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from numpy import poly1d
 from sys import stdout
+from photutils import CircularAperture
+from photutils import EllipticalAperture
+from photutils import aperture_photometry
 
 # add the class file to the PYTHONPATH
 sys.path.append('/disk1/turner/PhD'
                 + '/KMOS/Analysis_Pipeline/Python_code/Class')
+
+# add the functions folder to the PYTHONPATH
+sys.path.append('/disk1/turner/PhD'
+                + '/KMOS/Analysis_Pipeline/Python_code/functions')
+
+import flatfield_cube as f_f
+import psf_blurring as psf
+import twod_gaussian as g2d
+import rotate_pa as rt_pa
+import aperture_growth as ap_growth
+import make_table
 
 from cubeClass import cubeOps
 from galPhysClass import galPhys
@@ -17101,9 +17115,17 @@ class pipelineOps(object):
                 grid of plots
         """
 
+        # Get the conversion between arcseconds and kpc at this redshift
+
+        from astropy.cosmology import WMAP9 as cosmo
+
+        scale = cosmo.kpc_proper_per_arcmin(redshift).value / 60.0
+
         # open the various files and run the methods to get the data
         # for plotting
 
+        gal_name = infile[len(infile) -
+                          infile[::-1].find("/"):]
 
         param_file = np.genfromtxt('%s_vel_field_params_fixed_inc_fixed.txt' % infile[:-5])
 
@@ -17111,9 +17133,67 @@ class pipelineOps(object):
 
         pa, rt, va = theta_50
 
-        table_hst = fits.open('%s_sn.fits' % infile[:-5])
+        hst_stamp_name = infile[:-5] + '_galfit.fits'
 
-        hst_pa_str = table_hst[0].header['1_PA']
+        table_hst = fits.open(hst_stamp_name)
+
+        # do the initial numerical fitting to find the 
+        # half light radius and other quantities
+
+        half_light_dict = ap_growth.find_aperture_parameters(hst_stamp_name)
+
+        # assign the parameters from the dictionary
+        # where prefix num refers to the fact that
+        # this has been done numerically
+
+        num_cut_data = half_light_dict['cut_data']
+        num_fit_data = half_light_dict['fit_data']
+        num_axis_array = half_light_dict['a_array']
+        num_sum_array = half_light_dict['sum_array']
+        num_axis_ratio = half_light_dict['axis_ratio']
+        num_r_e = half_light_dict['r_e_pixels']
+        num_r_9 = half_light_dict['r_9_pixels']
+        num_pa = half_light_dict['pa'] + np.pi / 2.0
+
+        scaled_axis_array = 0.06 * scale * num_axis_array
+        scaled_num_r_e = 0.06 * scale * num_r_e
+        scaled_num_r_9 = 0.06 * scale * num_r_9
+
+        galfit_mod = table_hst[2].data
+
+        galfit_res = table_hst[3].data
+
+        # Get thhe galfit axis ratio
+
+        axis_r_str = table_hst[2].header['1_AR']
+
+        axis_r = axis_r_str[:len(axis_r_str) -
+                        axis_r_str[::-1].find("+") - 2]
+
+        if axis_r[0] == '[':
+
+            axis_r = axis_r[1:]
+
+        axis_r = float(axis_r)
+
+        # Get the galfit scale radius
+
+        r_e_str = table_hst[2].header['1_RE']
+
+        r_e = r_e_str[:len(r_e_str) -
+                        r_e_str[::-1].find("+") - 2]
+
+        if r_e[0] == '[':
+
+            r_e = r_e[1:]
+
+        r_e = float(r_e)
+
+        # Converting back to arcseconds
+
+        r_e_arc = r_e / scale
+
+        hst_pa_str = table_hst[2].header['1_PA']
 
         hst_pa = hst_pa_str[:len(hst_pa_str) -
                                   hst_pa_str[::-1].find("+") - 2]
@@ -17135,61 +17215,7 @@ class pipelineOps(object):
         print hst_pa
         print pa
 
-        # calculate the boundaries from which to draw a line
-        # through the images relating to the position angles
-
-        x_inc_hst = 100 * np.abs(np.cos(hst_pa))
-        y_inc_hst = 100 * np.abs(np.sin(hst_pa))
-
-        # find boundaries by imposing the same conditions as
-        # in the extract apertures for calculating the angle
-        # i.e. relying on the invariance of two segments
-
-        if 0 < hst_pa < np.pi / 2.0 or np.pi < hst_pa < 3 * np.pi / 2.0:
-
-            # in the top right and bottom left areas
-            # so adding to x goes with subtracting from y
-
-            x_h_low = xcen + x_inc_hst
-            x_h_high = xcen - x_inc_hst
-            y_h_low = ycen - y_inc_hst
-            y_h_high = ycen + y_inc_hst
-
-        else:
-
-            x_h_low = xcen - x_inc_hst
-            x_h_high = xcen + x_inc_hst
-            y_h_low = ycen - y_inc_hst
-            y_h_high = ycen + y_inc_hst
-
-        # calculate the boundaries from which to draw a line
-        # through the images relating to the position angles
-
-        x_inc = 100 * np.abs(np.cos(pa))
-        y_inc = 100 * np.abs(np.sin(pa))
-
-        # find boundaries by imposing the same conditions as
-        # in the extract apertures for calculating the angle
-        # i.e. relying on the invariance of two segments
-
-        if 0 < pa < np.pi / 2.0 or np.pi < pa < 3 * np.pi / 2.0:
-
-            # in the top right and bottom left areas
-            # so adding to x goes with subtracting from y
-
-            x_low = xcen + x_inc
-            x_high = xcen - x_inc
-            y_low = ycen - y_inc
-            y_high = ycen + y_inc
-
-        else:
-
-            x_low = xcen - x_inc
-            x_high = xcen + x_inc
-            y_low = ycen - y_inc
-            y_high = ycen + y_inc
-
-        data_hst = table_hst[0].data
+        data_hst = table_hst[1].data
 
         flux_name = infile[:-5] + '_flux_field.fits'
 
@@ -17202,6 +17228,10 @@ class pipelineOps(object):
         table_vel = fits.open(vel_field_name)
 
         data_vel = table_vel[0].data
+
+        table_error = fits.open('%s_error_field.fits' % infile[:-5])
+
+        error_vel = table_error[0].data
 
         vel = vel_field(vel_field_name,
                         xcen,
@@ -17289,39 +17319,391 @@ class pipelineOps(object):
         sig_min, sig_max = np.nanpercentile(data_sig,
                                             [5.0, 95.0])
 
-        fig, ax = plt.subplots(1, 7, figsize=(24, 4))
+        d_for_mask = copy(data_vel)
 
+        # get the continuum images and narrow band OIII
+        cont_dict = f_f.flatfield(infile,
+                                  d_for_mask,
+                                  redshift)
 
-        ax[1].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+        cont1 = cont_dict['cont1']
+        cont2 = cont_dict['cont2']
+        o_nband = cont_dict['OIII']
+
+        # CUT DOWN ALL OF THE DATA WE HAVE TO GET RID OF SPAXELS 
+        # ON THE OUTSKIRTS - 3 SPAXELS IN KMOS AND 5 in HST
+
+#        data_hst = data_hst[8:-8, 8:-8]
+#        galfit_mod = galfit_mod[8:-8, 8:-8]
+#        galfit_res = galfit_res[8:-8, 8:-8]
+#        data_flux = data_flux[1:-1,1:-1]
+#        data_vel = data_vel[1:-1, 1:-1]
+#        data_model = data_model[1:-1, 1:-1]
+#        data_sig = data_sig[1:-1, 1:-1]
+#        cont1 = cont1[1:-1, 1:-1]
+#        cont2 = cont2[1:-1, 1:-1]
+#        o_nband = o_nband[1:-1, 1:-1]
+
+        # smooth the continuum image
+
+        b_cont2 = psf.blur_by_psf(cont2,
+                                  0.3,
+                                  pix_scale,
+                                  psf_factor)
+
+        # for gaussian fitting only want to use the pixels
+        # which have been accepted in the stott fitting
+
+        g_mask = np.empty(shape=(data_vel.shape[0],
+                                 data_vel.shape[1]))
+
+        print 'This is the mask shape: %s %s' % (g_mask.shape[0], g_mask.shape[1])
+
+        for i in range(data_vel.shape[0]):
+
+            for j in range(data_vel.shape[1]):
+
+                if np.isnan(data_vel[i, j]):
+
+                    g_mask[i, j] = np.nan
+
+                else:
+
+                    g_mask[i, j] = 1.0
+
+        fit_b_cont2 = g_mask * b_cont2
+
+        # attempt to fit the continuum with a gaussian
+
+        fit_cont, fit_params = g2d.fit_gaussian(fit_b_cont2)
+
+        # and assign the center coordinates
+
+        fit_cont_x = fit_params[3]
+        fit_cont_y = fit_params[2]
+
+        print 'These are the fit center coordinates: %s %s' % (fit_cont_x, fit_cont_y) 
+
+        # Also get estimate of the center using peak pixel within
+        # that masking region
+
+        cont_peak_coords = np.unravel_index(np.nanargmax(fit_b_cont2),
+                                            fit_b_cont2.shape)
+
+        cont_peak_x = cont_peak_coords[0]
+        cont_peak_y = cont_peak_coords[1]
+
+        print 'These are the continuum peak: %s %s' % (cont_peak_x, cont_peak_y) 
+
+        fit_o_nband = g_mask * o_nband
+
+        oiii_peak_coords = np.unravel_index(np.nanargmax(fit_o_nband),
+                                            fit_o_nband.shape)
+
+        oiii_peak_x = oiii_peak_coords[0]
+        oiii_peak_y = oiii_peak_coords[1]
+
+        print 'This is the OIII peak: %s %s' % (oiii_peak_x, oiii_peak_y)
+
+        hst_fit, hst_fit_params = g2d.fit_gaussian(galfit_mod)
+
+        # 1D spectrum finding - note this will be unweighted
+        # and not as good as a weighted version which doesn't have
+        # as large a contribution from the outside spaxels
+        # using the spaxels in the mask
+
+        obj_cube = cubeOps(infile)
+        one_d_spectrum = []
+
+        #  OIII wavelength
+        central_l = (1 + redshift) * 0.500824
+
+        o_peak = np.argmin(abs(central_l - wave_array))
+
+        for i in range(data_vel.shape[0]):
+
+            for j in range(data_vel.shape[1]):
+
+                if not(np.isnan(g_mask[i, j])):
+
+                    one_d_spectrum.append(obj_cube.data[:, i, j])
+
+        # sum for final spectrum
+        one_d_spectrum = np.nansum(one_d_spectrum, axis=0)
+
+        # Now have all information to define an astropy elliptical
+        # aperture using the galfit parameters
+
+        from photutils import EllipticalAperture
+
+        theta = hst_pa + np.pi / 2.0
+        major_axis = r_e_arc * 10
+        minor_axis = major_axis * axis_r
+        galfit_x = hst_fit_params[3]
+        galfit_y = hst_fit_params[2]
+        positions = [(galfit_y, galfit_x)]
+
+        print 'This is the axis ratio: %s' % axis_r
+
+        apertures = EllipticalAperture(positions,
+                                       major_axis,
+                                       minor_axis,
+                                       theta)
+
+        disk_apertures = EllipticalAperture(positions,
+                                            1.8*major_axis,
+                                            1.8*minor_axis,
+                                            theta)
+
+        # Now compute alternate PA from rotating the slit until
+        # it maximises the velocity difference
+
+        best_pa, pa_array, stat_array = rt_pa.rot_pa(d_aper,
+                                                     r_aper,
+                                                     data_vel, 
+                                                     xcen,
+                                                     ycen,
+                                                     pix_scale)
+
+        # Also use the rt_pa method to extract the 1D spectrum
+        # and errors along the HST and BEST pa's
+        # these will be plotted along with the dynamical PA plots
+
+        hst_pa_vel, hst_pa_x = rt_pa.extract(d_aper,
+                                             r_aper,
+                                             hst_pa,
+                                             data_vel, 
+                                             xcen,
+                                             ycen,
+                                             pix_scale)
+
+        hst_pa_error, hst_pa_x = rt_pa.extract(d_aper,
+                                               r_aper,
+                                               hst_pa,
+                                               error_vel, 
+                                               xcen,
+                                               ycen,
+                                               pix_scale)
+
+        best_pa_vel, best_pa_x = rt_pa.extract(d_aper,
+                                             r_aper,
+                                             best_pa,
+                                             data_vel, 
+                                             xcen,
+                                             ycen,
+                                             pix_scale)
+
+        best_pa_error, best_pa_x = rt_pa.extract(d_aper,
+                                               r_aper,
+                                               best_pa,
+                                               error_vel, 
+                                               xcen,
+                                               ycen,
+                                               pix_scale)
+
+        # calculate the boundaries from which to draw a line
+        # through the images relating to the position angles
+
+        x_inc_hst = 100 * np.abs(np.cos(hst_pa))
+        y_inc_hst = 100 * np.abs(np.sin(hst_pa))
+
+        # Find the boundaries for plotting the PAs
+        # Use the continuum center in order to do this
+
+        if 0 < hst_pa < np.pi / 2.0 or np.pi < hst_pa < 3 * np.pi / 2.0:
+
+            # in the top right and bottom left areas
+            # so adding to x goes with subtracting from y
+
+            x_h_low = xcen + x_inc_hst
+            x_h_high = xcen - x_inc_hst
+            y_h_low = ycen - y_inc_hst
+            y_h_high = ycen + y_inc_hst
+
+        else:
+
+            x_h_low = xcen - x_inc_hst
+            x_h_high = xcen + x_inc_hst
+            y_h_low = ycen - y_inc_hst
+            y_h_high = ycen + y_inc_hst
+
+        # calculate the boundaries from which to draw a line
+        # through the images relating to the position angles
+
+        x_inc = 100 * np.abs(np.cos(pa))
+        y_inc = 100 * np.abs(np.sin(pa))
+
+        # find boundaries by imposing the same conditions as
+        # in the extract apertures for calculating the angle
+        # i.e. relying on the invariance of two segments
+
+        if 0 < pa < np.pi / 2.0 or np.pi < pa < 3 * np.pi / 2.0:
+
+            # in the top right and bottom left areas
+            # so adding to x goes with subtracting from y
+
+            x_low = xcen + x_inc
+            x_high = xcen - x_inc
+            y_low = ycen - y_inc
+            y_high = ycen + y_inc
+
+        else:
+
+            x_low = xcen - x_inc
+            x_high = xcen + x_inc
+            y_low = ycen - y_inc
+            y_high = ycen + y_inc
+
+        x_inc_best = 100 * np.abs(np.cos(best_pa))
+        y_inc_best = 100 * np.abs(np.sin(best_pa))
+
+        # find boundaries by imposing the same conditions as
+        # in the extract apertures for calculating the angle
+        # i.e. relying on the invariance of two segments
+
+        if 0 < best_pa < np.pi / 2.0 or np.pi < best_pa < 3 * np.pi / 2.0:
+
+            # in the top right and bottom left areas
+            # so adding to x goes with subtracting from y
+
+            x_low_best = xcen + x_inc_best
+            x_high_best = xcen - x_inc_best
+            y_low_best = ycen - y_inc_best
+            y_high_best = ycen + y_inc_best
+
+        else:
+
+            x_low_best = xcen - x_inc_best
+            x_high_best = xcen + x_inc_best
+            y_low_best = ycen - y_inc_best
+            y_high_best = ycen + y_inc_best
+
+        x_inc_num = 100 * np.abs(np.cos(num_pa))
+        y_inc_num = 100 * np.abs(np.sin(num_pa))
+
+        if 0 < num_pa < np.pi / 2.0 or np.pi < num_pa < 3 * np.pi / 2.0:
+
+            # in the top right and bottom left areas
+            # so adding to x goes with subtracting from y
+
+            x_low_num = xcen + x_inc_num
+            x_high_num = xcen - x_inc_num
+            y_low_num = ycen - y_inc_num
+            y_high_num = ycen + y_inc_num
+
+        else:
+
+            x_low_num = xcen - x_inc_num
+            x_high_num = xcen + x_inc_num
+            y_low_num = ycen - y_inc_num
+            y_high_num = ycen + y_inc_num
+
+        # draw in the PA'S
+
+        fig, ax = plt.subplots(4, 5, figsize=(24, 16))
+
+        # flux plot
+        ax[1][0].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
                    ls='--',
-                   color='aquamarine')
-        ax[1].plot([y_low, y_high], [x_low, x_high],
+                   color='aquamarine',
+                   label='hst_pa')
+        ax[1][0].plot([y_low, y_high], [x_low, x_high],
                    ls='--',
                    color='lightcoral',
-                   lw=2)
-
-        ax[2].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   lw=2,
+                   label='dyn_pa')
+        ax[1][0].plot([y_low_best, y_high_best], [x_low_best, x_high_best],
                    ls='--',
-                   color='aquamarine')
-        ax[2].plot([y_low, y_high], [x_low, x_high],
+                   color='darkorange',
+                   lw=2,
+                   label='rot_pa')
+        ax[1][0].plot([y_low_num, y_high_num], [x_low_num, x_high_num],
+                   ls='--',
+                   color='wheat',
+                   lw=2,
+                   label='num_pa')
+        l = ax[1][0].legend(loc='best',
+                            frameon=False,
+                            prop={'size':10})
+        for text in l.get_texts():
+            text.set_color("white")
+        # velocity plot
+        ax[1][1].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine',
+                   label='hst_pa')
+        ax[1][1].plot([y_low, y_high], [x_low, x_high],
                    ls='--',
                    color='lightcoral',
-                   lw=2)
-
-        ax[3].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   lw=2,
+                   label='dyn_pa')
+        ax[1][1].plot([y_low_best, y_high_best], [x_low_best, x_high_best],
                    ls='--',
-                   color='aquamarine')
-        ax[3].plot([y_low, y_high], [x_low, x_high],
+                   color='darkorange',
+                   lw=2,
+                   label='rot_pa')
+        l = ax[1][1].legend(loc='best',
+                            frameon=False,
+                            prop={'size':10})
+        for text in l.get_texts():
+            text.set_color("white")
+        ax[1][2].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine',
+                   label='hst_pa')
+        ax[1][2].plot([y_low, y_high], [x_low, x_high],
                    ls='--',
                    color='lightcoral',
-                   lw=2)
-        ax[4].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   lw=2,
+                   label='dyn_pa')
+        ax[1][2].plot([y_low_best, y_high_best], [x_low_best, x_high_best],
                    ls='--',
-                   color='aquamarine')
-        ax[4].plot([y_low, y_high], [x_low, x_high],
+                   color='darkorange',
+                   lw=2,
+                   label='rot_pa')
+        l = ax[1][2].legend(loc='best',
+                            frameon=False,
+                            prop={'size':10})
+        for text in l.get_texts():
+            text.set_color("white")
+        ax[1][3].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine',
+                   label='hst_pa')
+        ax[1][3].plot([y_low, y_high], [x_low, x_high],
                    ls='--',
                    color='lightcoral',
-                   lw=2)
+                   lw=2,
+                   label='dyn_pa')
+        ax[1][3].plot([y_low_best, y_high_best], [x_low_best, x_high_best],
+                   ls='--',
+                   color='darkorange',
+                   lw=2,
+                   label='rot_pa')
+        l = ax[1][3].legend(loc='best',
+                            frameon=False,
+                            prop={'size':10})
+        for text in l.get_texts():
+            text.set_color("white")
+        ax[1][4].plot([y_h_low, y_h_high], [x_h_low, x_h_high],
+                   ls='--',
+                   color='aquamarine',
+                   label='hst_pa')
+        ax[1][4].plot([y_low, y_high], [x_low, x_high],
+                   ls='--',
+                   color='lightcoral',
+                   lw=2,
+                   label='dyn_pa')
+        ax[1][4].plot([y_low_best, y_high_best], [x_low_best, x_high_best],
+                   ls='--',
+                   color='darkorange',
+                   lw=2,
+                   label='rot_pa')
+        l = ax[1][4].legend(loc='best',
+                            frameon=False,
+                            prop={'size':10})
+        for text in l.get_texts():
+            text.set_color("white")
 
         # mask background of velocity data to black
 
@@ -17339,164 +17721,569 @@ class pipelineOps(object):
         m_data_sig = np.ma.array(data_sig,
                                  mask=np.isnan(data_sig))
 
-        cmap = plt.cm.bone
+        cmap = plt.cm.bone_r
         cmap.set_bad('black', 1.)
 
-        im = ax[0].imshow(data_hst,
-                          cmap=cmap,
-                          vmax=3,
-                          vmin=0)
+        # HST
 
-        ax[0].tick_params(axis='x',
+        im = ax[0][0].imshow(data_hst,
+                             cmap=cmap,
+                             vmax=10,
+                             vmin=0)
+
+        y_full_hst, x_full_hst = np.indices(galfit_mod.shape)
+
+#        ax[0][0].contour(x_full_hst,
+#                         y_full_hst,
+#                         hst_fit,
+#                         4,
+#                         ls='solid',
+#                         colors='b')
+
+        apertures.plot(ax[0][0], color='green')
+        disk_apertures.plot(ax[0][0], color='red')
+
+        ax[0][0].text(4,7, 'z = %.2f' % redshift, color='black', fontsize=16)
+        ax[0][0].text(4,14, 'pa = %.2f' % hst_pa, color='black', fontsize=16)
+        ax[0][0].text(data_hst.shape[0] - 25,
+                      data_hst.shape[1] - 6,
+                      'F160_W', color='black', fontsize=16)
+
+        ax[0][0].tick_params(axis='x',
                           labelbottom='off')
 
-        ax[0].tick_params(axis='y',
+        ax[0][0].tick_params(axis='y',
                           labelleft='off')
 
 
-        ax[0].set_title('HST imaging')
+        ax[0][0].set_title('HST imaging')
+
+        # GALFIT MODEL
+
+        ax[0][1].text(4, 7,
+                      r'$R_{e} = %s$Kpc' % r_e,
+                      fontsize=16,
+                      color='black')
+
+        ax[0][1].text(4, 14,
+                      r'$\frac{b}{a} = %s$' % axis_r,
+                      fontsize=16,
+                      color='black')
+
+        im = ax[0][1].imshow(galfit_mod,
+                          cmap=cmap,
+                          vmax=10,
+                          vmin=0)
+
+        apertures.plot(ax[0][1], color='green')
+        disk_apertures.plot(ax[0][1], color='red')
+
+        ax[0][1].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[0][1].tick_params(axis='y',
+                          labelleft='off')
+
+        ax[0][1].set_title('GALFIT mod')
+
+        # GALFIT RESIDUALS
+
+        im = ax[0][2].imshow(galfit_res,
+                          cmap=cmap,
+                          vmax=15,
+                          vmin=0)
+
+        ax[0][2].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[0][2].tick_params(axis='y',
+                          labelleft='off')
+
+        ax[0][2].set_title('GALFIT res')
+
+        cmap = plt.cm.hot
+        cmap.set_bad('black', 1.)
+
+        # FIRST CONTINUUM
+
+        ax[0][3].scatter(cont_peak_y,
+                         cont_peak_x,
+                         marker='x',
+                         s=100,
+                         color='blue')
+        ax[0][3].scatter(fit_cont_y,
+                         fit_cont_x,
+                         marker='*',
+                         s=100,
+                         color='green')
+        ax[0][3].scatter(oiii_peak_y,
+                         oiii_peak_x,
+                         marker='+',
+                         s=100,
+                         color='purple')
+
+        im = ax[0][3].imshow(cont1,
+                          cmap=cmap,
+                          vmax=0.4,
+                          vmin=0.0)
+
+        ax[0][3].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[0][3].tick_params(axis='y',
+                          labelleft='off')
+
+
+        ax[0][3].set_title('Cont_1')
+
+        # FLATFIELDED CONTINUUM
+
+        ax[0][4].scatter(cont_peak_y,
+                         cont_peak_x,
+                         marker='x',
+                         s=100,
+                         color='blue')
+
+        ax[0][4].scatter(fit_cont_y,
+                         fit_cont_x,
+                         marker='*',
+                         s=100,
+                         color='green')
+
+        ax[0][4].scatter(oiii_peak_y,
+                         oiii_peak_x,
+                         marker='+',
+                         s=100,
+                         color='purple')
+
+
+        im = ax[0][4].imshow(b_cont2,
+                          cmap=cmap,
+                          vmax=-0.1,
+                          vmin=-0.3)
+
+        y_full, x_full = np.indices(b_cont2.shape)
+        ax[0][4].contour(x_full,
+                         y_full,
+                         fit_cont,
+                         4,
+                         ls='solid',
+                         colors='black')
+
+        ax[0][4].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[0][4].tick_params(axis='y',
+                          labelleft='off')
+
+
+        ax[0][4].set_title('Cont_2')
+
+        # OIII NARROWBAND
+
+        ax[1][0].scatter(oiii_peak_y,
+                         oiii_peak_x,
+                         marker='+',
+                         s=100,
+                         color='purple')
+
+        ax[1][0].scatter(cont_peak_y,
+                         cont_peak_x,
+                         marker='x',
+                         s=100,
+                         color='blue')
+        ax[1][0].scatter(fit_cont_y,
+                         fit_cont_x,
+                         marker='*',
+                         s=100,
+                         color='green')
+
+        im = ax[1][0].imshow(o_nband,
+                          cmap=cmap,
+                          vmax=3,
+                          vmin=-0.3)
+
+        ax[1][0].tick_params(axis='x',
+                          labelbottom='off')
+
+        ax[1][0].tick_params(axis='y',
+                          labelleft='off')
+
+
+        ax[1][0].set_title('OIII')
 
         cmap = plt.cm.jet
         cmap.set_bad('black', 1.)
 
-        im = ax[1].imshow(m_data_flux,
+        # OIII FLUX
+
+        ax[1][1].scatter(oiii_peak_y,
+                         oiii_peak_x,
+                         marker='+',
+                         s=100,
+                         color='purple')
+
+        ax[1][1].scatter(cont_peak_y,
+                         cont_peak_x,
+                         marker='x',
+                         s=100,
+                         color='blue')
+        ax[1][1].scatter(fit_cont_y,
+                         fit_cont_x,
+                         marker='*',
+                         s=100,
+                         color='green')
+
+        im = ax[1][1].imshow(m_data_flux,
                           interpolation='nearest',
                           cmap=cmap)
 
-        ax[1].tick_params(axis='x',
+
+        ax[1][1].tick_params(axis='x',
                           labelbottom='off')
 
-        ax[1].tick_params(axis='y',
+        ax[1][1].tick_params(axis='y',
                           labelleft='off')
 
 
         # set the title
-        ax[1].set_title('[OIII] Flux')
+        ax[1][1].set_title('[OIII] Flux')
 
-        im = ax[2].imshow(m_data_vel,
+        # OIII VELOCITY
+
+        ax[1][2].scatter(oiii_peak_y,
+                         oiii_peak_x,
+                         marker='+',
+                         s=100,
+                         color='purple')
+
+        ax[1][2].scatter(cont_peak_y,
+                         cont_peak_x,
+                         marker='x',
+                         s=100,
+                         color='blue')
+        ax[1][2].scatter(fit_cont_y,
+                         fit_cont_x,
+                         marker='*',
+                         s=100,
+                         color='green')
+
+        im = ax[1][2].imshow(m_data_vel,
                           vmin=vel_min,
                           vmax=vel_max,
                           interpolation='nearest',
                           cmap=cmap)
 
-        ax[2].tick_params(axis='x',
+
+        ax[1][2].tick_params(axis='x',
                           labelbottom='off')
 
-        ax[2].tick_params(axis='y',
+        ax[1][2].tick_params(axis='y',
                           labelleft='off')
 
 
         # set the title
-        ax[2].set_title('Velocity from data')
+        ax[1][2].set_title('Velocity from data')
 
-        im = ax[3].imshow(m_data_mod,
+        ax[1][3].scatter(oiii_peak_y,
+                         oiii_peak_x,
+                         marker='+',
+                         s=100,
+                         color='purple')
+
+        ax[1][3].scatter(cont_peak_y,
+                         cont_peak_x,
+                         marker='x',
+                         s=100,
+                         color='blue')
+        ax[1][3].scatter(fit_cont_y,
+                         fit_cont_x,
+                         marker='*',
+                         s=100,
+                         color='green')
+
+        im = ax[1][3].imshow(m_data_mod,
                           vmin=vel_min,
                           vmax=vel_max,
                           interpolation='nearest',
                           cmap=cmap)
 
-        ax[3].tick_params(axis='x',
+
+        ax[1][3].tick_params(axis='x',
                           labelbottom='off')
 
-        ax[3].tick_params(axis='y',
+        ax[1][3].tick_params(axis='y',
                           labelleft='off')
 
         # set the title
-        ax[3].set_title('Velocity from model')
+        ax[1][3].set_title('Velocity from model')
 
-        im = ax[4].imshow(m_data_sig,
+        # OIII DIspersion
+
+        ax[1][4].scatter(oiii_peak_y,
+                         oiii_peak_x,
+                         marker='+',
+                         s=100,
+                         color='purple')
+
+        ax[1][4].scatter(cont_peak_y,
+                         cont_peak_x,
+                         marker='x',
+                         s=100,
+                         color='blue')
+        ax[1][4].scatter(fit_cont_y,
+                         fit_cont_x,
+                         marker='*',
+                         s=100,
+                         color='green')
+
+        im = ax[1][4].imshow(m_data_sig,
                           vmin=sig_min,
                           vmax=sig_max,
                           interpolation='nearest',
                           cmap=cmap)
 
-        ax[4].tick_params(axis='x',
+
+        ax[1][4].tick_params(axis='x',
                           labelbottom='off')
 
-        ax[4].tick_params(axis='y',
+        ax[1][4].tick_params(axis='y',
                           labelleft='off')
 
 
         # set the title
-        ax[4].set_title('Velocity Dispersion Data')
+        ax[1][4].set_title('Velocity Dispersion Data')
 
-        ax[5].plot(x_max,
+        # 1D VELOCITY PLOT
+
+        ax[2][0].plot(x_max,
                    mod_velocity_values_max,
                    color='red',
                    label='max_model')
 
-        ax[5].errorbar(x_max,
+        ax[2][0].errorbar(x_max,
                        real_velocity_values_max,
                        yerr=real_error_values_max,
                        fmt='o',
                        color='red',
                        label='max_data')
 
-        ax[5].plot(x_50,
+        ax[2][0].errorbar(best_pa_x,
+                          best_pa_vel,
+                          yerr=best_pa_error,
+                          fmt='o',
+                          color='darkorange',
+                          label='rot_pa')
+
+        ax[2][0].errorbar(hst_pa_x,
+                          hst_pa_vel,
+                          yerr=hst_pa_error,
+                          fmt='o',
+                          color='aquamarine',
+                          label='hst_pa')
+
+        ax[2][0].plot(x_50,
                    mod_velocity_values_50,
-                   color='blue',
+                   color='lightcoral',
                    label='50_model')
 
-        ax[5].errorbar(x_50,
+        ax[2][0].errorbar(x_50,
                        real_velocity_values_50,
                        yerr=real_error_values_50,
                        fmt='o',
                        color='blue',
                        label='50_data')
 
-        ax[5].plot(x_16,
+        ax[2][0].plot(x_16,
                    mod_velocity_values_16,
                    color='orange',
                    linestyle='--',
                    label='16_model')
 
-        ax[5].plot(x_84,
+        ax[2][0].plot(x_84,
                    mod_velocity_values_84,
                    color='purple',
                    linestyle='--',
                    label='84_model')
 
-        ax[5].set_xlim(-1.5, 1.5)
+        ax[2][0].set_xlim(-1.5, 1.5)
 
-        # ax[5].legend(prop={'size':5}, loc=1)
+        # ax[2][0].legend(prop={'size':5}, loc=1)
 
-        ax[5].set_title('Model and Real Velocity')
+        ax[2][0].set_title('Model and Real Velocity')
 
-        # ax[5].set_ylabel('velocity (kms$^{-1}$)')
+        # ax[2][0].set_ylabel('velocity (kms$^{-1}$)')
 
-        ax[5].set_xlabel('arcsec')
+        ax[2][0].set_xlabel('arcsec')
 
-        ax[5].axhline(0, color='silver', ls='-.')
-        ax[5].axvline(0, color='silver', ls='-.')
-        ax[5].axhline(va, color='silver', ls='--')
-        ax[5].axhline(-1.*va, color='silver', ls='--')
+        ax[2][0].axhline(0, color='silver', ls='-.')
+        ax[2][0].axvline(0, color='silver', ls='-.')
+        ax[2][0].axhline(va, color='silver', ls='--')
+        ax[2][0].axhline(-1.*va, color='silver', ls='--')
+
+        # Also add in vertical lines for where the kinematics 
+        # should be extracted
+
+        ax[2][0].plot([r_e_arc, r_e_arc], [-1*va, va],
+                      color='maroon',
+                      ls='--',
+                      lw=2,
+                      label='R_e')
+
+        ax[2][0].plot([1.8*r_e_arc, 1.8*r_e_arc], [-1*va, va],
+                      color='maroon',
+                      ls='--',
+                      lw=2,
+                      label=r'$R_{1.8}$ (not convolved)')
+
+        ax[2][0].plot([-1*r_e_arc, -1*r_e_arc], [-1*va, va],
+                      color='maroon',
+                      ls='--',
+                      lw=2,
+                      label='R_e')
+
+        ax[2][0].plot([-1.8*r_e_arc, -1.8*r_e_arc], [-1*va, va],
+                      color='maroon',
+                      ls='--',
+                      lw=2,
+                      label=r'$R_{1.8}$ (not convolved)')
+
+        ax[2][0].plot([-1*scaled_num_r_e / scale, -1*scaled_num_r_e / scale], [-1*va, va],
+                      color='wheat',
+                      ls='--',
+                      lw=2,
+                      label='R_e')
+
+        ax[2][0].plot([-1*scaled_num_r_9 / scale, -1*scaled_num_r_9 / scale], [-1*va, va],
+                      color='wheat',
+                      ls='--',
+                      lw=2,
+                      label=r'$R_{1.8}$ (not convolved)')
+
+        ax[2][0].plot([1*scaled_num_r_e / scale, 1*scaled_num_r_e / scale], [-1*va, va],
+                      color='wheat',
+                      ls='--',
+                      lw=2,
+                      label='R_e')
+
+        ax[2][0].plot([1*scaled_num_r_9 / scale, 1*scaled_num_r_9 / scale], [-1*va, va],
+                      color='wheat',
+                      ls='--',
+                      lw=2,
+                      label=r'$R_{1.8}$ (not convolved)')
 
 
-        # also draw on lines
+        # 1D DISPERSION PLOT
 
-
-
-        ax[6].errorbar(x_max,
+        ax[2][1].errorbar(x_max,
                        sig_values_max,
                        yerr=sig_error_values_max,
                        fmt='o',
                        color='red',
                        label='max_data')
 
-        ax[6].errorbar(x_50,
+        ax[2][1].errorbar(x_50,
                        sig_values_50,
                        yerr=sig_error_values_50,
                        fmt='o',
                        color='blue',
                        label='50_data')
 
-        ax[6].set_title('Velocity Dispersion')
+        ax[2][1].axvline(0, color='silver', ls='-.')
+        ax[2][1].axvline(r_e_arc, color='maroon', ls='--', lw=2)
+        ax[2][1].axvline(-1*r_e_arc, color='maroon', ls='--', lw=2)
+        ax[2][1].axvline(1.8*r_e_arc, color='maroon', ls='--', lw=2)
+        ax[2][1].axvline(-1.8*r_e_arc, color='maroon', ls='--', lw=2)
+        ax[2][1].set_xlim(-1.5, 1.5)
 
-        # ax[6].set_ylabel('velocity (kms$^{-1}$)')
+        ax[2][1].set_title('Velocity Dispersion')
 
-        ax[6].set_xlabel('arcsec')
+        # ax[2][1].set_ylabel('velocity (kms$^{-1}$)')
 
-        # ax[6].legend(prop={'size':5}, loc=1)
+        ax[2][1].set_xlabel('arcsec')
+
+        ax[2][2].plot(obj_cube.wave_array[o_peak-50:o_peak+50],
+                      one_d_spectrum[o_peak-50:o_peak+50],
+                      color='black')
+
+        ax[2][2].axvline(central_l, color='red', ls='--')
+        ax[2][2].axvline(obj_cube.wave_array[o_peak-5], color='red', ls='--')
+        ax[2][2].axvline(obj_cube.wave_array[o_peak+5], color='red', ls='--')
+
+        ax[2][2].set_title('Integrated Spectrum')
+
+        ax[2][3].plot(pa_array,
+                      stat_array,
+                      color='black')
+
+        ax[2][3].axvline(best_pa, color='darkorange', ls='--')
+
+        if pa > np.pi:
+
+            ax[2][3].axvline(pa - np.pi, color='lightcoral', ls='--')
+
+        else:
+
+            ax[2][3].axvline(pa, color='lightcoral', ls='--')
+
+        if hst_pa > np.pi:
+
+            ax[2][3].axvline(hst_pa - np.pi, color='aquamarine', ls='--')
+
+        else:
+
+            ax[2][3].axvline(hst_pa, color='aquamarine', ls='--')
+
+        ax[2][3].set_title('PA Rotation')
+
+        # plot the numerical fitting stuff
+        # want to include on here in text what the
+        # axis ratio and the PA are
+
+        im = ax[3][0].imshow(num_cut_data,
+                             vmax=5,
+                             vmin=0)
+
+        ax[3][0].text(1,2,
+                      r'$\frac{b}{a} = %.2f$' % num_axis_ratio,
+                      color='white',
+                      fontsize=16)
+
+        ax[3][0].text(1,6,
+                      r'$pa = %.2f$' % num_pa,
+                      color='white',
+                      fontsize=16)
+
+        y_full, x_full = np.indices(num_cut_data.shape)
+        ax[3][0].contour(x_full,
+                         y_full,
+                         num_fit_data,
+                         4,
+                         ls='solid',
+                         colors='black')
+
+        ax[3][0].set_title('Numerical Measurement')
+
+        # now plot the curve of growth parameters
+
+        ax[3][1].plot(scaled_axis_array,
+                      num_sum_array,
+                      color='blue')
+        ax[3][1].axvline(scaled_num_r_e, color='black',ls='--')
+        ax[3][1].axvline(scaled_num_r_9, color='black',ls='--')
+        ax[3][1].text(10, 50,
+                      r'$R_{e} = %.2f$Kpc' % scaled_num_r_e,
+                      color='black',
+                      fontsize=16)
+        ax[3][1].text(10, 500,
+                      r'$R_{9} = %.2f$Kpc' % scaled_num_r_9,
+                      color='black',
+                      fontsize=16)
+
+        # and the 1D plot showing the aperture growth
+
+
+        fig.tight_layout()
 
         plt.show()
 
@@ -17520,9 +18307,7 @@ class pipelineOps(object):
                   interpolation='nearest',
                   cmap=cmap)
 
-        print y_h_low, y_h_high
-
-        plt.show()
+        #plt.show()
 
         plt.close('all')
 
@@ -17579,9 +18364,67 @@ class pipelineOps(object):
         #ax.axhline(va, color='silver', ls='--')
         #ax.axhline(-1.*va, color='silver', ls='--')
 
-        plt.show()
+        #plt.show()
 
         plt.close('all')
+
+        # create a table to record all of the top quantities
+        # that we want to examine - need to list and return 
+        # the parameter values each time
+
+#        column_names = ['Name',
+#                        'Galfit_R_e(Kpc)',
+#                        'Numerical_R_e(Kpc)',
+#                        'Numerical_R_9(Kpc)',
+#                        'Galfit_Ar',
+#                        'Numerical_Ar',
+#                        'hst_pa',
+#                        'dynamical_pa',
+#                        'rotation_pa',
+#                        'Numerical_pa',
+#                        'Maximum_data_Velocity',
+#                        'Maximum_model_velocity']
+
+
+        # some calculations for the final table
+
+        # extracting the maximum velocity from the data
+        data_velocity_value = (abs(np.nanmax(real_velocity_values_max)) + \
+                                abs(np.nanmin(real_velocity_values_max))) / 2.0
+
+        b_data_velocity_value = (abs(np.nanmax(best_pa_vel)) + \
+                                  abs(np.nanmin(best_pa_vel))) / 2.0
+
+        # assume for now that q = 0.15
+        q = 0.2
+
+        inclination_galfit = np.sqrt(np.arccos((axis_r**2 - q**2)/(1 - q**2)))
+
+        inclination_num = np.sqrt(np.arccos((num_axis_ratio**2 - q**2)/(1 - q**2)))
+
+        data_values = [gal_name[26:-5],
+                       r_e,
+                       scaled_num_r_e,
+                       scaled_num_r_9,
+                       axis_r,
+                       inclination_galfit,
+                       num_axis_ratio,
+                       inclination_num,
+                       hst_pa,
+                       pa,
+                       best_pa,
+                       num_pa,
+                       data_velocity_value,
+                       data_velocity_value / np.sin(inclination_galfit),
+                       data_velocity_value / np.sin(inclination_num),
+                       b_data_velocity_value,
+                       b_data_velocity_value / np.sin(inclination_galfit),
+                       b_data_velocity_value / np.sin(inclination_num),
+                       va,
+                       va / np.sin(inclination_galfit),
+                       va / np.sin(inclination_num)]
+
+        return data_values
 
     def multi_make_all_plots_fixed_inc_fixed(self,
                                              infile,
@@ -17595,6 +18438,34 @@ class pipelineOps(object):
                                              sersic_factor,
                                              m_factor,
                                              smear=False):
+
+        # create the table names
+
+        column_names = ['Name',
+                        'Galfit_R_e(Kpc)',
+                        'Numerical_R_e(Kpc)',
+                        'Numerical_R_9(Kpc)',
+                        'Galfit_Ar',
+                        'i_galfit',
+                        'Numerical_Ar',
+                        'i_num',
+                        'hst_pa',
+                        'dynamical_pa',
+                        'rotation_pa',
+                        'Numerical_pa',
+                        'Maximum_data_Velocity',
+                        'Maximum_data_Velocity_g_ar',
+                        'Maximum_data_Velocity_m_ar',
+                        'rot_pa_data_Velocity',
+                        'rot_pa_data_Velocity_g_ar',
+                        'rot_pa_data_Velocity_m_ar',
+                        'Maximum_model_velocity',
+                        'Maximum_model_velocity_g_ar',
+                        'Maximum_model_velocity_m_ar']
+
+        save_dir = '/disk1/turner/DATA/v_over_sigma/since_durham/'
+
+        big_list = []
 
         # read in the table of cube names
         Table = ascii.read(infile)
@@ -17616,22 +18487,29 @@ class pipelineOps(object):
 
             inc = entry[12]
 
-            self.make_all_plots_fixed_inc_fixed(inc,
-                                                redshift,
-                                                wave_array,
-                                                xcen,
-                                                ycen,
-                                                infile,
-                                                r_aper,
-                                                d_aper,
-                                                seeing,
-                                                sersic_n,
-                                                sigma,
-                                                pix_scale,
-                                                psf_factor,
-                                                sersic_factor,
-                                                m_factor,
-                                                smear)
+            big_list.append(self.make_all_plots_fixed_inc_fixed(inc,
+                                                                redshift,
+                                                                wave_array,
+                                                                xcen,
+                                                                ycen,
+                                                                obj_name,
+                                                                r_aper,
+                                                                d_aper,
+                                                                seeing,
+                                                                sersic_n,
+                                                                sigma,
+                                                                pix_scale,
+                                                                psf_factor,
+                                                                sersic_factor,
+                                                                m_factor,
+                                                                smear))
+        
+        # create the table
+        make_table.table_create(column_names,
+                                big_list,
+                                save_dir)
+
+
 
     def multi_make_all_plots_no_image_fixed_inc_fixed(self,
                                                       infile,
