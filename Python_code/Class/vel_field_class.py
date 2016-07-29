@@ -41,6 +41,7 @@ sys.path.append('/disk1/turner/PhD'
                 + '/KMOS/Analysis_Pipeline/Python_code/functions')
 
 import psf_blurring as psf
+import rotate_pa as rt_pa
 
 ####################################################################
 
@@ -4433,628 +4434,177 @@ class vel_field(object):
                                                             m_factor,
                                                             smear)
 
-        # initialise the list of aperture positions with the xcen and ycen
+        # use the external rot_pa class to extract the 
+        # velocity values and x values along the different pa's
+        # have to do this for the different model values and the
+        # different data values
+
+        # modelled velocity values
+        mod_velocity_values_max, x_max = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_max,
+                                                 model_max,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        mod_velocity_values_50, x_50 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_50,
+                                                 model_50,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        mod_velocity_values_16, x_16 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_16,
+                                                 model_16,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        mod_velocity_values_84, x_84 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_84,
+                                                 model_84,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        # data velocity values
+        real_velocity_values_max, x_max = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_max,
+                                                 self.vel_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        real_velocity_values_50, x_50 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_50,
+                                                 self.vel_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        real_velocity_values_16, x_16 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_16,
+                                                 self.vel_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        real_velocity_values_84, x_84 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_84,
+                                                 self.vel_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        # data velocity error values
+        real_error_values_max, x_max = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_max,
+                                                 self.error_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        real_error_values_50, x_50 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_50,
+                                                 self.error_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        real_error_values_16, x_16 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_16,
+                                                 self.error_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        real_error_values_84, x_84 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_84,
+                                                 self.error_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        # data sigma values
+        sig_values_max, x_max = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_max,
+                                                 self.sig_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        sig_values_50, x_50 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_50,
+                                                 self.sig_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        sig_values_16, x_16 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_16,
+                                                 self.sig_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        sig_values_84, x_84 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_84,
+                                                 self.sig_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        # data sigma error values
+        sig_error_values_max, x_max = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_max,
+                                                 self.sig_error_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        sig_error_values_50, x_50 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_50,
+                                                 self.sig_error_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        sig_error_values_16, x_16 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_16,
+                                                 self.sig_error_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        sig_error_values_84, x_84 = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 pa_84,
+                                                 self.sig_error_data,
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
 
-        positions_max = []
 
-        positions_50 = []
-
-        positions_16 = []
-
-        positions_84 = []
-
-        # first job is to compute the central locations of the apertures
-        # do this by fixing the distance along the KA between aperture centres
-
-        xdim = self.xpix - 2
-
-        ydim = self.ypix - 2
-
-        # find the steps along the KA with which to increment
-
-        x_inc_max = d_aper * abs(np.sin((np.pi / 2.0) - pa_max))
-
-        y_inc_max = d_aper * abs(np.cos((np.pi / 2.0) - pa_max))
-
-        x_inc_50 = d_aper * abs(np.sin((np.pi / 2.0) - pa_50))
-
-        y_inc_50 = d_aper * abs(np.cos((np.pi / 2.0) - pa_50))
-
-        x_inc_16 = d_aper * abs(np.sin((np.pi / 2.0) - pa_16))
-
-        y_inc_16 = d_aper * abs(np.cos((np.pi / 2.0) - pa_16))
-
-        x_inc_84 = d_aper * abs(np.sin((np.pi / 2.0) - pa_84))
-
-        y_inc_84 = d_aper * abs(np.cos((np.pi / 2.0) - pa_84))
-
-        # now find the sequence of aperture centres up until the boundaries
-        # this is tricky - depending on the PA need to increase and decrease
-        # both x and y together, or increase one and decrease the other
-
-        # statements for the maximum likelihood position angle
-
-        if 0 < pa_max < np.pi / 2.0 or np.pi < pa_max < 3 * np.pi / 2.0:
-
-            # print 'Top Right and Bottom Left'
-
-            # need to increase x and decrease y and vice versa
-
-            new_x_max = xcen + x_inc_max
-
-            new_y_max = ycen - y_inc_max
-
-            # while loop until xdim is breached or 0 is breached for y
-
-            while new_x_max < xdim and new_y_max > 2:
-
-                # append aperture centre to the positions array
-
-                positions_max.append((new_y_max, new_x_max))
-
-                new_x_max += x_inc_max
-
-                new_y_max -= y_inc_max
-
-                # print new_x_max, new_y_max
-
-            # starting from the left so need to reverse list direction
-            # and append the central point
-
-            positions_max = positions_max[::-1]
-
-            positions_max.append((ycen, xcen))
-
-            # now go in the other direction
-
-            new_x_max = xcen - x_inc_max
-
-            new_y_max = ycen + y_inc_max
-
-            # while loop until xdim is breached or 0 is breached for y
-
-            while new_x_max > 2 and new_y_max < ydim:
-
-                # append aperture centre to the positions_max array
-
-                positions_max.append((new_y_max, new_x_max))
-
-                new_x_max -= x_inc_max
-
-                new_y_max += y_inc_max
-
-                # print new_x, new_y_max
-
-        # deal with the other cases of position angle
-
-        else:
-
-            # print 'Top Left and Bottom Right'
-
-            # need to increase x and increase y and vice versa
-
-            new_x_max = xcen - x_inc_max
-
-            new_y_max = ycen - y_inc_max
-
-            # while loop until xdim is 2 or ydim is 2
-
-            while new_x_max > 2 and new_y_max > 2:
-
-                # append aperture centre to the positions_max array
-
-                positions_max.append((new_y_max, new_x_max))
-
-                new_x_max -= x_inc_max
-
-                new_y_max -= y_inc_max
-
-            # starting from the left so need to reverse list direction
-            # and append the central point
-
-            positions_max = positions_max[::-1]
-
-            positions_max.append((ycen, xcen))
-
-            # now go in the other direction
-
-            new_x_max = xcen + x_inc_max
-
-            new_y_max = ycen + y_inc_max
-
-            # while loop until xdim is breached or ydim is breached
-
-            while new_x_max < xdim and new_y_max < ydim:
-
-                # append aperture centre to the positions_max array
-
-                positions_max.append((new_y_max, new_x_max))
-
-                new_x_max += x_inc_max
-
-                new_y_max += y_inc_max
-
-        # statements for the 50th percentile position angle
-
-        if 0 < pa_50 < np.pi / 2.0 or np.pi < pa_50 < 3 * np.pi / 2.0:
-
-            # print 'Top Right and Bottom Left'
-
-            # need to increase x and decrease y and vice versa
-
-            new_x_50 = xcen + x_inc_50
-
-            new_y_50 = ycen - y_inc_50
-
-            # while loop until xdim is breached or 0 is breached for y
-
-            while new_x_50 < xdim and new_y_50 > 2:
-
-                # append aperture centre to the positions array
-
-                positions_50.append((new_y_50, new_x_50))
-
-                new_x_50 += x_inc_50
-
-                new_y_50 -= y_inc_50
-
-                # print new_x_50, new_y_50
-
-            # starting from the left so need to reverse list direction
-            # and append the central point
-
-            positions_50 = positions_50[::-1]
-
-            positions_50.append((ycen, xcen))
-
-            # now go in the other direction
-
-            new_x_50 = xcen - x_inc_50
-
-            new_y_50 = ycen + y_inc_50
-
-            # while loop until xdim is breached or 0 is breached for y
-
-            while new_x_50 > 2 and new_y_50 < ydim:
-
-                # append aperture centre to the positions_50 array
-
-                positions_50.append((new_y_50, new_x_50))
-
-                new_x_50 -= x_inc_50
-
-                new_y_50 += y_inc_50
-
-                # print new_x, new_y_50
-
-        # deal with the other cases of position angle
-
-        else:
-
-            # print 'Top Left and Bottom Right'
-
-            # need to increase x and increase y and vice versa
-
-            new_x_50 = xcen - x_inc_50
-
-            new_y_50 = ycen - y_inc_50
-
-            # while loop until xdim is 2 or ydim is 2
-
-            while new_x_50 > 2 and new_y_50 > 2:
-
-                # append aperture centre to the positions_50 array
-
-                positions_50.append((new_y_50, new_x_50))
-
-                new_x_50 -= x_inc_50
-
-                new_y_50 -= y_inc_50
-
-            # starting from the left so need to reverse list direction
-            # and append the central point
-
-            positions_50 = positions_50[::-1]
-
-            positions_50.append((ycen, xcen))
-
-            # now go in the other direction
-
-            new_x_50 = xcen + x_inc_50
-
-            new_y_50 = ycen + y_inc_50
-
-            # while loop until xdim is breached or ydim is breached
-
-            while new_x_50 < xdim and new_y_50 < ydim:
-
-                # append aperture centre to the positions_50 array
-
-                positions_50.append((new_y_50, new_x_50))
-
-                new_x_50 += x_inc_50
-
-                new_y_50 += y_inc_50
-
-        # statements for the 16th percentile position angle
-
-        if 0 < pa_16 < np.pi / 2.0 or np.pi < pa_16 < 3 * np.pi / 2.0:
-
-            # print 'Top Right and Bottom Left'
-
-            # need to increase x and decrease y and vice versa
-
-            new_x_16 = xcen + x_inc_16
-
-            new_y_16 = ycen - y_inc_16
-
-            # while loop until xdim is breached or 0 is breached for y
-
-            while new_x_16 < xdim and new_y_16 > 2:
-
-                # append aperture centre to the positions array
-
-                positions_16.append((new_y_16, new_x_16))
-
-                new_x_16 += x_inc_16
-
-                new_y_16 -= y_inc_16
-
-                # print new_x_16, new_y_16
-
-            # starting from the left so need to reverse list direction
-            # and append the central point
-
-            positions_16 = positions_16[::-1]
-
-            positions_16.append((ycen, xcen))
-
-            # now go in the other direction
-
-            new_x_16 = xcen - x_inc_16
-
-            new_y_16 = ycen + y_inc_16
-
-            # while loop until xdim is breached or 0 is breached for y
-
-            while new_x_16 > 2 and new_y_16 < ydim:
-
-                # append aperture centre to the positions_16 array
-
-                positions_16.append((new_y_16, new_x_16))
-
-                new_x_16 -= x_inc_16
-
-                new_y_16 += y_inc_16
-
-                # print new_x, new_y_16
-
-        # deal with the other cases of position angle
-
-        else:
-
-            # print 'Top Left and Bottom Right'
-
-            # need to increase x and increase y and vice versa
-
-            new_x_16 = xcen - x_inc_16
-
-            new_y_16 = ycen - y_inc_16
-
-            # while loop until xdim is 2 or ydim is 2
-
-            while new_x_16 > 2 and new_y_16 > 2:
-
-                # append aperture centre to the positions_16 array
-
-                positions_16.append((new_y_16, new_x_16))
-
-                new_x_16 -= x_inc_16
-
-                new_y_16 -= y_inc_16
-
-            # starting from the left so need to reverse list direction
-            # and append the central point
-
-            positions_16 = positions_16[::-1]
-
-            positions_16.append((ycen, xcen))
-
-            # now go in the other direction
-
-            new_x_16 = xcen + x_inc_16
-
-            new_y_16 = ycen + y_inc_16
-
-            # while loop until xdim is breached or ydim is breached
-
-            while new_x_16 < xdim and new_y_16 < ydim:
-
-                # append aperture centre to the positions_16 array
-
-                positions_16.append((new_y_16, new_x_16))
-
-                new_x_16 += x_inc_16
-
-                new_y_16 += y_inc_16
-
-        # statements for the 84th percenntile position angle
-
-        if 0 < pa_84 < np.pi / 2.0 or np.pi < pa_84 < 3 * np.pi / 2.0:
-
-            # print 'Top Right and Bottom Left'
-
-            # need to increase x and decrease y and vice versa
-
-            new_x_84 = xcen + x_inc_84
-
-            new_y_84 = ycen - y_inc_84
-
-            # while loop until xdim is breached or 0 is breached for y
-
-            while new_x_84 < xdim and new_y_84 > 2:
-
-                # append aperture centre to the positions array
-
-                positions_84.append((new_y_84, new_x_84))
-
-                new_x_84 += x_inc_84
-
-                new_y_84 -= y_inc_84
-
-                # print new_x_84, new_y_84
-
-            # starting from the left so need to reverse list direction
-            # and append the central point
-
-            positions_84 = positions_84[::-1]
-
-            positions_84.append((ycen, xcen))
-
-            # now go in the other direction
-
-            new_x_84 = xcen - x_inc_84
-
-            new_y_84 = ycen + y_inc_84
-
-            # while loop until xdim is breached or 0 is breached for y
-
-            while new_x_84 > 2 and new_y_84 < ydim:
-
-                # append aperture centre to the positions_84 array
-
-                positions_84.append((new_y_84, new_x_84))
-
-                new_x_84 -= x_inc_84
-
-                new_y_84 += y_inc_84
-
-                # print new_x, new_y_84
-
-        # deal with the other cases of position angle
-
-        else:
-
-            # print 'Top Left and Bottom Right'
-
-            # need to increase x and increase y and vice versa
-
-            new_x_84 = xcen - x_inc_84
-
-            new_y_84 = ycen - y_inc_84
-
-            # while loop until xdim is 2 or ydim is 2
-
-            while new_x_84 > 2 and new_y_84 > 2:
-
-                # append aperture centre to the positions_84 array
-
-                positions_84.append((new_y_84, new_x_84))
-
-                new_x_84 -= x_inc_84
-
-                new_y_84 -= y_inc_84
-
-            # starting from the left so need to reverse list direction
-            # and append the central point
-
-            positions_84 = positions_84[::-1]
-
-            positions_84.append((ycen, xcen))
-
-            # now go in the other direction
-
-            new_x_84 = xcen + x_inc_84
-
-            new_y_84 = ycen + y_inc_84
-
-            # while loop until xdim is breached or ydim is breached
-
-            while new_x_84 < xdim and new_y_84 < ydim:
-
-                # append aperture centre to the positions_84 array
-
-                positions_84.append((new_y_84, new_x_84))
-
-                new_x_84 += x_inc_84
-
-                new_y_84 += y_inc_84
-
-        # construct the x_axis for the aperture extraction plot
-
-        x_max_array = []
-
-        for entry in positions_max:
-
-            x_max_array.append(entry[1])
-
-        x_max_array = np.array(x_max_array) - xcen
-
-        # print x_max_array
-
-        x_max_index = np.where(x_max_array == 0.0)[0]
-
-        x_max = np.linspace(-1. * d_aper * x_max_index,
-                            d_aper * (len(x_max_array) - x_max_index - 1),
-                            num=len(x_max_array))
-
-        x_max = x_max * pix_scale
-
-        # print 'This is x_max: %s' % x_max
-
-        x_50_array = []
-
-        for entry in positions_50:
-
-            x_50_array.append(entry[1])
-
-        x_50_array = np.array(x_50_array) - xcen
-
-        x_50_index = np.where(x_50_array == 0.0)[0]
-
-        x_50 = np.linspace(-1. * d_aper * x_50_index,
-                            d_aper * (len(x_50_array) - x_50_index - 1),
-                            num=len(x_50_array))
-
-        x_50 = x_50 * pix_scale
-
-        x_16_array = []
-
-        for entry in positions_16:
-
-            x_16_array.append(entry[1])
-
-        x_16_array = np.array(x_16_array) - xcen
-
-        x_16_index = np.where(x_16_array == 0.0)[0]
-
-        x_16 = np.linspace(-1. * d_aper * x_16_index,
-                            d_aper * (len(x_16_array) - x_16_index - 1),
-                            num=len(x_16_array))
-
-        x_16 = x_16 * pix_scale
-
-        x_84_array = []
-
-        for entry in positions_84:
-
-            x_84_array.append(entry[1])
-
-        x_84_array = np.array(x_84_array) - xcen
-
-        x_84_index = np.where(x_84_array == 0.0)[0]
-
-        x_84 = np.linspace(-1. * d_aper * x_84_index,
-                            d_aper * (len(x_84_array) - x_84_index - 1),
-                            num=len(x_84_array))
-
-        x_84 = x_84 * pix_scale
-
-        # positions array should now be populated with all of the apertures
-
-        # print positions
-
-        # now perform aperture photometry on the model data to check that this
-        # actually works. Remember that the velocity computed for each
-        # aperture will be the sum returned divided by the area
-
-        pixel_area = np.pi * r_aper * r_aper
-
-        # the max likelihood extraction parameters
-
-        apertures_max = CircularAperture(positions_max, r=r_aper)
-
-        mod_phot_table_max = aperture_photometry(model_max, apertures_max)
-
-        real_phot_table_max = aperture_photometry(self.vel_data, apertures_max)
-
-        real_error_table_max = aperture_photometry(self.error_data, apertures_max)
-
-        sig_table_max = aperture_photometry(self.sig_data, apertures_max)
-
-        sig_error_table_max = aperture_photometry(self.sig_error_data, apertures_max)
-
-        mod_velocity_values_max = mod_phot_table_max['aperture_sum'] / pixel_area
-
-        real_velocity_values_max = real_phot_table_max['aperture_sum'] / pixel_area
-
-        real_error_values_max = real_error_table_max['aperture_sum'] / pixel_area
-
-        sig_values_max = sig_table_max['aperture_sum'] / pixel_area
-
-        sig_error_values_max = sig_error_table_max['aperture_sum'] / pixel_area
-
-        # the 50th percentile extraction parameters
-
-        apertures_50 = CircularAperture(positions_50, r=r_aper)
-
-        mod_phot_table_50 = aperture_photometry(model_50, apertures_50)
-
-        real_phot_table_50 = aperture_photometry(self.vel_data, apertures_50)
-
-        real_error_table_50 = aperture_photometry(self.error_data, apertures_50)
-
-        sig_table_50 = aperture_photometry(self.sig_data, apertures_50)
-
-        sig_error_table_50 = aperture_photometry(self.sig_error_data, apertures_50)
-
-        mod_velocity_values_50 = mod_phot_table_50['aperture_sum'] / pixel_area
-
-        real_velocity_values_50 = real_phot_table_50['aperture_sum'] / pixel_area
-
-        real_error_values_50 = real_error_table_50['aperture_sum'] / pixel_area
-
-        sig_values_50 = sig_table_50['aperture_sum'] / pixel_area
-
-        sig_error_values_50 = sig_error_table_50['aperture_sum'] / pixel_area
-
-        # the 16th percentile extraction parameters
-
-        apertures_16 = CircularAperture(positions_16, r=r_aper)
-
-        mod_phot_table_16 = aperture_photometry(model_16, apertures_16)
-
-        real_phot_table_16 = aperture_photometry(self.vel_data, apertures_16)
-
-        real_error_table_16 = aperture_photometry(self.error_data, apertures_16)
-
-        sig_table_16 = aperture_photometry(self.sig_data, apertures_16)
-
-        sig_error_table_16 = aperture_photometry(self.sig_error_data, apertures_16)
-
-        mod_velocity_values_16 = mod_phot_table_16['aperture_sum'] / pixel_area
-
-        real_velocity_values_16 = real_phot_table_16['aperture_sum'] / pixel_area
-
-        real_error_values_16 = real_error_table_16['aperture_sum'] / pixel_area
-
-        sig_values_16 = sig_table_16['aperture_sum'] / pixel_area
-
-        sig_error_values_16 = sig_error_table_16['aperture_sum'] / pixel_area
-
-        # the 84th percentile extraction parameters
-
-        apertures_84 = CircularAperture(positions_84, r=r_aper)
-
-        mod_phot_table_84 = aperture_photometry(model_84, apertures_84)
-
-        real_phot_table_84 = aperture_photometry(self.vel_data, apertures_84)
-
-        real_error_table_84 = aperture_photometry(self.error_data, apertures_84)
-
-        sig_table_84 = aperture_photometry(self.sig_data, apertures_84)
-
-        sig_error_table_84 = aperture_photometry(self.sig_error_data, apertures_84)
-
-        mod_velocity_values_84 = mod_phot_table_84['aperture_sum'] / pixel_area
-
-        real_velocity_values_84 = real_phot_table_84['aperture_sum'] / pixel_area
-
-        real_error_values_84 = real_error_table_84['aperture_sum'] / pixel_area
-
-        sig_values_84 = sig_table_84['aperture_sum'] / pixel_area
-
-        sig_error_values_84 = sig_error_table_84['aperture_sum'] / pixel_area
 
         # plotting the model and extracted quantities
 

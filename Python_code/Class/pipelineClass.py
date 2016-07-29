@@ -44,6 +44,7 @@ import twod_gaussian as g2d
 import rotate_pa as rt_pa
 import aperture_growth as ap_growth
 import make_table
+import arctangent_1d as arc_mod
 
 from cubeClass import cubeOps
 from galPhysClass import galPhys
@@ -17208,12 +17209,9 @@ class pipelineOps(object):
 
         if hst_pa < 0:
 
-            hst_pa = hst_pa + 360
+            hst_pa = hst_pa + 180
 
         hst_pa = (hst_pa * np.pi) / 180
-
-        print hst_pa
-        print pa
 
         data_hst = table_hst[1].data
 
@@ -17468,6 +17466,10 @@ class pipelineOps(object):
         # Also use the rt_pa method to extract the 1D spectrum
         # and errors along the HST and BEST pa's
         # these will be plotted along with the dynamical PA plots
+        print 'THESE ARE THE PAS'
+        print 'HST: %s' % hst_pa
+        print 'ROT: %s' % best_pa
+        print 'DYN: %s' % pa
 
         hst_pa_vel, hst_pa_x = rt_pa.extract(d_aper,
                                              r_aper,
@@ -18056,6 +18058,36 @@ class pipelineOps(object):
 
         # 1D VELOCITY PLOT
 
+        # at this point evaluate as well some 1D models
+        # fit the extracted data along the different position
+        # angles in 1D - will take seconds and provides a
+        # chi-squared and different fit for each of the pas
+
+        dyn_pa_fit = arc_mod.model_fit(real_velocity_values_50,
+                                       x_50,
+                                       1. / real_error_values_50,
+                                       va,
+                                       rt)
+
+        print 'DYN CHI: %s' % dyn_pa_fit.chisqr
+
+        best_pa_fit = arc_mod.model_fit(best_pa_vel,
+                                        best_pa_x,
+                                        1. / best_pa_error,
+                                        va,
+                                        rt)
+
+        print 'ROT CHI: %s' % best_pa_fit.chisqr
+
+        hst_pa_fit = arc_mod.model_fit(hst_pa_vel,
+                                       hst_pa_x,
+                                       1. / hst_pa_error,
+                                       va,
+                                       rt)
+
+        print 'HST CHI: %s' % hst_pa_fit.chisqr
+
+
         ax[2][0].plot(x_max,
                    mod_velocity_values_max,
                    color='red',
@@ -18091,7 +18123,7 @@ class pipelineOps(object):
                        real_velocity_values_50,
                        yerr=real_error_values_50,
                        fmt='o',
-                       color='blue',
+                       color='lightcoral',
                        label='50_data')
 
         ax[2][0].plot(x_16,
@@ -18280,6 +18312,101 @@ class pipelineOps(object):
                       color='black',
                       fontsize=16)
 
+        ax[3][2].plot(x_50,
+                      dyn_pa_fit.eval(r=x_50),
+                      color='blue')
+
+        ax[3][2].errorbar(x_50,
+                       real_velocity_values_50,
+                       yerr=real_error_values_50,
+                       fmt='o',
+                       color='blue',
+                       label='dyn_pa')
+
+        ax[3][2].plot(best_pa_x,
+                      best_pa_fit.eval(r=best_pa_x),
+                      color='darkorange')
+
+        ax[3][2].errorbar(best_pa_x,
+                          best_pa_vel,
+                          yerr=best_pa_error,
+                          fmt='o',
+                          color='darkorange',
+                          label='rot_pa')
+
+        ax[3][2].plot(hst_pa_x,
+                      hst_pa_fit.eval(r=hst_pa_x),
+                      color='aquamarine')
+
+        ax[3][2].errorbar(hst_pa_x,
+                          hst_pa_vel,
+                          yerr=hst_pa_error,
+                          fmt='o',
+                          color='aquamarine',
+                          label='hst_pa')
+
+        ax[3][2].set_title('Model and Real Velocity')
+
+        # ax[3][2].set_ylabel('velocity (kms$^{-1}$)')
+
+        ax[3][2].set_xlabel('arcsec')
+
+        ax[3][2].axhline(0, color='silver', ls='-.')
+        ax[3][2].axvline(0, color='silver', ls='-.')
+        ax[3][2].axhline(va, color='silver', ls='--')
+        ax[3][2].axhline(-1.*va, color='silver', ls='--')
+
+        # Also add in vertical lines for where the kinematics 
+        # should be extracted
+
+        ax[3][2].plot([r_e_arc, r_e_arc], [-1*va, va],
+                      color='maroon',
+                      ls='--',
+                      lw=2,
+                      label='R_e')
+
+        ax[3][2].plot([1.8*r_e_arc, 1.8*r_e_arc], [-1*va, va],
+                      color='maroon',
+                      ls='--',
+                      lw=2,
+                      label=r'$R_{1.8}$ (not convolved)')
+
+        ax[3][2].plot([-1*r_e_arc, -1*r_e_arc], [-1*va, va],
+                      color='maroon',
+                      ls='--',
+                      lw=2,
+                      label='R_e')
+
+        ax[3][2].plot([-1.8*r_e_arc, -1.8*r_e_arc], [-1*va, va],
+                      color='maroon',
+                      ls='--',
+                      lw=2,
+                      label=r'$R_{1.8}$ (not convolved)')
+
+        ax[3][2].plot([-1*scaled_num_r_e / scale, -1*scaled_num_r_e / scale], [-1*va, va],
+                      color='wheat',
+                      ls='--',
+                      lw=2,
+                      label='R_e')
+
+        ax[3][2].plot([-1*scaled_num_r_9 / scale, -1*scaled_num_r_9 / scale], [-1*va, va],
+                      color='wheat',
+                      ls='--',
+                      lw=2,
+                      label=r'$R_{1.8}$ (not convolved)')
+
+        ax[3][2].plot([1*scaled_num_r_e / scale, 1*scaled_num_r_e / scale], [-1*va, va],
+                      color='wheat',
+                      ls='--',
+                      lw=2,
+                      label='R_e')
+
+        ax[3][2].plot([1*scaled_num_r_9 / scale, 1*scaled_num_r_9 / scale], [-1*va, va],
+                      color='wheat',
+                      ls='--',
+                      lw=2,
+                      label=r'$R_{1.8}$ (not convolved)')
+
         # and the 1D plot showing the aperture growth
 
 
@@ -18389,11 +18516,88 @@ class pipelineOps(object):
         # some calculations for the final table
 
         # extracting the maximum velocity from the data
-        data_velocity_value = (abs(np.nanmax(real_velocity_values_max)) + \
-                                abs(np.nanmin(real_velocity_values_max))) / 2.0
+        data_velocity_value = (abs(np.nanmax(real_velocity_values_50)) + \
+                                abs(np.nanmin(real_velocity_values_50))) / 2.0
 
         b_data_velocity_value = (abs(np.nanmax(best_pa_vel)) + \
                                   abs(np.nanmin(best_pa_vel))) / 2.0
+
+        h_data_velocity_value = (abs(np.nanmax(hst_pa_vel)) + \
+                                  abs(np.nanmin(hst_pa_vel))) / 2.0
+
+        max_data_velocity_value = np.nanmax(abs(real_velocity_values_50))
+
+        b_max_data_velocity_value = np.nanmax(abs(best_pa_vel))
+
+        h_max_data_velocity_value = np.nanmax(abs(hst_pa_vel))
+
+        # extract from both the 1d and 2d models at the special radii
+        # defined as the 90 percent light and 1.8r_e and also 
+        # find the radius at which the data extends to
+
+        arc_num_r_9 = scaled_num_r_9 / scale
+
+        # get the velocity indices
+
+        extended_r = np.arange(-10, 10, 0.01)
+
+        ex_r_18_idx = np.argmin(abs(1.8*r_e_arc - extended_r))
+
+        ex_r_9_idx = np.argmin(abs(arc_num_r_9 - extended_r))
+
+        x_50_r_18_idx = np.argmin(abs(1.8*r_e_arc - x_50))
+
+        x_50_r_9_idx = np.argmin(abs(arc_num_r_9 - x_50))
+
+        # find the associated velocity values from data
+
+        d_extrapolation = dyn_pa_fit.eval(r=extended_r)
+
+        b_extrapolation = best_pa_fit.eval(r=extended_r)
+
+        h_extrapolation = hst_pa_fit.eval(r=extended_r)
+
+        # need to know the constants in the fitting to subtract from
+        # the inferred velocity values
+
+        dyn_constant = dyn_pa_fit.best_values['const']
+
+        rot_constant = best_pa_fit.best_values['const']
+
+        hst_constant = hst_pa_fit.best_values['const']
+
+        # and find the extrapolation values, sans constants
+
+        dyn_v18 = d_extrapolation[ex_r_18_idx] - dyn_constant
+
+        dyn_v9 = d_extrapolation[ex_r_9_idx] - dyn_constant
+
+        b_v18 = b_extrapolation[ex_r_18_idx] - rot_constant
+
+        b_v9 = b_extrapolation[ex_r_9_idx] - rot_constant
+
+        h_v18 = h_extrapolation[ex_r_18_idx] - hst_constant
+
+        h_v9 = h_extrapolation[ex_r_18_idx] - hst_constant
+
+        v_2d_r18 = mod_velocity_values_50[x_50_r_18_idx] 
+
+        v_2d_r9 = mod_velocity_values_50[x_50_r_9_idx]
+
+        # also want to figure out the radius of the last velocity
+        # point in the dyn, hst, rot extraction regimes
+
+        s, e = rt_pa.find_first_valid_entry(real_velocity_values_50)
+
+        dyn_pa_extent = scale * np.nanmax([x_50[s], x_50[e]])
+
+        s, e = rt_pa.find_first_valid_entry(best_pa_x)
+
+        rot_pa_extent = scale * np.nanmax([best_pa_x[s], best_pa_x[e]])
+
+        s, e = rt_pa.find_first_valid_entry(hst_pa_x)
+
+        hst_pa_extent = scale * np.nanmax([hst_pa_x[s], hst_pa_x[e]])
 
         # assume for now that q = 0.15
         q = 0.2
@@ -18406,6 +18610,9 @@ class pipelineOps(object):
                        r_e,
                        scaled_num_r_e,
                        scaled_num_r_9,
+                       dyn_pa_extent,
+                       rot_pa_extent,
+                       hst_pa_extent,
                        axis_r,
                        inclination_galfit,
                        num_axis_ratio,
@@ -18414,15 +18621,56 @@ class pipelineOps(object):
                        pa,
                        best_pa,
                        num_pa,
-                       data_velocity_value,
-                       data_velocity_value / np.sin(inclination_galfit),
-                       data_velocity_value / np.sin(inclination_num),
-                       b_data_velocity_value,
-                       b_data_velocity_value / np.sin(inclination_galfit),
-                       b_data_velocity_value / np.sin(inclination_num),
-                       va,
-                       va / np.sin(inclination_galfit),
-                       va / np.sin(inclination_num)]
+                       abs(data_velocity_value),
+                       abs(data_velocity_value / np.sin(inclination_galfit)),
+                       abs(data_velocity_value / np.sin(inclination_num)),
+                       abs(max_data_velocity_value),
+                       abs(max_data_velocity_value / np.sin(inclination_galfit)),
+                       abs(max_data_velocity_value / np.sin(inclination_num)),
+                       abs(b_data_velocity_value),
+                       abs(b_data_velocity_value / np.sin(inclination_galfit)),
+                       abs(b_data_velocity_value / np.sin(inclination_num)),
+                       abs(b_max_data_velocity_value),
+                       abs(b_max_data_velocity_value / np.sin(inclination_galfit)),
+                       abs(b_max_data_velocity_value / np.sin(inclination_num)),
+                       abs(h_data_velocity_value),
+                       abs(h_data_velocity_value / np.sin(inclination_galfit)),
+                       abs(h_data_velocity_value / np.sin(inclination_num)),
+                       abs(h_max_data_velocity_value),
+                       abs(h_max_data_velocity_value / np.sin(inclination_galfit)),
+                       abs(h_max_data_velocity_value / np.sin(inclination_num)),
+                       abs(va),
+                       abs(va / np.sin(inclination_galfit)),
+                       abs(va / np.sin(inclination_num)),
+                       abs(v_2d_r18),
+                       abs(v_2d_r18 / np.sin(inclination_galfit)),
+                       abs(v_2d_r18 / np.sin(inclination_num)),
+                       abs(v_2d_r9),
+                       abs(v_2d_r9 / np.sin(inclination_galfit)),
+                       abs(v_2d_r9 / np.sin(inclination_num)),
+                       abs(dyn_v18),
+                       abs(dyn_v18 / np.sin(inclination_galfit)),
+                       abs(dyn_v18 / np.sin(inclination_num)),
+                       abs(dyn_v9),
+                       abs(dyn_v9 / np.sin(inclination_galfit)),
+                       abs(dyn_v9 / np.sin(inclination_num)),
+                       abs(dyn_pa_fit.best_values['vasy'] - dyn_constant),
+                       abs(b_v18),
+                       abs(b_v18 / np.sin(inclination_galfit)),
+                       abs(b_v18 / np.sin(inclination_num)),
+                       abs(b_v9),
+                       abs(b_v9 / np.sin(inclination_galfit)),
+                       abs(b_v9 / np.sin(inclination_num)),
+                       abs(best_pa_fit.best_values['vasy'] - rot_constant),
+                       abs(h_v18),
+                       abs(h_v18 / np.sin(inclination_galfit)),
+                       abs(h_v18 / np.sin(inclination_num)),
+                       abs(h_v9),
+                       abs(h_v9 / np.sin(inclination_galfit)),
+                       abs(h_v9 / np.sin(inclination_num)),
+                       abs(hst_pa_fit.best_values['vasy'] - hst_constant)]
+
+        print 'CONSTANTS: %s %s %s' % (dyn_constant, rot_constant, hst_constant)
 
         return data_values
 
@@ -18445,6 +18693,9 @@ class pipelineOps(object):
                         'Galfit_R_e(Kpc)',
                         'Numerical_R_e(Kpc)',
                         'Numerical_R_9(Kpc)',
+                        'Dynamic_PA_extent(Kpc)',
+                        'Rot_PA_extent(Kpc)',
+                        'HST_PA_extent(Kpc)',
                         'Galfit_Ar',
                         'i_galfit',
                         'Numerical_Ar',
@@ -18453,15 +18704,55 @@ class pipelineOps(object):
                         'dynamical_pa',
                         'rotation_pa',
                         'Numerical_pa',
-                        'Maximum_data_Velocity',
-                        'Maximum_data_Velocity_g_ar',
-                        'Maximum_data_Velocity_m_ar',
-                        'rot_pa_data_Velocity',
-                        'rot_pa_data_Velocity_g_ar',
-                        'rot_pa_data_Velocity_m_ar',
-                        'Maximum_model_velocity',
-                        'Maximum_model_velocity_g_ar',
-                        'Maximum_model_velocity_m_ar']
+                        'half_method_data_Velocity',
+                        'half_method_data_Velocity_g_ar',
+                        'half_method_data_Velocity_m_ar',
+                        'max_method_data_Velocity',
+                        'max_method_data_Velocity_g_ar',
+                        'max_method_data_Velocity_m_ar',
+                        'half_method_rot_pa_data_Velocity',
+                        'half_method_rot_pa_data_Velocity_g_ar',
+                        'half_method_rot_pa_data_Velocity_m_ar',
+                        'max_method_rot_pa_data_Velocity',
+                        'max_method_rot_pa_data_Velocity_g_ar',
+                        'max_method_rot_pa_data_Velocity_m_ar',
+                        'half_method_hst_pa_data_Velocity',
+                        'half_method_hst_pa_data_Velocity_g_ar',
+                        'half_method_hst_pa_data_Velocity_m_ar',
+                        'max_method_hst_pa_data_Velocity',
+                        'max_method_hst_pa_data_Velocity_g_ar',
+                        'max_method_hst_pa_data_Velocity_m_ar',
+                        'Maximum_2d_model_velocity',
+                        'Maximum_2d_model_velocity_g_ar',
+                        'Maximum_2d_model_velocity_m_ar',
+                        '2d_model_velocity_1.8',
+                        '2d_model_velocity_1.8_g_ar',
+                        '2d_model_velocity_1.8_m_ar',
+                        '2d_model_velocity_9',
+                        '2d_model_velocity_9_g_ar',
+                        '2d_model_velocity_9_m_ar',
+                        '1d_model_velocity_dyn_pa_1.8',
+                        '1d_model_velocity_dyn_pa_1.8_g_ar',
+                        '1d_model_velocity_dyn_pa_1.8_m_ar',
+                        '1d_model_velocity_dyn_pa_9',
+                        '1d_model_velocity_dyn_pa_9_g_ar',
+                        '1d_model_velocity_dyn_pa_9_m_ar',
+                        '1d_model_velocity_dyn_limit',
+                        '1d_model_velocity_rot_pa_1.8',
+                        '1d_model_velocity_rot_pa_1.8_g_ar',
+                        '1d_model_velocity_rot_pa_1.8_m_ar',
+                        '1d_model_velocity_rot_pa_9',
+                        '1d_model_velocity_rot_pa_9_g_ar',
+                        '1d_model_velocity_rot_pa_9_m_ar',
+                        '1d_model_velocity_rot_limit',
+                        '1d_model_velocity_hst_pa_1.8',
+                        '1d_model_velocity_hst_pa_1.8_g_ar',
+                        '1d_model_velocity_hst_pa_1.8_m_ar',
+                        '1d_model_velocity_hst_pa_9',
+                        '1d_model_velocity_hst_pa_9_g_ar',
+                        '1d_model_velocity_hst_pa_9_m_ar',
+                        '1d_model_velocity_hst_limit']
+
 
         save_dir = '/disk1/turner/DATA/v_over_sigma/since_durham/'
 

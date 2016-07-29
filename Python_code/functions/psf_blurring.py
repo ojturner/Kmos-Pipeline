@@ -247,6 +247,11 @@ def psf_grid(dim_x,
 #    ax.set_title('Seeing model')
 #    plt.show()
 #    plt.close('all')
+    
+    n_hdu = fits.PrimaryHDU(g_mod_eval)
+
+    n_hdu.writeto('/disk1/turner/DATA/Victoria_galfit/n_band_outputs/psf.fits',
+                  clobber=True)
 
     if float(psf_factor) != 1.0:
 
@@ -819,3 +824,12 @@ def bin_by_factor(data,
     final_data = data_view.mean(axis=3).mean(axis=1)
 
     return final_data
+
+
+psf_grid(35,
+         37,
+         17,
+         18,
+         0.7,
+         0.1,
+         1)
