@@ -37,7 +37,7 @@ import emcee
 import corner
 
 # add the functions folder to the PYTHONPATH
-sys.path.append('/disk1/turner/PhD'
+sys.path.append('/scratch2/oturner/disk1/turner/PhD'
                 + '/KMOS/Analysis_Pipeline/Python_code/functions')
 
 import psf_blurring as psf

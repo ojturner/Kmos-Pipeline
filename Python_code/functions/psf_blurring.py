@@ -250,7 +250,7 @@ def psf_grid(dim_x,
     
     n_hdu = fits.PrimaryHDU(g_mod_eval)
 
-    n_hdu.writeto('/disk1/turner/DATA/Victoria_galfit/n_band_outputs/psf.fits',
+    n_hdu.writeto('/scratch2/oturner/disk1/turner/DATA/Victoria_galfit/n_band_outputs_flatfield/psf_0.2.fits',
                   clobber=True)
 
     if float(psf_factor) != 1.0:
@@ -830,6 +830,6 @@ psf_grid(35,
          37,
          17,
          18,
-         0.7,
+         0.2,
          0.1,
          1)

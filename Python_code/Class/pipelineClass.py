@@ -31,11 +31,11 @@ from photutils import EllipticalAperture
 from photutils import aperture_photometry
 
 # add the class file to the PYTHONPATH
-sys.path.append('/disk1/turner/PhD'
+sys.path.append('/scratch2/oturner/disk1/turner/PhD'
                 + '/KMOS/Analysis_Pipeline/Python_code/Class')
 
 # add the functions folder to the PYTHONPATH
-sys.path.append('/disk1/turner/PhD'
+sys.path.append('/scratch2/oturner/disk1/turner/PhD'
                 + '/KMOS/Analysis_Pipeline/Python_code/functions')
 
 import flatfield_cube as f_f
@@ -45,6 +45,8 @@ import rotate_pa as rt_pa
 import aperture_growth as ap_growth
 import make_table
 import arctangent_1d as arc_mod
+import oned_gaussian as one_d_g
+import search_for_closest_sky as sky_search
 
 from cubeClass import cubeOps
 from galPhysClass import galPhys
@@ -635,17 +637,7 @@ class pipelineOps(object):
 
                 objFile = names[i]
 
-                if i == 1:
-
-                    skyFile = names[i + 1]
-
-                elif types[i - 1] == 'S':
-
-                    skyFile = names[i - 1]
-
-                else:
-
-                    skyFile = names[i + 1]
+                skyFile = sky_search.search(names, types, i)
 
                 print '[INFO]: Subbing file: %s : ' % objFile
 
@@ -928,17 +920,7 @@ class pipelineOps(object):
 
                 objFile = names[i]
 
-                if i == 1:
-
-                    skyFile = names[i + 1]
-
-                elif types[i - 1] == 'S':
-
-                    skyFile = names[i - 1]
-
-                else:
-
-                    skyFile = names[i + 1]
+                skyFile = sky_search.search(names, types, i)
 
                 # Now use the method defined within this class
 
@@ -2829,17 +2811,7 @@ class pipelineOps(object):
 
                 objFile = names[i]
 
-                if i == 1:
-
-                    skyFile = names[i + 1]
-
-                elif types[i - 1] == 'S':
-
-                    skyFile = names[i - 1]
-
-                else:
-
-                    skyFile = names[i + 1]
+                skyFile = sky_search.search(names, types, i)
 
                 print 'Shifting file: %s : %s' % (i, objFile)
 
@@ -3624,17 +3596,7 @@ class pipelineOps(object):
 
                 objFile = names[i]
 
-                if i == 1:
-
-                    skyFile = names[i + 1]
-
-                elif types[i - 1] == 'S':
-
-                    skyFile = names[i - 1]
-
-                else:
-
-                    skyFile = names[i + 1]
+                skyFile = sky_search.search(names, types, i)
 
                 print '[INFO]: Shifting file: %s : %s' % (i, objFile)
 
@@ -4074,6 +4036,25 @@ class pipelineOps(object):
 
         # The combNames should be generated from within the Next routine
         namesOfFiles = np.genfromtxt(combNames, dtype='str')
+        namesOfFiles = list(namesOfFiles)
+
+        # this step is to accommodate for OBs where some objects 
+        # have been placed in the skyframes. Basically read the combnames
+        # from the SCI_COMBINED guys rather than from the RECONSTRUCTED
+        # should not affect anything if there are no objects in the
+        # skyframes
+
+        IFUNR = cubeOps(sci_dir + '/' + namesOfFiles[0]).IFUNR
+
+        sky_name = sci_dir + '/COMBINE_SCI_RECONSTRUCTED_ARM' \
+        + str(IFUNR) + '_SKY.fits'
+
+        sky_cube = cubeOps(sky_name)
+        temp_comb_names = sky_cube.combNames
+
+        for entry in temp_comb_names:
+            if entry.find('ARM') == -1:
+                namesOfFiles.append(entry)
 
         # Initialise an empty dictionary
         medVals = {}
@@ -4093,11 +4074,29 @@ class pipelineOps(object):
             IFUNR = tempCube.IFUNR
 
             # print IFUNR
-            sky_name = sci_dir + '/combine_sci_reconstructed_arm' \
-                + str(IFUNR) + '_sky.fits'
+            sky_name = sci_dir + '/COMBINE_SCI_RECONSTRUCTED_ARM' \
+                + str(IFUNR) + '_SKY.fits'
 
-            # Create instance from the skycube
-            sky_cube = cubeOps(sky_name)
+            # if there are objects in the skycube, the associated sky arm
+            # obviously won't be there - in this case use either the previous
+            # or next sky arm.
+
+            try:
+
+                # Create instance from the skycube
+                sky_cube = cubeOps(sky_name)
+
+            except IOError:
+
+                # we've hit one of the sky-object hybrids. 
+                # use the skyframe from the first object in the list
+
+                IFUNR = cubeOps(sci_dir + '/' + namesOfFiles[0]).IFUNR
+
+                sky_name = sci_dir + '/COMBINE_SCI_RECONSTRUCTED_ARM' \
+                + str(IFUNR) + '_SKY.fits'
+
+                sky_cube = cubeOps(sky_name)
 
             # Extract the sky flux
             sky_flux = sky_cube.centralSpec()
@@ -4149,8 +4148,8 @@ class pipelineOps(object):
 
                 filter_id = 'YJ'
 
-                filter_indices = np.where(np.logical_and(wavelength > 1.05,
-                                                         wavelength < 1.35))[0]
+                filter_indices = np.where(np.logical_and(wavelength > 1.02,
+                                                         wavelength < 1.3))[0]
 
                 sky_flux = sky_flux[filter_indices]
 
@@ -4188,20 +4187,14 @@ class pipelineOps(object):
 
             # Could be a different wavelength, will just
             # leave the flux and wavelength unchanged right now
+
             # Check for where the flux exceeds a certain number of counts
+            # this will be the comparison wavelength value.
+            # Will take 2sigma here. 
 
-            if filter_id == 'HK' or \
-                    filter_id == 'H' or filter_id == 'K':
+            sig_array = np.nanstd(sky_flux)
 
-                emission_indices = np.where(sky_flux > 1000)[0]
-
-            elif filter_id == 'YJ':
-
-                emission_indices = np.where(sky_flux > 200)[0]
-
-            else:
-
-                emission_indices = np.where(sky_flux > 50)[0]
+            emission_indices = np.where(sky_flux > 2 * sig_array)[0]
 
             # Grow the emission_indices to
             # include values either side
@@ -4241,11 +4234,13 @@ class pipelineOps(object):
             # print 'The unique emission_indices
             # are: %s' % new_emission_indices
             # Find the sky values at these pixels
+
             sky_emission_lines = sky_flux[new_emission_indices]
 
             # Take the absolute value of the fluxes
             # to account for P-Cygni profiles
             sky_emission_lines = abs(sky_emission_lines)
+
 
             # Extract the object 1D spectrum,
             # this is from the whole cube now. Should help
@@ -4274,7 +4269,7 @@ class pipelineOps(object):
 
             tempObjWavelength = object_wavelength[contm_emission_indices]
 
-            object_continuum = abs(np.median(tempObjContinuum))
+            object_continuum = abs(np.nanmedian(tempObjContinuum))
 
             # Now some of the entries in the object_spectrum
             # could be nan, in which case the
@@ -4326,6 +4321,7 @@ class pipelineOps(object):
             ax.plot(tempObjWavelength, tempObjContinuum)
 
             # plt.show()
+            plt.close('all')
             # Now subtract the object continuum from
             # the full object_spectrum and repeat analysis
             new_object_spectrum = object_spectrum - full_continuum
@@ -4338,6 +4334,7 @@ class pipelineOps(object):
                     abs(new_object_spectrum))
 
             # plt.show()
+            plt.close('all')
 
             # print 'The object continuum value is: %s' % object_continuum
 
@@ -4348,7 +4345,7 @@ class pipelineOps(object):
             # as the sky subtraction performance indicator
             pos_spec = np.abs(new_object_spectrum)
 
-            std_dev = np.std(pos_spec)
+            std_dev = np.nanstd(pos_spec)
 
             pos_spec = \
                 np.nanmedian(np.array(pos_spec[np.where(pos_spec > std_dev)]))
@@ -4367,6 +4364,8 @@ class pipelineOps(object):
         # print medVector
 
         plt.close('all')
+
+        print 'LENGTHS %s %s %s ' % (len(medVals.values()), len(list(cubeNames.values())), len(np.array(medVals.keys())))
 
         return np.array(medVals.values()), \
             list(cubeNames.values()), np.array(medVals.keys())
@@ -4497,7 +4496,8 @@ class pipelineOps(object):
     def frameCheck(self,
                    sci_dir,
                    frameNames,
-                   tracked_list):
+                   tracked_list,
+                   pix_scale):
 
         """
         Def:
@@ -4523,6 +4523,8 @@ class pipelineOps(object):
                                 by KMOS, 1 star per detector. If this isn't
                                 available write the name of one star three
                                 times
+                pix_scale - the pixel scale to use when rebuilding the science
+                            cubes
         Output:
                 IFUValVec - mean for each IFU of skytweak performance
                 frameValVec - mean for each frame of skytweak performance
@@ -4541,6 +4543,19 @@ class pipelineOps(object):
         if not os.path.isfile('sci_reduc.sof'):
 
             raise ValueError('Cannot find sci_reduc.sof file')
+
+        # also remove temporary tracked star files
+        if os.path.isfile('tracked_one.txt'):
+
+            os.system('rm tracked_one.txt')
+
+        if os.path.isfile('tracked_two.txt'):
+
+            os.system('rm tracked_two.txt')
+
+        if os.path.isfile('tracked_three.txt'):
+
+            os.system('rm tracked_three.txt')
 
         # First read in the names and the types from frameNames
 
@@ -4577,40 +4592,6 @@ class pipelineOps(object):
             print 'Having difficulty setting sci_comb names'
 
         print 'This is the order of the combined names: %s' % combNames
-
-        # Define the tracked star ID
-        # As input to the method is a list of three names
-        # these are for the tracked stars on each detector
-        # if there is only a single tracked star then the names
-        # should all be the same and everything will work
-
-        track_name_one = tracked_list[0]
-
-        track_name_two = tracked_list[1]
-
-        track_name_three = tracked_list[2]
-
-        # Loop round the list of combNames until each tracked_name appears
-        # these are used later on in the method to find the pixel
-        # scale of that standard star
-
-        for entry in combNames:
-
-            if entry.find(track_name_one) != -1:
-
-                tracked_star_one = sci_dir + '/' + entry
-
-        for entry in combNames:
-
-            if entry.find(track_name_two) != -1:
-
-                tracked_star_two = sci_dir + '/' + entry
-
-        for entry in combNames:
-
-            if entry.find(track_name_three) != -1:
-
-                tracked_star_three = sci_dir + '/' + entry
 
         # Initialise loop counter and variables
 
@@ -4653,17 +4634,24 @@ class pipelineOps(object):
 
                 objFile = names[i]
 
-                if i == 1:
+                # find the actual gal_name
 
-                    skyFile = names[i + 1]
+                if objFile.find("/") == -1:
 
-                elif types[i - 1] == 'S':
+                    gal_name = copy(objFile)
 
-                    skyFile = names[i - 1]
+                # Otherwise the directory structure is included and have to
+                # search for the backslash and omit up to the last one
 
                 else:
 
-                    skyFile = names[i + 1]
+                    gal_name = objFile[len(objFile) - objFile[::-1].find("/"):]
+
+                # assign what the reconstructed name will be
+
+                recon_gal = sci_dir + '/SCI_RECONSTRUCTED_' + gal_name
+
+                skyFile = sky_search.search(names, types, i)
 
                 print '[INFO]: reducing file: %s : ' % objFile
 
@@ -4696,8 +4684,9 @@ class pipelineOps(object):
 
                 # Now just execute the esorex recipe for this new file
                 os.system('esorex --output-dir=%s kmos_sci_red' % sci_dir
-                          + '  --pix_scale=0.1 --oscan=FALSE --sky_tweak=TRUE'
-                          + '  --b_samples=2048 --edge_nan=TRUE sci_reduc_temp.sof')
+                          + '  --pix_scale=%s --oscan=FALSE --sky_tweak=TRUE' % pix_scale
+                          + '  --b_samples=2048 --edge_nan=TRUE'
+                          + '  --discard_subband=TRUE --stretch=0 sci_reduc_temp.sof')
 
                 # We have all the science products now
                 # execute the above method for each
@@ -4706,7 +4695,55 @@ class pipelineOps(object):
 
                 print 'Checking IFU sky tweak performance'
 
-                # This is the array of IFU values for each frame
+                # here we need to find which extension to add to the
+                # combined names - this is read from the header of the
+                # reconstructed galaxy file
+
+                combNames = cubeOps(recon_gal).combNames
+
+                # And from this find the tracked star list
+
+                track_name_one = tracked_list[0]
+
+                track_name_two = tracked_list[1]
+
+                track_name_three = tracked_list[2]
+
+                # Loop round the list of combNames until each tracked_name appears
+
+                for entry in combNames:
+
+                    if entry.find(track_name_one) != -1:
+
+                        tracked_star_one = sci_dir + '/' + entry
+
+                for entry in combNames:
+
+                    if entry.find(track_name_two) != -1:
+
+                        tracked_star_two = sci_dir + '/' + entry
+
+                for entry in combNames:
+
+                    if entry.find(track_name_three) != -1:
+
+                        tracked_star_three = sci_dir + '/' + entry
+
+                # write to file each of these tracked names
+
+                with open('tracked_one.txt', 'a') as f:
+
+                    f.write(tracked_star_one)
+
+                with open('tracked_two.txt', 'a') as f:
+
+                    f.write(tracked_star_two)
+
+                with open('tracked_three.txt', 'a') as f:
+
+                    f.write(tracked_star_three)
+
+                # Do the sky file comparison
 
                 medVals, cube_name_list, IFU_number_array = \
                     self.compareSky(sci_dir, combNames)
@@ -4754,10 +4791,69 @@ class pipelineOps(object):
 
                 fwhmValVec_three.append(fwhm_three)
 
+                # basically (and so far exclusively relating to the charlotte
+                # mason data reduction) these offLists are sometimes wrong.
+                # need to scan through one of the reconstructed sky arms
+                # to see if objects are there and then delete from the offList
+                # accordingly
+
+                arm_number = cubeOps(sci_dir + '/' + combNames[0]).IFUNR
+
+                sky_name = sci_dir + '/COMBINE_SCI_RECONSTRUCTED_ARM' \
+                + str(arm_number) + '_SKY.fits'
+
+                sky_cube = cubeOps(sky_name)
+                temp_comb_names = sky_cube.combNames
+
+                sky_object_numbers = []
+
+                for entry in temp_comb_names:
+                    if entry.find('ARM') == -1:
+                        sky_object_name = sci_dir + '/' + entry
+                        sky_object_cube = cubeOps(sky_object_name)
+                        sky_object_numbers.append(sky_object_cube.IFUNR)
+
+                # now remove these from the offList.
+                # If there is nothing in the list, nothing will be removed
+
+                print 'THIS IS THE SKY OBJECT LIST: %s' % sky_object_numbers
+                print 'THIS IS THE OFFLIST: %s' % offList_one
+
+                print '[INFO:] Removing sky-object files from the offlist'
+
+                offList_one = list(offList_one)
+                offList_two = list(offList_two)
+                offList_three = list(offList_three)
+
+                for entry in sky_object_numbers:
+                    if entry in offList_one:
+                        offList_one.remove(entry)
+                    if entry in offList_two:
+                        offList_two.remove(entry)
+                    if entry in offList_three:
+                        offList_three.remove(entry)
+
+                offList_one = np.array(offList_one)
+                offList_two = np.array(offList_two)
+                offList_three = np.array(offList_three)                
+
                 # remove the temporary .sof file and
                 # go back to the start of the loop
 
                 os.system('rm sci_reduc_temp.sof')
+
+                # also remove temporary tracked star files
+                if os.path.isfile('tracked_one.txt'):
+
+                    os.system('rm tracked_one.txt')
+
+                if os.path.isfile('tracked_two.txt'):
+
+                    os.system('rm tracked_two.txt')
+
+                if os.path.isfile('tracked_three.txt'):
+
+                    os.system('rm tracked_three.txt')
 
                 # Change FWHM to arcsecond scale, by using the pixel scale
                 # recover the pixel scale by creating a cubeClass instance
@@ -4894,7 +4990,7 @@ class pipelineOps(object):
 
                 if objFile.find("/") == -1:
                     rec_objFile = sci_dir + '/' + \
-                        'sci_reconstructed_' + objFile
+                        'SCI_RECONSTRUCTED_' + objFile
 
                 # Otherwise the directory structure is included and have to
                 # search for the backslash and omit up to the last one
@@ -4904,7 +5000,7 @@ class pipelineOps(object):
                     objName = objFile[len(objFile) - objFile[::-1].find("/"):]
 
                     rec_objFile = sci_dir + '/' + \
-                        'sci_reconstructed_' + objName
+                        'SCI_RECONSTRUCTED_' + objName
 
                 # Make the output file for combining
                 # - have all the information now
@@ -5034,11 +5130,14 @@ class pipelineOps(object):
 
         fig, ax = plt.subplots(1, 1, figsize=(14.0, 14.0))
 
+        print 'LENGTH OF IFUVALVEC: %s ' % len(IFUValVec[0])
+        print 'THE OFFLIST %s' % offList
+
         for entry in IFUValVec:
 
             # Extend the value array to match the IFUID array
 
-            for value in offList:
+            for value in np.sort(offList):
 
                 entry = np.insert(entry, value, np.nan)
 
@@ -5408,7 +5507,7 @@ class pipelineOps(object):
 
         # Remove the current sci_combined*.fits prior to this analysis
 
-        os.system('rm %s/sci_combined*.fits' % sci_dir)
+        os.system('rm %s/SCI_COMBINED*.fits' % sci_dir)
 
         # Initialise dictionary for final fwhm values
 
@@ -5953,7 +6052,8 @@ class pipelineOps(object):
                         combine_file,
                         seeing_lower,
                         seeing_upper,
-                        performance_limit):
+                        performance_limit,
+                        star=True):
 
         """
         Def:
@@ -6044,18 +6144,253 @@ class pipelineOps(object):
 
                     for row in combine_Table:
 
-                        f.write('%s\n' % row[0])
+                        f.write('%s\tSCI_RECONSTRUCTED\n' % row[0])
 
                 # Now execute the combine recipe
                 # for this name given the sof file has been created
+
+                # if there was a star in the OB, shift from the user computed
+                # values 
+
+                if star:
+
+                    os.system('esorex --output-dir=%s' % sci_dir
+                              + ' kmos_combine --name=%s' % name
+                              + ' --cmethod=ksigma'
+                              + ' --cpos_rej=3.0'
+                              + ' --cneg_rej=3.0'
+                              + ' --method="user"'
+                              + ' --filename=%s' % shiftFile
+                              + ' --edge_nan=TRUE %s' % combine_name)
+
+                # otherwise simply use the header information
+
+                else:
+
+                    os.system('esorex --output-dir=%s' % sci_dir
+                              + ' kmos_combine --name=%s' % name
+                              + ' --cmethod=ksigma'
+                              + ' --cpos_rej=3.0'
+                              + ' --cneg_rej=3.0'
+                              + ' --method="header"'
+                              + ' --edge_nan=TRUE %s' % combine_name)
+
+            # If there is only a single object in this
+            # seeing bin, isolate the core part of the name
+            # and execute the kmo_sci_red recipe after
+            # appending the object name to the sci_reduc.sof file
+            # Since this is being executed in the calibrations
+            # directory the sci_reduc.sof file is already there
+
+            elif len(combine_Table) == 1:
+
+                print 'This is the combined object' \
+                      + ' name and type: %s %s' % (combine_Table[0][0],
+                                                   type(combine_Table[0][0]))
+
+                objName = combine_Table[0][0][
+                    combine_Table[0][0].find('sci_reconstructed_') + 18:]
+
+                real_name = \
+                    combine_Table[0][1][: len(combine_Table[0][1])
+                                        - combine_Table[0][1][::-1].find('/')] \
+                    + objName
+
+                # The sci_reduc.sof file is in the directory
+                # - write out to this
+                # Create a copy of the sci_reduc.sof in a new temporary file
+
+                if os.path.isfile('sci_reduc_temp.sof'):
+
+                    os.system('rm sci_reduc_temp.sof')
+                with open(sci_dir + '/sci_reduc.sof') as f:
+                    with open('sci_reduc_temp.sof', 'w') as f1:
+                        for line in f:
+                                f1.write(line)
+
+                # Append the current object and skyfile
+                # names to the newly created .sof file
+
+                with open('sci_reduc_temp.sof', 'a') as f:
+
+                    f.write('\n%s\tSCIENCE' % real_name)
+
+                    f.write('\n%s\tSCIENCE' % combine_Table[0][1])
+
+                # Now just execute the esorex recipe for this new file
+
+                os.system('esorex --output-dir=%s' % sci_dir
+                          + ' kmos_sci_red --pix_scale=0.2 --oscan=FALSE'
+                          + ' --name=%s --sky_tweak=TRUE' % name
+                          + ' --edge_nan=TRUE'
+                          + ' sci_reduc_temp.sof')
+
+                os.system('rm sci_reduc_temp.sof')
+
+            # Final case - if the list is empty, do nothing
+
+            else:
+
+                print 'Nothing to combine for object %s' % name
+
+    def combine_by_name_sky_object(self,
+                                   sci_dir,
+                                   combine_file,
+                                   seeing_lower,
+                                   seeing_upper,
+                                   performance_limit):
+
+        """
+        Def:
+        Main method for combining the frames into
+        the science cubes. Right now will not do anything
+        special with the produced output files,
+        will just leave all of those in the science directory.
+        Selects all of the frames which pass the
+        sky subtraction test and are within a particular seeing
+        range for each of the objects. More powerful way of combining.
+
+        Input:
+                sci_dir - science directory def in the environment variables
+                combine_file - output file from frameCheck
+                seeing_lower - lower limit for the seeing
+                seeing_upper - upper limit for the seeing
+                performance_limit - sky performance pass limit
+
+        Output:
+                sci_combined cubes for all of the objects imaged
+                in the frames, provided at least a single frame
+                passes the tests
+        """
+
+        # First step is to get a unique list
+        # of the object names from the combine_file table
+        # So that these can be looped over
+        # to generate the .sof file in each case
+
+        Table = np.loadtxt(combine_file, dtype='str')
+
+        # The names are the third column
+
+        ifu_names = Table[:, 3]
+
+        # Create a unique list by taking a set
+
+        ifu_names = list(set(ifu_names))
+
+        # For each name execute the three helper reduce methods
+
+        for name in ifu_names:
+
+            # Initialise the names of the files
+
+            deltaFile = sci_dir + '/' + name + '_delta_file.txt'
+
+            shiftFile = sci_dir + '/' + name + '_shift_file.txt'
+
+            print '[INFO]: Combining Object: %s ' % name
+
+            new_Table = self.reduce_list_seeing(combine_file,
+                                                seeing_lower,
+                                                seeing_upper)
+
+            name_Table = self.reduce_list_name(new_Table,
+                                               name)
+
+            combine_Table = self.reduce_list_sky(name_Table,
+                                                 performance_limit)
+
+            # Create the shift list for this object
+
+            self.compute_shifts(sci_dir, combine_Table, name)
+
+            # Plot the drift results
+
+            self.plotDrift(deltaFile, name)
+
+            # This combine_Table contains as first column
+            # the reconstructed names to combine for that object
+            # Want to write these out to a combine.sof file
+            # - checking to see whether it exists already
+
+            combine_name = name + '_combine.sof'
+
+            if os.path.isfile(combine_name):
+
+                os.system('rm %s' % combine_name)
+
+            # Conditional execution of the recipes
+            # depending on how much frames
+            # Easiest if more than a single object
+
+            if len(combine_Table) > 1:
+
+                with open(combine_name, 'a') as f:
+
+                    for row in combine_Table:
+
+                        sky_name = row[1]
+
+                        if sky_name.find("/") == -1:
+
+                            sky_file = copy(sky_name)
+
+                        # Otherwise the directory structure is included and have to
+                        # search for the backslash and omit up to the last one
+
+                        else:
+
+                            sky_file = sky_name[len(sky_name) - sky_name[::-1].find("/"):]
+
+                        obj_name = row[0]
+
+                        if obj_name.find("/") == -1:
+
+                            obj_dir = '.'
+
+                        # Otherwise the directory structure is included and have to
+                        # search for the backslash and omit up to the last one
+
+                        else:
+
+                            obj_dir = obj_name[:len(obj_name) - obj_name[::-1].find("/")]
+
+                        write_name = obj_dir + 'SCI_RECONSTRUCTED_' + sky_file
+
+                        f.write('%s\tSCI_RECONSTRUCTED\n' % write_name)
+
+                # Now need to remove duplicates from this file, since every
+                # object is writing the sky files
+
+                # Removing duplicate rows from the sky list
+
+                table = list(np.genfromtxt(combine_name, dtype='str')[:,0])
+
+                seen = set()
+
+                result = []
+
+                for item in table:
+                    if item not in seen:
+                        seen.add(item)
+                        result.append(item)
+
+                with open(combine_name, 'w') as f:
+                    for item in result:
+                        f.write('%s\tSCI_RECONSTRUCTED\n' % item)
+
+                # Now execute the combine recipe
+                # for this name given the sof file has been created
+                # for the sky files, do not want to use the computed shifts
+                # there was no star being observed during sky time
+                # so just use default combine with the header info
 
                 os.system('esorex --output-dir=%s' % sci_dir
                           + ' kmos_combine --name=%s' % name
                           + ' --cmethod=ksigma'
                           + ' --cpos_rej=3.0'
                           + ' --cneg_rej=3.0'
-                          + ' --method="user"'
-                          + ' --filename=%s' % shiftFile
+                          + ' --method="header"'
                           + ' --edge_nan=TRUE %s' % combine_name)
 
             # If there is only a single object in this
@@ -6103,7 +6438,7 @@ class pipelineOps(object):
                 # Now just execute the esorex recipe for this new file
 
                 os.system('esorex --output-dir=%s' % sci_dir
-                          + ' kmos_sci_red --pix_scale=0.1 --oscan=FALSE'
+                          + ' kmos_sci_red --pix_scale=0.2 --oscan=FALSE'
                           + ' --name=%s --sky_tweak=TRUE' % name
                           + ' --edge_nan=TRUE'
                           + ' sci_reduc_temp.sof')
@@ -6182,6 +6517,7 @@ class pipelineOps(object):
                          sci_dir,
                          frameNames,
                          tracked_list,
+                         pix_scale,
                          **kwargs):
 
         """
@@ -6268,46 +6604,6 @@ class pipelineOps(object):
 
             print 'Having difficulty setting sci_comb names'
 
-        track_name_one = tracked_list[0]
-
-        track_name_two = tracked_list[1]
-
-        track_name_three = tracked_list[2]
-
-        # Loop round the list of combNames until each tracked_name appears
-
-        for entry in combNames:
-
-            if entry.find(track_name_one) != -1:
-
-                tracked_star_one = sci_dir + '/' + entry
-
-        for entry in combNames:
-
-            if entry.find(track_name_two) != -1:
-
-                tracked_star_two = sci_dir + '/' + entry
-
-        for entry in combNames:
-
-            if entry.find(track_name_three) != -1:
-
-                tracked_star_three = sci_dir + '/' + entry
-
-        # write to file each of these tracked names
-
-        with open('tracked_one.txt', 'a') as f:
-
-            f.write(tracked_star_one)
-
-        with open('tracked_two.txt', 'a') as f:
-
-            f.write(tracked_star_two)
-
-        with open('tracked_three.txt', 'a') as f:
-
-            f.write(tracked_star_three)
-
         # execute the framecheck method to complete the science reduction
 
         ID, offList, namesVec, IFUValVec, \
@@ -6315,10 +6611,16 @@ class pipelineOps(object):
             fwhmValVec_two, fwhmValVec_three, \
             fwhmDict = self.frameCheck(sci_dir,
                                        frameNames,
-                                       tracked_list)
+                                       tracked_list,
+                                       pix_scale)
 
         # There are the IFU sky tweak performance plots
         # The mean sky tweak performance across each IFU
+
+        # The offlist isn't what I think it is - need to decrease
+        # the values in it by 1
+
+        offList = offList - 1
 
         print '[INFO]: Plotting frame performance against IFU number'
 
@@ -6356,7 +6658,8 @@ class pipelineOps(object):
                 fwhmValVec1_one, fwhmValVec1_two, fwhmValVec1_three, \
                 fwhmDict1 = self.frameCheck(sci_dir,
                                             additional_frameNames,
-                                            tracked_list)
+                                            tracked_list,
+                                            pix_scale)
 
             # Now have two sets of all the parameters
             # and can make the double plots using the multiplot methods
@@ -6600,23 +6903,23 @@ class pipelineOps(object):
         # start by checking the value of the grating
         if grating == 'K':
 
-            table = fits.open(cal_dir + '/telluric_KKK.fits', mode='update')
+            table = fits.open(cal_dir + '/TELLURIC_KKK.fits', mode='update')
 
         elif grating == 'HK':
 
-            table = fits.open(cal_dir + '/telluric_HKHKHK.fits', mode='update')
+            table = fits.open(cal_dir + '/TELLURIC_HKHKHK.fits', mode='update')
 
         elif grating == 'H':
 
-            table = fits.open(cal_dir + '/telluric_HHH.fits', mode='update')
+            table = fits.open(cal_dir + '/TELLURIC_HHH.fits', mode='update')
 
         elif grating == 'YJ':
 
-            table = fits.open(cal_dir + '/telluric_YJYJYJ.fits', mode='update')
+            table = fits.open(cal_dir + '/TELLURIC_YJYJYJ.fits', mode='update')
 
         elif grating == 'IZ':
 
-            table = fits.open(cal_dir + '/telluric_IZIZIZ.fits', mode='update')
+            table = fits.open(cal_dir + '/TELLURIC_IZIZIZ.fits', mode='update')
 
         else:
 
@@ -6728,23 +7031,23 @@ class pipelineOps(object):
         # start by checking the value of the grating
         if grating == 'K':
 
-            table = fits.open(cal_dir + '/telluric_KKK.fits', mode='update')
+            table = fits.open(cal_dir + '/TELLURIC_KKK.fits', mode='update')
 
         elif grating == 'HK':
 
-            table = fits.open(cal_dir + '/telluric_HKHKHK.fits', mode='update')
+            table = fits.open(cal_dir + '/TELLURIC_HKHKHK.fits', mode='update')
 
         elif grating == 'H':
 
-            table = fits.open(cal_dir + '/telluric_HHH.fits', mode='update')
+            table = fits.open(cal_dir + '/TELLURIC_HHH.fits', mode='update')
 
         elif grating == 'YJ':
 
-            table = fits.open(cal_dir + '/telluric_YJYJYJ.fits', mode='update')
+            table = fits.open(cal_dir + '/TELLURIC_YJYJYJ.fits', mode='update')
 
         elif grating == 'IZ':
 
-            table = fits.open(cal_dir + '/telluric_IZIZIZ.fits', mode='update')
+            table = fits.open(cal_dir + '/TELLURIC_IZIZIZ.fits', mode='update')
 
         else:
 
@@ -15621,7 +15924,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_int_sig_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -16030,7 +16333,7 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_int_sig_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
 
@@ -17175,6 +17478,13 @@ class pipelineOps(object):
 
             axis_r = axis_r[1:]
 
+        # If the parameter has not been well determined by galfit
+        # need to account for the asterisks
+
+        if axis_r[0] == '*':
+
+            axis_r = axis_r[1:-1]
+
         axis_r = float(axis_r)
 
         # Get the galfit scale radius
@@ -17188,7 +17498,16 @@ class pipelineOps(object):
 
             r_e = r_e[1:]
 
+        if r_e[0] == '*':
+
+            r_e = r_e[1:-1]
+
         r_e = float(r_e)
+
+        # This r_e is in pixels, multiply 
+        # by 0.1 and then by scale to put into KPC
+
+        r_e = pix_scale * r_e * scale
 
         # Converting back to arcseconds
 
@@ -17202,6 +17521,10 @@ class pipelineOps(object):
         if hst_pa[0] == '[':
 
             hst_pa = hst_pa[1:]
+
+        if hst_pa[0] == '*':
+
+            hst_pa = hst_pa[1:-1]
 
         hst_pa = float(hst_pa)
 
@@ -17274,9 +17597,13 @@ class pipelineOps(object):
 
         data_model = data_model * mask_array
 
-        table_sig = fits.open('%s_int_sig_field.fits' % infile[:-5])
+        table_sig = fits.open('%s_sig_field.fits' % infile[:-5])
 
         data_sig = table_sig[0].data
+
+        table_sig_error = fits.open('%s_sig_error_field.fits' % infile[:-5])
+
+        data_sig_error = table_sig_error[0].data
 
         one_d_plots, extract_values = vel.extract_in_apertures_fixed_inc_fixed(inc,
                                                                              redshift,
@@ -17471,6 +17798,8 @@ class pipelineOps(object):
         print 'ROT: %s' % best_pa
         print 'DYN: %s' % pa
 
+        # extract the velocity data in each case of position angle
+
         hst_pa_vel, hst_pa_x = rt_pa.extract(d_aper,
                                              r_aper,
                                              hst_pa,
@@ -17502,6 +17831,74 @@ class pipelineOps(object):
                                                xcen,
                                                ycen,
                                                pix_scale)
+
+        # extract the sigma data in each case of position angle
+
+        hst_pa_sig, hst_pa_sig_x = rt_pa.extract(d_aper,
+                                                 r_aper,
+                                                 hst_pa,
+                                                 data_sig, 
+                                                 xcen,
+                                                 ycen,
+                                                 pix_scale)
+
+        hst_pa_sig_error, hst_pa_sig_x = rt_pa.extract(d_aper,
+                                                       r_aper,
+                                                       hst_pa,
+                                                       data_sig_error, 
+                                                       xcen,
+                                                       ycen,
+                                                       pix_scale)
+
+        best_pa_sig, best_pa_sig_x = rt_pa.extract(d_aper,
+                                                   r_aper,
+                                                   best_pa,
+                                                   data_sig, 
+                                                   xcen,
+                                                   ycen,
+                                                   pix_scale)
+
+        best_pa_sig_error, best_pa_sig_x = rt_pa.extract(d_aper,
+                                                         r_aper,
+                                                         best_pa,
+                                                         data_sig_error, 
+                                                         xcen,
+                                                         ycen,
+                                                         pix_scale)
+
+        dyn_pa_sig, dyn_pa_sig_x = rt_pa.extract(d_aper,
+                                                   r_aper,
+                                                   pa,
+                                                   data_sig, 
+                                                   xcen,
+                                                   ycen,
+                                                   pix_scale)
+
+        dyn_pa_sig_error, dyn_pa_sig_x = rt_pa.extract(d_aper,
+                                                         r_aper,
+                                                         pa,
+                                                         data_sig_error, 
+                                                         xcen,
+                                                         ycen,
+                                                         pix_scale)
+
+        # now want to take the average of the first and last sigma
+        # values extracted along each of the position angles
+
+        # HST POSITION ANGLE
+        hst_i, hst_j = rt_pa.find_first_valid_entry(hst_pa_sig)
+
+        hst_mean_sigma = np.nanmean([hst_pa_sig[hst_i],hst_pa_sig[hst_j]])
+
+        # DYN POSITION ANGLE
+        dyn_i, dyn_j = rt_pa.find_first_valid_entry(dyn_pa_sig)
+
+        dyn_mean_sigma = np.nanmean([dyn_pa_sig[dyn_i],dyn_pa_sig[dyn_j]])
+
+        # HST POSITION ANGLE
+        best_i, best_j = rt_pa.find_first_valid_entry(best_pa_sig)
+
+        best_mean_sigma = np.nanmean([best_pa_sig[best_i],best_pa_sig[best_j]])
 
         # calculate the boundaries from which to draw a line
         # through the images relating to the position angles
@@ -17763,12 +18160,12 @@ class pipelineOps(object):
         # GALFIT MODEL
 
         ax[0][1].text(4, 7,
-                      r'$R_{e} = %s$Kpc' % r_e,
+                      r'$R_{e} = %.2f$Kpc' % r_e,
                       fontsize=16,
                       color='black')
 
         ax[0][1].text(4, 14,
-                      r'$\frac{b}{a} = %s$' % axis_r,
+                      r'$\frac{b}{a} = %.2f$' % axis_r,
                       fontsize=16,
                       color='black')
 
@@ -17861,8 +18258,8 @@ class pipelineOps(object):
 
         im = ax[0][4].imshow(b_cont2,
                           cmap=cmap,
-                          vmax=-0.1,
-                          vmin=-0.3)
+                          vmax=0.01,
+                          vmin=-0.04)
 
         y_full, x_full = np.indices(b_cont2.shape)
         ax[0][4].contour(x_full,
@@ -18234,9 +18631,41 @@ class pipelineOps(object):
 
         ax[2][1].set_xlabel('arcsec')
 
+        # also want to fit a gaussian to the integrated spectrum to
+        # determine emission line width. Surely the integrated sigma
+        # is not a good measure of the turbulence as this will be higher
+        # with higher velocity gradient?
+
+        g_out, g_best, g_covar = one_d_g.ped_gauss_fit(obj_cube.wave_array[o_peak-50:o_peak+50],
+                                                one_d_spectrum[o_peak-50:o_peak+50])
+
+        gauss_spectrum = g_out.eval(x=obj_cube.wave_array[o_peak-50:o_peak+50])
+
+        sigma_int = g_best['sigma']
+
+        # also measure an error weighted sigma
+
+        indices = ~np.isnan(data_sig)
+
+        sigma_o = np.average(data_sig[indices],
+                             weights=1.0 / data_sig_error[indices])
+
+        c = 2.99792458E5
+
+        print 'THESE ARE THE SIGMAS'
+        print 'INTRINSIC SIGMA: %s' % (sigma_int * c / central_l)
+        print 'ROT SIGMA: %s' % best_mean_sigma
+        print 'HST SIGMA: %s' % hst_mean_sigma
+        print 'DYN SIGMA: %s' % dyn_mean_sigma
+        print 'MEAN WEIGHTED: %s' % sigma_o
+
         ax[2][2].plot(obj_cube.wave_array[o_peak-50:o_peak+50],
                       one_d_spectrum[o_peak-50:o_peak+50],
                       color='black')
+
+        ax[2][2].plot(obj_cube.wave_array[o_peak-50:o_peak+50],
+                      gauss_spectrum,
+                      color='red')
 
         ax[2][2].axvline(central_l, color='red', ls='--')
         ax[2][2].axvline(obj_cube.wave_array[o_peak-5], color='red', ls='--')
@@ -18412,7 +18841,7 @@ class pipelineOps(object):
 
         fig.tight_layout()
 
-        plt.show()
+        # plt.show()
 
         fig.savefig('%s_grid_fixed_inc_fixed.png' % infile[:-5])
 
@@ -18668,7 +19097,12 @@ class pipelineOps(object):
                        abs(h_v9),
                        abs(h_v9 / np.sin(inclination_galfit)),
                        abs(h_v9 / np.sin(inclination_num)),
-                       abs(hst_pa_fit.best_values['vasy'] - hst_constant)]
+                       abs(hst_pa_fit.best_values['vasy'] - hst_constant),
+                       hst_mean_sigma,
+                       dyn_mean_sigma,
+                       best_mean_sigma,
+                       (sigma_int * c) / central_l,
+                       sigma_o]
 
         print 'CONSTANTS: %s %s %s' % (dyn_constant, rot_constant, hst_constant)
 
@@ -18751,7 +19185,12 @@ class pipelineOps(object):
                         '1d_model_velocity_hst_pa_9',
                         '1d_model_velocity_hst_pa_9_g_ar',
                         '1d_model_velocity_hst_pa_9_m_ar',
-                        '1d_model_velocity_hst_limit']
+                        '1d_model_velocity_hst_limit',
+                        'HST_sigma',
+                        'DYN_sigma',
+                        'ROT_sigma',
+                        'INTRINSIC_sigma',
+                        'WEIGHTED_sigma']
 
 
         save_dir = '/disk1/turner/DATA/v_over_sigma/since_durham/'
